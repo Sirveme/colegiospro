@@ -3,25 +3,89 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
+from typing import Optional
+
+from app.database import SessionLocal, Lead
 
 app = FastAPI(
     title="ColegiosPro",
-    description="Plataforma Digital para Colegios Profesionales del Perú",
+    description="Plataforma Digital para Colegios Profesionales del Peru",
     version="1.0.0",
 )
 
-# ── Static files ──
+# -- Static files --
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# ── Templates ──
+# -- Templates --
 templates = Jinja2Templates(directory="app/templates")
 
 
-# ── Routes ──
+# -- Schemas --
+
+class ContactForm(BaseModel):
+    colegio: str
+    region: Optional[str] = None
+    cantidad: Optional[str] = None
+    decano: Optional[str] = None
+    admin: Optional[str] = None
+    tesoreria: Optional[str] = None
+    secretaria: Optional[str] = None
+
+
+# -- Routes --
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("home.html", {"request": request})
+
+
+@app.post("/api/contacto")
+async def recibir_contacto(form: ContactForm, request: Request):
+    db = SessionLocal()
+    try:
+        lead = Lead(
+            colegio=form.colegio,
+            region=form.region,
+            cantidad=form.cantidad,
+            decano_wsp=form.decano,
+            admin_wsp=form.admin,
+            tesoreria_wsp=form.tesoreria,
+            secretaria_wsp=form.secretaria,
+            ip=request.client.host,
+        )
+        db.add(lead)
+        db.commit()
+        return {"status": "ok", "message": "Solicitud recibida"}
+    except Exception as e:
+        db.rollback()
+        return {"status": "error", "message": str(e)}
+    finally:
+        db.close()
+
+
+@app.get("/api/leads")
+async def ver_leads():
+    """Temporal: ver todos los leads (proteger despues con auth)"""
+    db = SessionLocal()
+    try:
+        leads = db.query(Lead).order_by(Lead.created_at.desc()).all()
+        return [
+            {
+                "id": l.id,
+                "colegio": l.colegio,
+                "region": l.region,
+                "cantidad": l.cantidad,
+                "decano": l.decano_wsp,
+                "admin": l.admin_wsp,
+                "tesoreria": l.tesoreria_wsp,
+                "secretaria": l.secretaria_wsp,
+                "fecha": l.created_at.isoformat() if l.created_at else None,
+            }
+            for l in leads
+        ]
+    finally:
+        db.close()
 
 
 @app.get("/health")
