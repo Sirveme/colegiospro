@@ -1653,33 +1653,22 @@ async function submitForm(e) {
     btn.textContent = 'Enviando...';
     btn.disabled = true;
     
+    // Dentro de submitForm, reemplaza el bloque try:
     try {
-        // TODO: Enviar a tu API o WebSocket
-        // await fetch('/api/contacto', { method: 'POST', body: JSON.stringify(data) });
+        const response = await fetch('/api/contacto', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await response.json();
         
-        await new Promise(r => setTimeout(r, 1000)); // Simulación
-        
-        btn.textContent = '¡Enviado!';
-        btn.style.background = '#10b981';
-        
-        setTimeout(() => {
-            closeModal();
-            form.reset();
-            btn.textContent = 'Enviar solicitud';
-            btn.style.background = '';
-            btn.disabled = false;
-        }, 2000);
-        
-    } catch (error) {
-        btn.textContent = 'Error, intente de nuevo';
-        btn.style.background = '#ef4444';
-        setTimeout(() => {
-            btn.textContent = 'Enviar solicitud';
-            btn.style.background = '';
-            btn.disabled = false;
-        }, 3000);
+        if (result.status === 'ok') {
+            btn.textContent = '¡Enviado!';
+            btn.style.background = '#10b981';
+        } else {
+            throw new Error(result.message);
+        }
     }
-}
 </script>
 
 </body>
