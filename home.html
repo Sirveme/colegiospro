@@ -1,0 +1,1686 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ColegiosPro | Plataforma Digital para Colegios Profesionales</title>
+    <meta name="description" content="Moderniza tu Colegio Profesional. Sistema integral de gestión, pagos en línea y dashboard para colegiados. Usado por el Colegio de Contadores de Loreto.">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="ColegiosPro - Plataforma Digital para Colegios Profesionales">
+    <meta property="og:description" content="Moderniza tu Colegio sin invertir en infraestructura tecnológica">
+    <meta property="og:image" content="/static/img/og-colegiospro.jpg">
+    <meta property="og:url" content="https://colegiospro.org.pe">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Phosphor Icons -->
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/regular/style.css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --gold: #d4af37;
+            --gold-dim: rgba(212, 175, 55, 0.15);
+            --bg: #0a0e17;
+            --bg-lighter: #0f1520;
+            --surface: #151c2c;
+            --text: #f0f4f8;
+            --text-muted: #8896a6;
+            --text-dim: #5a6a7a;
+            --border: rgba(255, 255, 255, 0.06);
+            --success: #10b981;
+            --blue: #3b82f6;
+        }
+        
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+        
+        /* === CONTAINER === */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+        
+        /* === NAVBAR === */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            padding: 20px 0;
+            transition: all 0.3s ease;
+        }
+        
+        .navbar.scrolled {
+            background: rgba(10, 14, 23, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .navbar .container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+        
+        .logo-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--gold), #b8942e);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            color: var(--bg);
+        }
+        
+        .logo-text {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text);
+        }
+        
+        .logo-text span {
+            color: var(--gold);
+        }
+        
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+        
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        
+        .nav-links a:hover {
+            color: var(--text);
+        }
+        
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+        }
+        
+        /* === HERO === */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding: 120px 0 80px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 80%;
+            height: 150%;
+            background: radial-gradient(ellipse, rgba(212, 175, 55, 0.08) 0%, transparent 60%);
+            pointer-events: none;
+        }
+        
+        .hero-content {
+            max-width: 720px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--gold-dim);
+            border: 1px solid rgba(212, 175, 55, 0.25);
+            border-radius: 24px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gold);
+            margin-bottom: 28px;
+        }
+        
+        .hero h1 {
+            font-size: clamp(36px, 6vw, 56px);
+            font-weight: 800;
+            line-height: 1.15;
+            margin-bottom: 24px;
+            letter-spacing: -0.02em;
+        }
+        
+        .hero h1 .highlight {
+            background: linear-gradient(135deg, var(--gold), #f4d03f);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .hero p {
+            font-size: 18px;
+            color: var(--text-muted);
+            margin-bottom: 40px;
+            max-width: 560px;
+        }
+        
+        .hero-stats {
+            display: flex;
+            gap: 48px;
+            margin-top: 56px;
+            padding-top: 32px;
+            border-top: 1px solid var(--border);
+        }
+        
+        .hero-stat-value {
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--gold);
+            line-height: 1;
+        }
+        
+        .hero-stat-label {
+            font-size: 13px;
+            color: var(--text-dim);
+            margin-top: 6px;
+        }
+        
+        @media (max-width: 640px) {
+            .hero-stats { gap: 32px; flex-wrap: wrap; }
+            .hero-stat-value { font-size: 28px; }
+        }
+        
+        /* === SECTIONS === */
+        section {
+            padding: 100px 0;
+        }
+        
+        .section-header {
+            text-align: center;
+            max-width: 640px;
+            margin: 0 auto 64px;
+        }
+        
+        .section-label {
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--gold);
+            margin-bottom: 16px;
+        }
+        
+        .section-title {
+            font-size: clamp(28px, 4vw, 40px);
+            font-weight: 800;
+            line-height: 1.2;
+            margin-bottom: 20px;
+        }
+        
+        .section-desc {
+            font-size: 17px;
+            color: var(--text-muted);
+        }
+        
+        /* === PROBLEM CARDS === */
+        .problem-section {
+            background: linear-gradient(180deg, var(--bg) 0%, var(--bg-lighter) 100%);
+        }
+        
+        .problem-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+        }
+        
+        .problem-card {
+            padding: 32px;
+            background: rgba(239, 68, 68, 0.05);
+            border: 1px solid rgba(239, 68, 68, 0.15);
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .problem-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+        
+        .problem-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            background: rgba(239, 68, 68, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #f87171;
+            margin-bottom: 20px;
+        }
+        
+        .problem-card h3 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .problem-card p {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+        
+        /* === SOLUTION CARDS === */
+        .solution-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+        }
+        
+        .solution-card {
+            padding: 36px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            transition: all 0.3s ease;
+        }
+        
+        .solution-card:hover {
+            border-color: rgba(212, 175, 55, 0.3);
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        .solution-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            background: var(--gold-dim);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            color: var(--gold);
+            margin-bottom: 24px;
+        }
+        
+        .solution-card h3 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+        
+        .solution-card p {
+            font-size: 15px;
+            color: var(--text-muted);
+            line-height: 1.7;
+        }
+        
+        /* === TESTIMONIAL VIDEOS === */
+        .testimonials-section {
+            background: var(--bg-lighter);
+        }
+        
+        .testimonials-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+        }
+        
+        .testimonial-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .testimonial-card:hover {
+            border-color: rgba(212, 175, 55, 0.3);
+            transform: translateY(-4px);
+        }
+        
+        .testimonial-video {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 9/12;
+            background: linear-gradient(135deg, #1a2332, #0f1520);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            overflow: hidden;
+        }
+        
+        .testimonial-video video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.9;
+        }
+        
+        .testimonial-video .poster {
+            position: absolute;
+            inset: 0;
+            background-size: cover;
+            background-position: center top;
+            transition: opacity 0.3s;
+        }
+        
+        .testimonial-video.playing .poster {
+            opacity: 0;
+        }
+        
+        .video-play-btn {
+            position: absolute;
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: rgba(212, 175, 55, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--bg);
+            font-size: 24px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+            z-index: 2;
+        }
+        
+        .video-play-btn:hover {
+            transform: scale(1.1);
+            background: var(--gold);
+        }
+        
+        .testimonial-video.playing .video-play-btn {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .testimonial-content {
+            padding: 24px;
+        }
+        
+        .testimonial-role {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--gold);
+            margin-bottom: 8px;
+        }
+        
+        .testimonial-name {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        
+        .testimonial-org {
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+        
+        /* === BENEFITS TABS === */
+        .benefits-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 48px;
+            flex-wrap: wrap;
+        }
+        
+        .benefit-tab {
+            padding: 12px 24px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .benefit-tab:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+            color: var(--text);
+        }
+        
+        .benefit-tab.active {
+            background: var(--gold-dim);
+            border-color: rgba(212, 175, 55, 0.3);
+            color: var(--gold);
+        }
+        
+        .benefit-content {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+        
+        .benefit-content.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .benefit-card {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 48px;
+            align-items: center;
+            padding: 48px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 28px;
+        }
+        
+        @media (max-width: 768px) {
+            .benefit-card {
+                grid-template-columns: 1fr;
+                padding: 32px;
+            }
+        }
+        
+        .benefit-info h3 {
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 16px;
+        }
+        
+        .benefit-info p {
+            font-size: 16px;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+        }
+        
+        .benefit-list {
+            list-style: none;
+        }
+        
+        .benefit-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 15px;
+        }
+        
+        .benefit-list li:last-child {
+            border-bottom: none;
+        }
+        
+        .benefit-list i {
+            color: var(--success);
+            font-size: 18px;
+            margin-top: 2px;
+        }
+        
+        .benefit-preview {
+            position: relative;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            background: linear-gradient(135deg, #1a2030, #0f1520);
+            aspect-ratio: 4/3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-dim);
+            font-size: 14px;
+        }
+        
+        /* === PRICING === */
+        .pricing-section {
+            background: linear-gradient(180deg, var(--bg-lighter) 0%, var(--bg) 100%);
+        }
+        
+        .pricing-card {
+            max-width: 560px;
+            margin: 0 auto;
+            padding: 48px;
+            background: var(--surface);
+            border: 2px solid var(--gold);
+            border-radius: 32px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .pricing-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--gold), #f4d03f, var(--gold));
+        }
+        
+        .pricing-label {
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--gold);
+            margin-bottom: 16px;
+        }
+        
+        .pricing-value {
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .pricing-currency {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+        
+        .pricing-amount {
+            font-size: 72px;
+            font-weight: 800;
+            color: var(--gold);
+            line-height: 1;
+        }
+        
+        .pricing-period {
+            font-size: 18px;
+            color: var(--text-dim);
+        }
+        
+        .pricing-desc {
+            font-size: 15px;
+            color: var(--text-muted);
+            margin-bottom: 32px;
+        }
+        
+        .pricing-features {
+            text-align: left;
+            margin-bottom: 32px;
+            list-style: none;
+        }
+        
+        .pricing-features li {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 15px;
+        }
+        
+        .pricing-features li:last-child {
+            border-bottom: none;
+        }
+        
+        .pricing-features i {
+            color: var(--success);
+            font-size: 20px;
+        }
+        
+        .pricing-note {
+            font-size: 13px;
+            color: var(--text-dim);
+            padding: 16px;
+            background: rgba(16, 185, 129, 0.1);
+            border-radius: 12px;
+        }
+        
+        /* === COLEGIOS GRID === */
+        .colegios-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 16px;
+        }
+        
+        .colegio-badge {
+            padding: 12px 20px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-muted);
+            transition: all 0.2s;
+            cursor: default;
+        }
+        
+        .colegio-badge:hover {
+            border-color: var(--gold);
+            color: var(--gold);
+        }
+        
+        .colegio-badge.active {
+            background: var(--gold-dim);
+            border-color: var(--gold);
+            color: var(--gold);
+        }
+        
+        /* === FAQ === */
+        .faq-list {
+            max-width: 720px;
+            margin: 0 auto;
+        }
+        
+        .faq-item {
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .faq-question {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 24px 0;
+            cursor: pointer;
+            font-size: 17px;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+        
+        .faq-question:hover {
+            color: var(--gold);
+        }
+        
+        .faq-question i {
+            font-size: 20px;
+            transition: transform 0.3s;
+        }
+        
+        .faq-item.open .faq-question i {
+            transform: rotate(45deg);
+        }
+        
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        
+        .faq-item.open .faq-answer {
+            max-height: 200px;
+        }
+        
+        .faq-answer p {
+            padding-bottom: 24px;
+            font-size: 15px;
+            color: var(--text-muted);
+            line-height: 1.7;
+        }
+        
+        /* === FINAL CTA === */
+        .final-cta {
+            padding: 120px 0;
+            text-align: center;
+            position: relative;
+        }
+        
+        .final-cta::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 100%;
+            background: radial-gradient(ellipse at center, rgba(212, 175, 55, 0.08) 0%, transparent 60%);
+            pointer-events: none;
+        }
+        
+        .final-cta h2 {
+            font-size: clamp(28px, 4vw, 40px);
+            font-weight: 800;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .final-cta p {
+            font-size: 18px;
+            color: var(--text-muted);
+            max-width: 520px;
+            margin: 0 auto;
+        }
+        
+        /* === FOOTER === */
+        .footer {
+            padding: 48px 0 120px;
+            border-top: 1px solid var(--border);
+        }
+        
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 24px;
+        }
+        
+        .footer-copy {
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+        
+        .footer-links {
+            display: flex;
+            gap: 24px;
+        }
+        
+        .footer-links a {
+            font-size: 13px;
+            color: var(--text-dim);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        
+        .footer-links a:hover {
+            color: var(--gold);
+        }
+        
+        /* === BOTTOM BAR (Subtle - Blends with background) === */
+        .bottom-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            padding: 24px;
+            background: linear-gradient(to top, var(--bg) 70%, transparent);
+            pointer-events: none;
+        }
+        
+        .bottom-bar-inner {
+            max-width: 500px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: center;
+            gap: 1px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 16px;
+            overflow: hidden;
+            pointer-events: auto;
+        }
+        
+        .bottom-btn {
+            flex: 1;
+            padding: 16px 24px;
+            background: rgba(10, 14, 23, 0.95);
+            border: none;
+            color: var(--text-dim);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .bottom-btn:first-child {
+            border-radius: 16px 0 0 16px;
+        }
+        
+        .bottom-btn:last-child {
+            border-radius: 0 16px 16px 0;
+        }
+        
+        .bottom-btn:hover {
+            background: rgba(212, 175, 55, 0.08);
+            color: var(--gold);
+        }
+        
+        .bottom-btn i {
+            font-size: 16px;
+            opacity: 0.6;
+        }
+        
+        .bottom-btn:hover i {
+            opacity: 1;
+        }
+        
+        /* === MODAL === */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .modal-overlay.open {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal-box {
+            width: 100%;
+            max-width: 480px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            overflow: hidden;
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+        }
+        
+        .modal-overlay.open .modal-box {
+            transform: translateY(0);
+        }
+        
+        .modal-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h3 {
+            font-size: 20px;
+            font-weight: 700;
+        }
+        
+        .modal-close {
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        
+        .modal-close:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text);
+        }
+        
+        .modal-body {
+            padding: 24px;
+        }
+        
+        .modal-intro {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+        
+        /* === CONTACT FORM === */
+        .contact-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .form-group label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .form-group input,
+        .form-group select {
+            padding: 14px 16px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            font-size: 15px;
+            outline: none;
+            transition: all 0.2s;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: var(--gold);
+        }
+        
+        .form-group select {
+            cursor: pointer;
+        }
+        
+        .form-group select option {
+            background: var(--bg);
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        
+        @media (max-width: 480px) {
+            .form-row { grid-template-columns: 1fr; }
+        }
+        
+        /* Directivos Grid */
+        .directivos-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 8px;
+        }
+        
+        .directivo-item {
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+        
+        .directivo-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--gold);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        
+        .directivo-item input {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 14px;
+            outline: none;
+        }
+        
+        .directivo-item input:focus {
+            border-color: var(--gold);
+        }
+        
+        .form-submit {
+            padding: 16px;
+            background: linear-gradient(135deg, var(--gold), #b8942e);
+            border: none;
+            border-radius: 14px;
+            color: var(--bg);
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 8px;
+        }
+        
+        .form-submit:hover {
+            box-shadow: 0 8px 24px rgba(212, 175, 55, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .form-note {
+            font-size: 12px;
+            color: var(--text-dim);
+            text-align: center;
+            margin-top: 16px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar" id="navbar">
+    <div class="container">
+        <a href="/" class="logo">
+            <div class="logo-icon"><i class="ph ph-buildings"></i></div>
+            <span class="logo-text">Colegios<span>Pro</span></span>
+        </a>
+        <div class="nav-links">
+            <a href="#soluciones">Soluciones</a>
+            <a href="#testimonios">Testimonios</a>
+            <a href="#precios">Precios</a>
+            <a href="#faq">FAQ</a>
+        </div>
+    </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+    <div class="container">
+        <div class="hero-content">
+            <div class="hero-badge">
+                <i class="ph ph-seal-check"></i>
+                Usado por el Colegio de Contadores de Loreto
+            </div>
+            <h1>
+                Moderniza tu <span class="highlight">Colegio Profesional</span> sin invertir en infraestructura
+            </h1>
+            <p>
+                Sistema integral de gestión, pagos en línea y dashboard para colegiados. 
+                Reduce morosidad, automatiza procesos y ofrece un servicio de primer nivel.
+            </p>
+            <div class="hero-stats">
+                <div class="hero-stat">
+                    <div class="hero-stat-value">85%</div>
+                    <div class="hero-stat-label">Colegiados usan celular</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="hero-stat-value">-40%</div>
+                    <div class="hero-stat-label">Morosidad reducida</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="hero-stat-value">24/7</div>
+                    <div class="hero-stat-label">Autogestión disponible</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- PROBLEMAS -->
+<section class="problem-section" id="problemas">
+    <div class="container">
+        <div class="section-header">
+            <p class="section-label">El Problema</p>
+            <h2 class="section-title">¿Tu colegio sigue con Excel y llamadas telefónicas?</h2>
+            <p class="section-desc">Estos son los dolores más comunes que enfrentan los colegios profesionales</p>
+        </div>
+        
+        <div class="problem-grid">
+            <div class="problem-card">
+                <div class="problem-icon"><i class="ph ph-phone-x"></i></div>
+                <h3>Llamadas repetitivas</h3>
+                <p>"¿Estoy hábil?" "¿Cuánto debo?" — Las mismas preguntas, todo el día, todos los días.</p>
+            </div>
+            <div class="problem-card">
+                <div class="problem-icon"><i class="ph ph-currency-circle-dollar"></i></div>
+                <h3>Alta morosidad</h3>
+                <p>Sin facilidades de pago ni recordatorios, los colegiados se atrasan y la morosidad crece.</p>
+            </div>
+            <div class="problem-card">
+                <div class="problem-icon"><i class="ph ph-file-xls"></i></div>
+                <h3>Excel infinitos</h3>
+                <p>Archivos dispersos, información desactualizada, reportes que toman horas.</p>
+            </div>
+            <div class="problem-card">
+                <div class="problem-icon"><i class="ph ph-users"></i></div>
+                <h3>Colegiados frustrados</h3>
+                <p>No pueden verificar su estado ni pagar sin ir a la oficina. Frustración garantizada.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- SOLUCIONES -->
+<section id="soluciones">
+    <div class="container">
+        <div class="section-header">
+            <p class="section-label">La Solución</p>
+            <h2 class="section-title">Todo en una sola plataforma</h2>
+        </div>
+        
+        <div class="solution-grid">
+            <div class="solution-card">
+                <div class="solution-icon"><i class="ph ph-magnifying-glass"></i></div>
+                <h3>Consulta de Habilidad 24/7</h3>
+                <p>Cualquier persona verifica la habilidad de un colegiado desde su celular, sin llamar.</p>
+            </div>
+            <div class="solution-card">
+                <div class="solution-icon"><i class="ph ph-credit-card"></i></div>
+                <h3>Pagos en Línea</h3>
+                <p>Yape, Plin, tarjetas. El colegiado paga cuando quiere, desde donde quiere.</p>
+            </div>
+            <div class="solution-card">
+                <div class="solution-icon"><i class="ph ph-user-circle"></i></div>
+                <h3>Dashboard del Colegiado</h3>
+                <p>Cada colegiado tiene su panel con estado de cuotas, constancias y datos.</p>
+            </div>
+            <div class="solution-card">
+                <div class="solution-icon"><i class="ph ph-globe"></i></div>
+                <h3>Landing Profesional</h3>
+                <p>Cada colegiado obtiene su página web verificable con QR para compartir.</p>
+            </div>
+            <div class="solution-card">
+                <div class="solution-icon"><i class="ph ph-chart-bar"></i></div>
+                <h3>Reportes al Instante</h3>
+                <p>Morosidad, ingresos, colegiados activos — todo en tiempo real.</p>
+            </div>
+            <div class="solution-card">
+                <div class="solution-icon"><i class="ph ph-bell-ringing"></i></div>
+                <h3>Notificaciones Automáticas</h3>
+                <p>Recordatorios de pago, avisos de vencimiento — todo automatizado.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- TESTIMONIOS / VIDEOS -->
+<section class="testimonials-section" id="testimonios">
+    <div class="container">
+        <div class="section-header">
+            <p class="section-label">Testimonios</p>
+            <h2 class="section-title">Escucha a quienes ya usan ColegiosPro</h2>
+            <p class="section-desc">El Colegio de Contadores Públicos de Loreto ya transformó su gestión</p>
+        </div>
+        
+        <div class="testimonials-grid">
+            <div class="testimonial-card">
+                <div class="testimonial-video" onclick="playVideo(this)">
+                    <video src="/static/videos/testimonio-decano.mp4" playsinline></video>
+                    <div class="poster" style="background-image: url('/static/img/poster-decano.jpg');"></div>
+                    <button class="video-play-btn"><i class="ph ph-play-fill"></i></button>
+                </div>
+                <div class="testimonial-content">
+                    <p class="testimonial-role">Decano</p>
+                    <h4 class="testimonial-name">CPC. [Nombre del Decano]</h4>
+                    <p class="testimonial-org">Colegio de Contadores Públicos de Loreto</p>
+                </div>
+            </div>
+            
+            <div class="testimonial-card">
+                <div class="testimonial-video" onclick="playVideo(this)">
+                    <video src="/static/videos/testimonio-admin.mp4" playsinline></video>
+                    <div class="poster" style="background-image: url('/static/img/poster-admin.jpg');"></div>
+                    <button class="video-play-btn"><i class="ph ph-play-fill"></i></button>
+                </div>
+                <div class="testimonial-content">
+                    <p class="testimonial-role">Administración</p>
+                    <h4 class="testimonial-name">[Nombre]</h4>
+                    <p class="testimonial-org">Colegio de Contadores Públicos de Loreto</p>
+                </div>
+            </div>
+            
+            <div class="testimonial-card">
+                <div class="testimonial-video" onclick="playVideo(this)">
+                    <video src="/static/videos/testimonio-tesoreria.mp4" playsinline></video>
+                    <div class="poster" style="background-image: url('/static/img/poster-tesoreria.jpg');"></div>
+                    <button class="video-play-btn"><i class="ph ph-play-fill"></i></button>
+                </div>
+                <div class="testimonial-content">
+                    <p class="testimonial-role">Tesorería</p>
+                    <h4 class="testimonial-name">[Nombre]</h4>
+                    <p class="testimonial-org">Colegio de Contadores Públicos de Loreto</p>
+                </div>
+            </div>
+            
+            <div class="testimonial-card">
+                <div class="testimonial-video" onclick="playVideo(this)">
+                    <video src="/static/videos/testimonio-secretaria.mp4" playsinline></video>
+                    <div class="poster" style="background-image: url('/static/img/poster-secretaria.jpg');"></div>
+                    <button class="video-play-btn"><i class="ph ph-play-fill"></i></button>
+                </div>
+                <div class="testimonial-content">
+                    <p class="testimonial-role">Secretaría</p>
+                    <h4 class="testimonial-name">[Nombre]</h4>
+                    <p class="testimonial-org">Colegio de Contadores Públicos de Loreto</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- BENEFICIOS POR ROL -->
+<section id="beneficios">
+    <div class="container">
+        <div class="section-header">
+            <p class="section-label">Beneficios</p>
+            <h2 class="section-title">Una solución para cada rol</h2>
+        </div>
+        
+        <div class="benefits-tabs">
+            <button class="benefit-tab active" onclick="showBenefit('decano', this)">Para el Decano</button>
+            <button class="benefit-tab" onclick="showBenefit('tesoreria', this)">Para Tesorería</button>
+            <button class="benefit-tab" onclick="showBenefit('admin', this)">Para Administración</button>
+            <button class="benefit-tab" onclick="showBenefit('colegiado', this)">Para el Colegiado</button>
+        </div>
+        
+        <div id="benefit-decano" class="benefit-content active">
+            <div class="benefit-card">
+                <div class="benefit-info">
+                    <h3>Prestigio y modernización instantánea</h3>
+                    <p>Diferénciate de otros colegios ofreciendo tecnología de primer nivel a tus colegiados.</p>
+                    <ul class="benefit-list">
+                        <li><i class="ph ph-check-circle"></i> Dashboard con métricas en tiempo real</li>
+                        <li><i class="ph ph-check-circle"></i> Imagen institucional profesional</li>
+                        <li><i class="ph ph-check-circle"></i> Menos quejas, más satisfacción</li>
+                        <li><i class="ph ph-check-circle"></i> Reportes ejecutivos para el Consejo</li>
+                    </ul>
+                </div>
+                <div class="benefit-preview">
+                    [Preview Dashboard Decano]
+                </div>
+            </div>
+        </div>
+        
+        <div id="benefit-tesoreria" class="benefit-content">
+            <div class="benefit-card">
+                <div class="benefit-info">
+                    <h3>Cobranza automatizada</h3>
+                    <p>El dinero entra solo. Los colegiados pagan desde su celular cuando quieren.</p>
+                    <ul class="benefit-list">
+                        <li><i class="ph ph-check-circle"></i> Pagos con Yape, Plin, tarjetas</li>
+                        <li><i class="ph ph-check-circle"></i> Recordatorios automáticos</li>
+                        <li><i class="ph ph-check-circle"></i> Reporte de ingresos en tiempo real</li>
+                        <li><i class="ph ph-check-circle"></i> Historial de pagos por colegiado</li>
+                    </ul>
+                </div>
+                <div class="benefit-preview">
+                    [Preview Tesorería]
+                </div>
+            </div>
+        </div>
+        
+        <div id="benefit-admin" class="benefit-content">
+            <div class="benefit-card">
+                <div class="benefit-info">
+                    <h3>De 2 horas a 2 minutos</h3>
+                    <p>Olvídate del Excel. Todo centralizado, actualizado y listo.</p>
+                    <ul class="benefit-list">
+                        <li><i class="ph ph-check-circle"></i> Base de datos unificada</li>
+                        <li><i class="ph ph-check-circle"></i> Generación automática de constancias</li>
+                        <li><i class="ph ph-check-circle"></i> Importación masiva desde Excel</li>
+                        <li><i class="ph ph-check-circle"></i> Menos llamadas, más productividad</li>
+                    </ul>
+                </div>
+                <div class="benefit-preview">
+                    [Preview Admin]
+                </div>
+            </div>
+        </div>
+        
+        <div id="benefit-colegiado" class="benefit-content">
+            <div class="benefit-card">
+                <div class="benefit-info">
+                    <h3>Autogestión desde el celular</h3>
+                    <p>El colegiado resuelve todo solo, sin esperar, sin llamar.</p>
+                    <ul class="benefit-list">
+                        <li><i class="ph ph-check-circle"></i> Ver estado de habilidad al instante</li>
+                        <li><i class="ph ph-check-circle"></i> Pagar cuotas desde el celular</li>
+                        <li><i class="ph ph-check-circle"></i> Descargar constancias PDF</li>
+                        <li><i class="ph ph-check-circle"></i> Landing profesional con QR</li>
+                    </ul>
+                </div>
+                <div class="benefit-preview">
+                    [Preview App Colegiado]
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- PRECIOS -->
+<section class="pricing-section" id="precios">
+    <div class="container">
+        <div class="section-header">
+            <p class="section-label">Inversión</p>
+            <h2 class="section-title">Un precio justo por colegiado</h2>
+            <p class="section-desc">Sin costos ocultos. Sin contratos anuales. Cancela cuando quieras.</p>
+        </div>
+        
+        <div class="pricing-card">
+            <p class="pricing-label">Por colegiado / mes</p>
+            <div class="pricing-value">
+                <span class="pricing-currency">S/</span>
+                <span class="pricing-amount">0.50</span>
+            </div>
+            <p class="pricing-desc">Facturación mensual según padrón activo</p>
+            
+            <ul class="pricing-features">
+                <li><i class="ph ph-check-circle"></i> Dashboard para cada colegiado</li>
+                <li><i class="ph ph-check-circle"></i> Consulta de habilidad 24/7</li>
+                <li><i class="ph ph-check-circle"></i> Sistema de pagos integrado</li>
+                <li><i class="ph ph-check-circle"></i> Landing con QR verificable</li>
+                <li><i class="ph ph-check-circle"></i> Panel administrativo completo</li>
+                <li><i class="ph ph-check-circle"></i> Soporte técnico incluido</li>
+            </ul>
+            
+            <p class="pricing-note">
+                <strong>Ejemplo:</strong> 1,500 colegiados = S/ 750/mes
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- COLEGIOS -->
+<section id="colegios">
+    <div class="container">
+        <div class="section-header">
+            <p class="section-label">Compatibilidad</p>
+            <h2 class="section-title">Diseñado para cualquier profesión</h2>
+        </div>
+        
+        <div class="colegios-grid">
+            <span class="colegio-badge">Ingenieros</span>
+            <span class="colegio-badge">Abogados</span>
+            <span class="colegio-badge active">Contadores ✓</span>
+            <span class="colegio-badge">Médicos</span>
+            <span class="colegio-badge">Enfermeras</span>
+            <span class="colegio-badge">Arquitectos</span>
+            <span class="colegio-badge">Odontólogos</span>
+            <span class="colegio-badge">Psicólogos</span>
+            <span class="colegio-badge">Economistas</span>
+            <span class="colegio-badge">Profesores</span>
+        </div>
+    </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq">
+    <div class="container">
+        <div class="section-header">
+            <p class="section-label">Preguntas Frecuentes</p>
+            <h2 class="section-title">Resuelve tus dudas</h2>
+        </div>
+        
+        <div class="faq-list">
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    ¿Necesito servidor propio?
+                    <i class="ph ph-plus"></i>
+                </div>
+                <div class="faq-answer">
+                    <p>No. ColegiosPro es una plataforma en la nube. Solo necesitas conexión a internet.</p>
+                </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    ¿Quién administra el sistema?
+                    <i class="ph ph-plus"></i>
+                </div>
+                <div class="faq-answer">
+                    <p>Tu equipo, con capacitación incluida. El sistema es muy intuitivo.</p>
+                </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    ¿Cómo migro los datos?
+                    <i class="ph ph-plus"></i>
+                </div>
+                <div class="faq-answer">
+                    <p>Aceptamos Excel. Importamos tu padrón sin costo adicional.</p>
+                </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    ¿Cuánto tiempo toma implementar?
+                    <i class="ph ph-plus"></i>
+                </div>
+                <div class="faq-answer">
+                    <p>Entre 1 y 2 semanas, incluyendo configuración y capacitación.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final-cta">
+    <div class="container">
+        <h2>¿Listo para modernizar tu Colegio?</h2>
+        <p>Agenda una demostración sin compromiso.</p>
+    </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+    <div class="container">
+        <div class="footer-content">
+            <p class="footer-copy">© 2026 ColegiosPro · Desarrollado por Perú Sistemas</p>
+            <div class="footer-links">
+                <a href="/privacidad">Privacidad</a>
+                <a href="/terminos">Términos</a>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- BOTTOM BAR (Subtle - Se funde con el fondo) -->
+<div class="bottom-bar">
+    <div class="bottom-bar-inner">
+        <a href="#precios" class="bottom-btn">
+            <i class="ph ph-currency-circle-dollar"></i>
+            ¿Cuánto cuesta?
+        </a>
+        <button class="bottom-btn" onclick="openModal()">
+            <i class="ph ph-envelope-simple"></i>
+            Mándeme información
+        </button>
+    </div>
+</div>
+
+<!-- MODAL: SOLICITAR INFORMACIÓN -->
+<div class="modal-overlay" id="modal-info">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Solicitar Información</h3>
+            <button class="modal-close" onclick="closeModal()">
+                <i class="ph ph-x"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p class="modal-intro">
+                Completa los datos y te contactaremos para coordinar una demostración personalizada.
+            </p>
+            
+            <form class="contact-form" id="contact-form" onsubmit="submitForm(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Tipo de Colegio</label>
+                        <select name="colegio" required>
+                            <option value="">Seleccionar...</option>
+                            <option value="ingenieros">Ingenieros</option>
+                            <option value="abogados">Abogados</option>
+                            <option value="contadores">Contadores</option>
+                            <option value="medicos">Médicos</option>
+                            <option value="enfermeras">Enfermeras</option>
+                            <option value="arquitectos">Arquitectos</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Región</label>
+                        <input type="text" name="region" placeholder="Ej: Lima, Loreto" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Cantidad aproximada de colegiados</label>
+                    <select name="cantidad">
+                        <option value="">Seleccionar...</option>
+                        <option value="menos-1000">Menos de 1,000</option>
+                        <option value="1000-3000">1,000 - 3,000</option>
+                        <option value="3000-5000">3,000 - 5,000</option>
+                        <option value="5000-10000">5,000 - 10,000</option>
+                        <option value="mas-10000">Más de 10,000</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>WhatsApp de contacto de la Directiva</label>
+                </div>
+                
+                <div class="directivos-grid">
+                    <div class="directivo-item">
+                        <div class="directivo-label">Decano</div>
+                        <input type="tel" name="decano" placeholder="999 999 999">
+                    </div>
+                    <div class="directivo-item">
+                        <div class="directivo-label">Administración</div>
+                        <input type="tel" name="admin" placeholder="999 999 999">
+                    </div>
+                    <div class="directivo-item">
+                        <div class="directivo-label">Tesorería</div>
+                        <input type="tel" name="tesoreria" placeholder="999 999 999">
+                    </div>
+                    <div class="directivo-item">
+                        <div class="directivo-label">Secretaría</div>
+                        <input type="tel" name="secretaria" placeholder="999 999 999">
+                    </div>
+                </div>
+                
+                <button type="submit" class="form-submit">
+                    Enviar solicitud
+                </button>
+            </form>
+            
+            <p class="form-note">
+                Te contactaremos en menos de 24 horas.
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+// Navbar scroll
+window.addEventListener('scroll', () => {
+    document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 50);
+});
+
+// Video play/pause
+function playVideo(container) {
+    const video = container.querySelector('video');
+    if (video.paused) {
+        video.play();
+        container.classList.add('playing');
+    } else {
+        video.pause();
+        container.classList.remove('playing');
+    }
+}
+
+// Benefits tabs
+function showBenefit(id, btn) {
+    document.querySelectorAll('.benefit-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.benefit-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('benefit-' + id).classList.add('active');
+}
+
+// FAQ toggle
+function toggleFaq(el) {
+    el.parentElement.classList.toggle('open');
+}
+
+// Modal
+function openModal() {
+    document.getElementById('modal-info').classList.add('open');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+    document.getElementById('modal-info').classList.remove('open');
+    document.body.style.overflow = '';
+}
+
+// Close on overlay click
+document.getElementById('modal-info').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-info') closeModal();
+});
+
+// Close on Escape
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal();
+});
+
+// Submit form
+async function submitForm(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData);
+    
+    const btn = form.querySelector('.form-submit');
+    btn.textContent = 'Enviando...';
+    btn.disabled = true;
+    
+    try {
+        // TODO: Enviar a tu API o WebSocket
+        // await fetch('/api/contacto', { method: 'POST', body: JSON.stringify(data) });
+        
+        await new Promise(r => setTimeout(r, 1000)); // Simulación
+        
+        btn.textContent = '¡Enviado!';
+        btn.style.background = '#10b981';
+        
+        setTimeout(() => {
+            closeModal();
+            form.reset();
+            btn.textContent = 'Enviar solicitud';
+            btn.style.background = '';
+            btn.disabled = false;
+        }, 2000);
+        
+    } catch (error) {
+        btn.textContent = 'Error, intente de nuevo';
+        btn.style.background = '#ef4444';
+        setTimeout(() => {
+            btn.textContent = 'Enviar solicitud';
+            btn.style.background = '';
+            btn.disabled = false;
+        }, 3000);
+    }
+}
+</script>
+
+</body>
+</html>
