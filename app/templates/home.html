@@ -1653,7 +1653,6 @@ async function submitForm(e) {
     btn.textContent = 'Enviando...';
     btn.disabled = true;
     
-    // Dentro de submitForm, reemplaza el bloque try:
     try {
         const response = await fetch('/api/contacto', {
             method: 'POST',
@@ -1668,7 +1667,25 @@ async function submitForm(e) {
         } else {
             throw new Error(result.message);
         }
+
+        setTimeout(() => {
+            closeModal();
+            form.reset();
+            btn.textContent = 'Enviar solicitud';
+            btn.style.background = '';
+            btn.disabled = false;
+        }, 2000);
+
+    } catch (error) {
+        btn.textContent = 'Error, intente de nuevo';
+        btn.style.background = '#ef4444';
+        setTimeout(() => {
+            btn.textContent = 'Enviar solicitud';
+            btn.style.background = '';
+            btn.disabled = false;
+        }, 3000);
     }
+}    
 </script>
 
 </body>
