@@ -2,7 +2,8 @@ import os
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel
 from typing import Optional
 
@@ -13,6 +14,17 @@ app = FastAPI(
     description="Plataforma Digital para Colegios Profesionales del Peru",
     version="1.0.0",
 )
+
+
+# -- HTTPS Redirect Middleware --
+@app.middleware("http")
+async def redirect_to_https(request: Request, call_next):
+    # Railway pasa el header x-forwarded-proto
+    if request.headers.get("x-forwarded-proto") == "http":
+        url = request.url.replace(scheme="https")
+        return RedirectResponse(url, status_code=301)
+    return await call_next(request)
+
 
 # -- Static files --
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -66,7 +78,6 @@ async def recibir_contacto(form: ContactForm, request: Request):
 
 @app.get("/api/leads")
 async def ver_leads():
-    """Temporal: ver todos los leads (proteger despues con auth)"""
     db = SessionLocal()
     try:
         leads = db.query(Lead).order_by(Lead.created_at.desc()).all()
