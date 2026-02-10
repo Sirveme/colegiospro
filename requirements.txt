@@ -1,6 +1,8 @@
 fastapi
+httpx
 uvicorn[standard]
 jinja2
 sqlalchemy
 openpyxl
 python-multipart
+
