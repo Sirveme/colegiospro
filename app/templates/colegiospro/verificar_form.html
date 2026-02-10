@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificar Certificado | ColegiosPro</title>
+    <link rel="icon" href="/static/img/favicon.ico">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: #1e293b;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+            max-width: 450px;
+            width: 100%;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .logo {
+            font-size: 50px;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: #fff;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        p {
+            color: #64748b;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+        
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        input {
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 15px 20px;
+            color: #fff;
+            font-size: 18px;
+            font-family: monospace;
+            text-align: center;
+            letter-spacing: 2px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        
+        input:focus {
+            border-color: #3b82f6;
+        }
+        
+        input::placeholder {
+            color: #64748b;
+            letter-spacing: 1px;
+            font-size: 14px;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            padding: 15px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+        }
+        
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .footer a {
+            color: #3b82f6;
+            text-decoration: none;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🔐</div>
+        <h1>Verificar Certificado</h1>
+        <p>Ingresa el código de verificación que aparece en el certificado</p>
+        
+        <form action="/verificar" method="GET" onsubmit="return redirigir(event)">
+            <input type="text" id="codigo" name="codigo" 
+                   placeholder="Ej: 2026-0000001"
+                   pattern="[0-9]{4}-[0-9]{7}"
+                   required
+                   autocomplete="off">
+            <button type="submit">🔍 VERIFICAR</button>
+        </form>
+        
+        <div class="footer">
+            <a href="https://colegiospro.org.pe">← Volver a ColegiosPro</a>
+        </div>
+    </div>
+    
+    <script>
+        function redirigir(e) {
+            e.preventDefault();
+            const codigo = document.getElementById('codigo').value.trim();
+            if (codigo) {
+                window.location.href = '/verificar/' + codigo;
+            }
+            return false;
+        }
+    </script>
+</body>
+</html>

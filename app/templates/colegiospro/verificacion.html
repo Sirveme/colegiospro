@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if certificado %}{{ certificado.codigo }} - {% endif %}Verificación | ColegiosPro</title>
+    <link rel="icon" href="/static/img/favicon.ico">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: #1e293b;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+            max-width: 500px;
+            width: 100%;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            padding: 25px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .header h1 {
+            color: #fff;
+            font-size: 20px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .header p {
+            color: #64748b;
+            font-size: 13px;
+            margin-top: 5px;
+        }
+        
+        .content {
+            padding: 25px;
+        }
+        
+        /* Estado Badge */
+        .status-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 15px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 25px;
+        }
+        
+        .status-badge.vigente {
+            background: rgba(34, 197, 94, 0.15);
+            border: 2px solid #22c55e;
+            color: #22c55e;
+        }
+        
+        .status-badge.vencido {
+            background: rgba(234, 179, 8, 0.15);
+            border: 2px solid #eab308;
+            color: #eab308;
+        }
+        
+        .status-badge.anulado {
+            background: rgba(239, 68, 68, 0.15);
+            border: 2px solid #ef4444;
+            color: #ef4444;
+        }
+        
+        .status-badge.error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 2px solid #ef4444;
+            color: #ef4444;
+        }
+        
+        /* Info Grid */
+        .info-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        
+        .info-label {
+            color: #64748b;
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+        
+        .info-value {
+            color: #e2e8f0;
+            font-size: 14px;
+            font-weight: 500;
+            text-align: right;
+            word-break: break-word;
+        }
+        
+        .info-value.highlight {
+            color: #22c55e;
+            font-weight: 700;
+        }
+        
+        .info-value.profesional {
+            color: #fbbf24;
+            font-weight: 700;
+            font-size: 15px;
+        }
+        
+        /* Botones */
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+        }
+        
+        .btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px 20px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 14px;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: #fff;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(34, 197, 94, 0.3);
+        }
+        
+        .btn-outline {
+            background: transparent;
+            border: 2px solid #3b82f6;
+            color: #3b82f6;
+        }
+        
+        .btn-outline:hover {
+            background: rgba(59, 130, 246, 0.1);
+        }
+        
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 20px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .footer p {
+            color: #64748b;
+            font-size: 12px;
+        }
+        
+        .footer a {
+            color: #3b82f6;
+            text-decoration: none;
+        }
+        
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        
+        /* Logo colegio */
+        .colegio-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255,255,255,0.05);
+            padding: 12px 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .colegio-badge img {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+        }
+        
+        .colegio-badge .text {
+            flex: 1;
+        }
+        
+        .colegio-badge .name {
+            color: #e2e8f0;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        
+        .colegio-badge .type {
+            color: #64748b;
+            font-size: 11px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 500px) {
+            .buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔒 Verificación de Certificado</h1>
+            <p>Plataforma de Colegios Profesionales del Perú</p>
+        </div>
+        
+        <div class="content">
+            {% if error %}
+                <div class="status-badge error">
+                    ❌ {{ error }}
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <p style="color: #64748b; font-size: 14px; margin-bottom: 15px;">
+                        El código <strong style="color: #e2e8f0;">{{ codigo }}</strong> no fue encontrado.
+                    </p>
+                    <a href="/verificar" class="btn btn-outline" style="display: inline-flex; width: auto; padding: 12px 25px;">
+                        🔍 Verificar otro código
+                    </a>
+                </div>
+                
+            {% elif certificado %}
+                <!-- Status Badge -->
+                <div class="status-badge {{ certificado.estado|lower }}">
+                    {% if certificado.vigente %}
+                        ✅ CERTIFICADO VÁLIDO Y VIGENTE
+                    {% elif certificado.estado == 'VENCIDO' %}
+                        ⚠️ CERTIFICADO VENCIDO
+                    {% else %}
+                        ❌ CERTIFICADO {{ certificado.estado }}
+                    {% endif %}
+                </div>
+                
+                <!-- Colegio Badge -->
+                <div class="colegio-badge">
+                    <img src="/static/img/colegios/ccpl.png" alt="Logo" onerror="this.style.display='none'">
+                    <div class="text">
+                        <p class="name">{{ certificado.colegio }}</p>
+                        <p class="type">Colegio Profesional</p>
+                    </div>
+                </div>
+                
+                <!-- Info Grid -->
+                <div class="info-grid">
+                    <div class="info-row">
+                        <span class="info-label">Código</span>
+                        <span class="info-value highlight">{{ certificado.codigo }}</span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">Profesional</span>
+                        <span class="info-value profesional">{{ certificado.profesional }}</span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">Matrícula</span>
+                        <span class="info-value">{{ certificado.matricula }}</span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">Fecha Emisión</span>
+                        <span class="info-value">{{ certificado.fecha_emision[:10] if certificado.fecha_emision else '-' }}</span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">Vigente hasta</span>
+                        <span class="info-value {% if certificado.vigente %}highlight{% endif %}">
+                            {{ certificado.vigencia_hasta if certificado.vigencia_hasta else '-' }}
+                        </span>
+                    </div>
+                    
+                    {% if certificado.en_fraccionamiento %}
+                    <div class="info-row">
+                        <span class="info-label">Observación</span>
+                        <span class="info-value" style="color: #f59e0b;">En plan de pagos</span>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Buttons -->
+                {% if certificado.vigente %}
+                <div class="buttons">
+                    <a href="https://ccploreto.metraes.com/api/certificados/descargar/{{ certificado.codigo }}" 
+                       target="_blank" class="btn btn-primary">
+                        📄 Ver PDF
+                    </a>
+                    <button onclick="compartir()" class="btn btn-outline">
+                        🔗 Compartir
+                    </button>
+                </div>
+                {% endif %}
+                
+            {% endif %}
+        </div>
+        
+        <div class="footer">
+            <p>Verificación por <a href="https://colegiospro.org.pe">colegiospro.org.pe</a></p>
+            <p style="margin-top: 5px;">Plataforma de gestión para Colegios Profesionales</p>
+        </div>
+    </div>
+    
+    <script>
+        function compartir() {
+            const url = window.location.href;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Verificación de Certificado',
+                    text: 'Certificado de Habilidad Profesional verificado',
+                    url: url
+                });
+            } else {
+                navigator.clipboard.writeText(url).then(() => {
+                    alert('✅ Link copiado al portapapeles');
+                });
+            }
+        }
+    </script>
+</body>
+</html>
