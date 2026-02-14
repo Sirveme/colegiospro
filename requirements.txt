@@ -5,4 +5,4 @@ jinja2
 sqlalchemy
 openpyxl
 python-multipart
-
+psycopg2-binary
