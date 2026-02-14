@@ -1,14 +1,18 @@
+# ══════════════════════════════════════════════════════════
+# app/main.py — ColegiosPro
+# Rutas: home, landing/demo, admin chat, API, WebSocket
+# ══════════════════════════════════════════════════════════
+
 import os
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel
 from typing import Optional
 
 from app.database import SessionLocal, Lead
-from app.routers import verificacion
+from app.routers import verificacion, chat
 
 app = FastAPI(
     title="ColegiosPro",
@@ -20,7 +24,6 @@ app = FastAPI(
 # -- HTTPS Redirect Middleware --
 @app.middleware("http")
 async def redirect_to_https(request: Request, call_next):
-    # Railway pasa el header x-forwarded-proto
     if request.headers.get("x-forwarded-proto") == "http":
         url = request.url.replace(scheme="https")
         return RedirectResponse(url, status_code=301)
@@ -33,8 +36,10 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # -- Templates --
 templates = Jinja2Templates(directory="app/templates")
 
-
+# -- Routers --
 app.include_router(verificacion.router)
+app.include_router(chat.router)       # ← NUEVO: WebSocket + tracking
+
 
 # -- Schemas --
 
@@ -53,6 +58,19 @@ class ContactForm(BaseModel):
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("home.html", {"request": request})
+
+
+@app.get("/demo", response_class=HTMLResponse)
+async def landing_demo(request: Request):
+    """Landing page de ventas con videos y chat"""
+    return templates.TemplateResponse("landing.html", {"request": request})
+
+
+@app.get("/admin/chat", response_class=HTMLResponse)
+async def admin_chat_panel(request: Request):
+    """Panel de chat para admin (Duil)"""
+    # TODO: Add authentication middleware
+    return templates.TemplateResponse("admin_chat.html", {"request": request})
 
 
 @app.post("/api/contacto")
@@ -110,4 +128,4 @@ async def health():
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8080))
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
+    uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=True)
