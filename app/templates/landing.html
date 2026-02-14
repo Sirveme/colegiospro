@@ -594,16 +594,75 @@ window.addEventListener('scroll', () => {
 });
 
 /* ═══ VIDEO PLAYERS ═══ */
+
+/* ═══ VIDEO PLAYERS WITH TRACKING ═══ */
+function trackVideo(videoName, action) {
+  fetch('/api/track', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'video_' + action,  // video_play, video_pause, video_ended, video_25, video_50, video_75
+      ref: VISITOR.ref,
+      nombre: VISITOR.nombre,
+      cargo: VISITOR.cargo,
+      referrer: videoName,         // Usamos referrer para guardar el nombre del video
+      timestamp: new Date().toISOString()
+    })
+  }).catch(() => {});
+}
+
+function setupVideoTracking(video, videoName) {
+  // Play
+  video.addEventListener('play', () => trackVideo(videoName, 'play'));
+  // Pause
+  video.addEventListener('pause', () => {
+    if (!video.ended) trackVideo(videoName, 'pause');
+  });
+  // Ended (vio completo)
+  video.addEventListener('ended', () => trackVideo(videoName, 'ended'));
+  // Progress: 25%, 50%, 75%
+  let tracked = { 25: false, 50: false, 75: false };
+  video.addEventListener('timeupdate', () => {
+    if (video.duration > 0) {
+      const pct = (video.currentTime / video.duration) * 100;
+      if (pct >= 25 && !tracked[25]) { tracked[25] = true; trackVideo(videoName, '25'); }
+      if (pct >= 50 && !tracked[50]) { tracked[50] = true; trackVideo(videoName, '50'); }
+      if (pct >= 75 && !tracked[75]) { tracked[75] = true; trackVideo(videoName, '75'); }
+    }
+  });
+}
+
+
 function playHeroVideo() {
   const v = document.getElementById('heroVideoEl');
   const p = document.querySelector('#heroVideo .video-placeholder');
-  if (v.src && v.src !== location.href) { p.style.display='none'; v.style.display='block'; v.play(); }
-  else alert('Video de presentación próximamente.\nReemplace el src del video en el HTML.');
+  if (v.src && v.src !== location.href) {
+    p.style.display = 'none';
+    v.style.display = 'block';
+    v.play();
+    setupVideoTracking(v, 'presentacion');
+  } else {
+    alert('Video de presentación próximamente.\nReemplace el src del video en el HTML.');
+  }
 }
+
 function playDemo(ph) {
-  const v = ph.parentElement.querySelector('video');
-  if (v.src && v.src !== location.href) { ph.style.display='none'; v.style.display='block'; v.play(); }
-  else alert('Video demo próximamente.\nReemplace el src del video en el HTML.');
+  const container = ph.parentElement;
+  const v = container.querySelector('video');
+  // Detectar nombre del demo por el texto del placeholder
+  const label = ph.querySelector('p')?.textContent || 'demo';
+  const videoName = label.replace('Demo: ', '').toLowerCase().replace(/\s+/g, '-');
+
+  if (v.src && v.src !== location.href) {
+    ph.style.display = 'none';
+    v.style.display = 'block';
+    v.play();
+    setupVideoTracking(v, videoName);
+  } else {
+    // Aunque no hay video, registrar que hizo clic
+    trackVideo(videoName, 'click_placeholder');
+    alert('Video demo próximamente.\nReemplace el src del video en el HTML.');
+  }
 }
 
 /* ═══ CHAT — Fullscreen ═══ */
