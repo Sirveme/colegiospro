@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ColegiosPro — Admin Chat</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0a1628; --bg2:#111d33; --bg3:#162440; --bg4:#1a2d4d;
+  --text:#f0f4fc; --text2:#8b9cc0; --muted:#5a6d94;
+  --blue:#3b82f6; --gold:#f59e0b; --emerald:#10b981; --rose:#f43f5e;
+  --font-d:'Outfit',sans-serif; --font:'DM Sans',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font);background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex}
+
+/* ─── SIDEBAR: Visitor List ─── */
+.sidebar{width:320px;background:var(--bg2);border-right:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;flex-shrink:0}
+.sidebar-head{padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between}
+.sidebar-head h2{font-family:var(--font-d);font-size:1.1rem;font-weight:800}
+.badge-count{padding:2px 10px;border-radius:100px;background:var(--emerald);color:#000;font-size:0.75rem;font-weight:700}
+.sidebar-tabs{display:flex;border-bottom:1px solid rgba(255,255,255,0.06)}
+.sidebar-tab{flex:1;padding:10px;text-align:center;font-size:0.82rem;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s}
+.sidebar-tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.visitor-list{flex:1;overflow-y:auto;padding:8px}
+
+/* Visitor card */
+.visitor-card{padding:12px 16px;border-radius:10px;cursor:pointer;transition:all 0.2s;margin-bottom:4px;position:relative}
+.visitor-card:hover{background:var(--bg3)}
+.visitor-card.active{background:var(--bg4);border-left:3px solid var(--blue)}
+.visitor-card.has-unread{background:rgba(59,130,246,0.08)}
+.visitor-card .v-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.visitor-card .v-name{font-weight:700;font-size:0.9rem;display:flex;align-items:center;gap:6px}
+.visitor-card .v-name .online-dot{width:8px;height:8px;border-radius:50%;background:var(--emerald);box-shadow:0 0 6px var(--emerald);flex-shrink:0}
+.visitor-card .v-name .offline-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0}
+.visitor-card .v-ref{font-size:0.72rem;color:var(--gold);font-weight:600}
+.visitor-card .v-time{font-size:0.7rem;color:var(--muted)}
+.visitor-card .v-preview{font-size:0.8rem;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.visitor-card .unread-badge{position:absolute;top:12px;right:12px;width:20px;height:20px;border-radius:50%;background:var(--blue);color:#fff;font-size:0.65rem;font-weight:700;display:none;align-items:center;justify-content:center}
+.visitor-card.has-unread .unread-badge{display:flex}
+
+/* ─── MAIN CHAT AREA ─── */
+.chat-area{flex:1;display:flex;flex-direction:column;background:var(--bg)}
+.chat-area-empty{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted)}
+.chat-area-empty .icon{font-size:3rem;opacity:0.3}
+.chat-area-empty p{font-size:0.95rem}
+
+/* Chat header */
+.chat-head{padding:14px 24px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:14px;background:var(--bg2);flex-shrink:0}
+.chat-head-info h3{font-family:var(--font-d);font-size:1rem;font-weight:700}
+.chat-head-info .meta{font-size:0.78rem;color:var(--text2);display:flex;gap:12px}
+.chat-head-info .meta span{display:flex;align-items:center;gap:4px}
+
+/* Messages */
+.chat-messages{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:8px}
+.msg{max-width:70%;padding:12px 16px;font-size:0.9rem;line-height:1.6;animation:fadeIn 0.2s ease}
+.msg.visitor{align-self:flex-start;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.15);border-radius:4px 16px 16px 16px;color:var(--text)}
+.msg.admin{align-self:flex-end;background:linear-gradient(135deg,var(--blue),#6366f1);border-radius:16px 4px 16px 16px;color:#fff}
+.msg .msg-time{font-size:0.68rem;opacity:0.5;margin-top:4px;text-align:right}
+.msg-system{align-self:center;padding:6px 16px;border-radius:100px;background:rgba(255,255,255,0.04);font-size:0.75rem;color:var(--muted);text-align:center}
+
+/* Input */
+.chat-input-area{padding:14px 20px;border-top:1px solid rgba(255,255,255,0.06);display:flex;gap:10px;background:var(--bg2);flex-shrink:0}
+.chat-input-area input{flex:1;padding:12px 18px;border-radius:100px;border:1px solid rgba(255,255,255,0.1);background:var(--bg);color:var(--text);font-size:0.92rem;font-family:var(--font);outline:none;transition:border-color 0.2s}
+.chat-input-area input:focus{border-color:var(--blue)}
+.chat-input-area input::placeholder{color:var(--muted)}
+.chat-input-area button{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--blue),#6366f1);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.2rem;transition:transform 0.2s;cursor:pointer;border:none;flex-shrink:0}
+.chat-input-area button:hover{transform:scale(1.05)}
+.chat-input-area button:disabled{opacity:0.3;cursor:not-allowed}
+
+/* ─── EVENT LOG (right panel) ─── */
+.event-log{width:280px;background:var(--bg2);border-left:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;flex-shrink:0}
+.event-log-head{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.06)}
+.event-log-head h3{font-family:var(--font-d);font-size:0.95rem;font-weight:700}
+.event-list{flex:1;overflow-y:auto;padding:8px 12px}
+.event-item{padding:8px 10px;border-radius:8px;margin-bottom:4px;font-size:0.78rem;line-height:1.4;border-left:3px solid transparent}
+.event-item.page_view{border-left-color:var(--muted);color:var(--muted)}
+.event-item.chat_opened{border-left-color:var(--blue);color:var(--text2)}
+.event-item.pwa_installed{border-left-color:var(--gold);color:var(--gold)}
+.event-item.ws_connected{border-left-color:var(--emerald);color:var(--emerald)}
+.event-item.visitor_message{border-left-color:var(--blue);color:var(--text);background:rgba(59,130,246,0.05)}
+.event-item .ev-time{font-size:0.68rem;color:var(--muted);margin-top:2px}
+
+/* ─── NOTIFICATION SOUND ─── */
+/* We'll use Web Audio API for notification */
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:900px){.event-log{display:none}.sidebar{width:260px}}
+@media(max-width:600px){.sidebar{width:100%;position:absolute;z-index:10;display:none}.sidebar.mobile-open{display:flex}}
+
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-head">
+    <h2>🏛️ Visitantes</h2>
+    <span class="badge-count" id="onlineCount">0</span>
+  </div>
+  <div class="sidebar-tabs">
+    <div class="sidebar-tab active" data-tab="online" onclick="switchTab('online')">En línea</div>
+    <div class="sidebar-tab" data-tab="all" onclick="switchTab('all')">Historial</div>
+  </div>
+  <div class="visitor-list" id="visitorList">
+    <div style="padding:20px;text-align:center;color:var(--muted);font-size:0.85rem">
+      Esperando visitantes...
+    </div>
+  </div>
+</aside>
+
+<!-- CHAT AREA -->
+<main class="chat-area" id="chatArea">
+  <div class="chat-area-empty" id="chatEmpty">
+    <div class="icon">💬</div>
+    <p>Seleccione un visitante para chatear</p>
+  </div>
+
+  <div id="chatActive" style="display:none;flex-direction:column;flex:1">
+    <div class="chat-head" id="chatHead">
+      <div class="chat-head-info">
+        <h3 id="chatVisitorName">—</h3>
+        <div class="meta">
+          <span id="chatVisitorRef">—</span>
+          <span id="chatVisitorCargo">—</span>
+        </div>
+      </div>
+    </div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-input-area">
+      <input type="text" id="adminInput" placeholder="Escribir mensaje..." onkeydown="if(event.key==='Enter')sendAdminMessage()" disabled>
+      <button onclick="sendAdminMessage()" id="sendBtn" disabled>➤</button>
+    </div>
+  </div>
+</main>
+
+<!-- EVENT LOG -->
+<aside class="event-log">
+  <div class="event-log-head"><h3>📊 Actividad</h3></div>
+  <div class="event-list" id="eventList">
+    <div style="padding:16px;text-align:center;color:var(--muted);font-size:0.82rem">Sin actividad</div>
+  </div>
+</aside>
+
+<!-- NOTIFICATION SOUND -->
+<script>
+// ═══════════════════════════════════════════
+// CONFIGURATION
+// ═══════════════════════════════════════════
+// CAMBIAR en producción:
+const ADMIN_KEY = 'duilio-admin-2026';
+const WS_BASE = location.protocol === 'https:' ? 'wss://' : 'ws://';
+const WS_URL = `${WS_BASE}${location.host}/ws/admin?key=${ADMIN_KEY}`;
+
+let ws = null;
+let activeSession = null;  // Currently selected visitor session_id
+let visitors = {};          // session_id → visitor data
+let messages = {};          // session_id → [messages]
+let unreadCounts = {};      // session_id → count
+let currentTab = 'online';
+
+// ═══════════════════════════════════════════
+// WEBSOCKET
+// ═══════════════════════════════════════════
+function connect() {
+  ws = new WebSocket(WS_URL);
+
+  ws.onopen = () => {
+    addEvent('ws_connected', 'Admin conectado', '');
+    console.log('Admin WS connected');
+  };
+
+  ws.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    handleMessage(data);
+  };
+
+  ws.onclose = () => {
+    addEvent('page_view', 'Conexión perdida. Reconectando...', '');
+    setTimeout(connect, 3000);
+  };
+
+  ws.onerror = () => ws.close();
+}
+
+function handleMessage(data) {
+  switch (data.type) {
+    case 'visitor_list':
+      // Initial list of connected visitors
+      data.visitors.forEach(v => {
+        visitors[v.session_id] = { ...v, online: true };
+      });
+      document.getElementById('onlineCount').textContent = data.total;
+      renderVisitorList();
+      break;
+
+    case 'visitor_connected':
+      visitors[data.session_id] = {
+        session_id: data.session_id,
+        ref: data.ref,
+        nombre: data.nombre,
+        cargo: data.cargo,
+        connected_at: data.connected_at,
+        online: true,
+      };
+      document.getElementById('onlineCount').textContent = data.total_visitors;
+      renderVisitorList();
+      addEvent('ws_connected', `${data.nombre || data.ref || 'Anónimo'} conectado`, data.ref);
+      playNotificationSound();
+      break;
+
+    case 'visitor_disconnected':
+      if (visitors[data.session_id]) {
+        visitors[data.session_id].online = false;
+      }
+      document.getElementById('onlineCount').textContent = data.total_visitors;
+      renderVisitorList();
+      break;
+
+    case 'visitor_message':
+      // Incoming message from visitor
+      if (!messages[data.session_id]) messages[data.session_id] = [];
+      const msg = {
+        sender: 'visitor',
+        text: data.text,
+        timestamp: data.timestamp,
+      };
+      messages[data.session_id].push(msg);
+
+      // Update visitor preview
+      if (visitors[data.session_id]) {
+        visitors[data.session_id].lastMessage = data.text;
+        visitors[data.session_id].lastAt = data.timestamp;
+      }
+
+      // If this is the active chat, render it
+      if (activeSession === data.session_id) {
+        appendMessage(msg);
+      } else {
+        // Increment unread
+        unreadCounts[data.session_id] = (unreadCounts[data.session_id] || 0) + 1;
+      }
+
+      renderVisitorList();
+      addEvent('visitor_message', `${data.nombre || data.ref}: "${data.text.substring(0, 40)}"`, data.ref);
+      playNotificationSound();
+
+      // Browser notification
+      if (document.hidden) {
+        new Notification('ColegiosPro Chat', {
+          body: `${data.nombre || data.ref}: ${data.text}`,
+          icon: '/static/img/icon-192.png',
+        });
+      }
+      break;
+
+    case 'track_event':
+      addEvent(data.action, `${data.nombre || data.ref || 'Anónimo'} — ${data.action}`, data.ref);
+      if (data.action === 'pwa_installed') playNotificationSound();
+      break;
+  }
+}
+
+// ═══════════════════════════════════════════
+// VISITOR LIST RENDERING
+// ═══════════════════════════════════════════
+function renderVisitorList() {
+  const list = document.getElementById('visitorList');
+  const entries = Object.values(visitors);
+
+  const filtered = currentTab === 'online'
+    ? entries.filter(v => v.online)
+    : entries;
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div style="padding:20px;text-align:center;color:var(--muted);font-size:0.85rem">${
+      currentTab === 'online' ? 'Ningún visitante en línea' : 'Sin historial aún'
+    }</div>`;
+    return;
+  }
+
+  // Sort: unread first, then by last message time
+  filtered.sort((a, b) => {
+    const ua = unreadCounts[a.session_id] || 0;
+    const ub = unreadCounts[b.session_id] || 0;
+    if (ua !== ub) return ub - ua;
+    return (b.lastAt || b.connected_at || '').localeCompare(a.lastAt || a.connected_at || '');
+  });
+
+  list.innerHTML = filtered.map(v => {
+    const unread = unreadCounts[v.session_id] || 0;
+    const isActive = activeSession === v.session_id;
+    const dotClass = v.online ? 'online-dot' : 'offline-dot';
+    const displayName = v.nombre || v.ref || 'Visitante anónimo';
+    const preview = v.lastMessage ? v.lastMessage.substring(0, 50) : 'Sin mensajes';
+    const timeStr = v.lastAt ? new Date(v.lastAt).toLocaleTimeString('es-PE', { hour:'2-digit', minute:'2-digit' }) : '';
+
+    return `
+      <div class="visitor-card ${isActive ? 'active' : ''} ${unread ? 'has-unread' : ''}"
+           onclick="selectVisitor('${v.session_id}')">
+        <div class="v-top">
+          <div class="v-name"><span class="${dotClass}"></span> ${displayName}</div>
+          <div class="v-time">${timeStr}</div>
+        </div>
+        ${v.ref && v.ref !== 'directo' ? `<div class="v-ref">${v.ref}</div>` : ''}
+        <div class="v-preview">${preview}</div>
+        <div class="unread-badge">${unread}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.sidebar-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+
+  // If switching to "all", load history from API
+  if (tab === 'all') loadSessionHistory();
+  renderVisitorList();
+}
+
+async function loadSessionHistory() {
+  try {
+    const res = await fetch('/api/chat/sessions');
+    const sessions = await res.json();
+    sessions.forEach(s => {
+      if (!visitors[s.session_id]) {
+        visitors[s.session_id] = {
+          session_id: s.session_id,
+          ref: s.ref,
+          nombre: s.nombre,
+          cargo: s.cargo,
+          lastAt: s.last_at,
+          online: s.is_online,
+        };
+      }
+    });
+    renderVisitorList();
+  } catch (e) { console.error('Failed to load history:', e); }
+}
+
+// ═══════════════════════════════════════════
+// CHAT INTERACTION
+// ═══════════════════════════════════════════
+async function selectVisitor(sessionId) {
+  activeSession = sessionId;
+  unreadCounts[sessionId] = 0;
+
+  // Show chat area
+  document.getElementById('chatEmpty').style.display = 'none';
+  const chatActive = document.getElementById('chatActive');
+  chatActive.style.display = 'flex';
+  // Update header
+  const v = visitors[sessionId];
+  document.getElementById('chatVisitorName').textContent = v?.nombre || 'Visitante anónimo';
+  document.getElementById('chatVisitorRef').textContent = v?.ref || 'directo';
+  document.getElementById('chatVisitorCargo').textContent = v?.cargo || '';
+
+  // Enable input
+  const input = document.getElementById('adminInput');
+  const btn = document.getElementById('sendBtn');
+  input.disabled = false;
+  btn.disabled = false;
+  input.focus();
+
+  // Load messages from memory or API
+  const msgArea = document.getElementById('chatMessages');
+  msgArea.innerHTML = '';
+
+  if (messages[sessionId] && messages[sessionId].length) {
+    messages[sessionId].forEach(m => appendMessage(m));
+  } else {
+    // Load from API
+    try {
+      const res = await fetch(`/api/chat/history/${sessionId}`);
+      const history = await res.json();
+      messages[sessionId] = history.map(h => ({
+        sender: h.sender,
+        text: h.content,
+        timestamp: h.created_at,
+      }));
+      messages[sessionId].forEach(m => appendMessage(m));
+    } catch (e) {
+      console.error('Failed to load history:', e);
+    }
+  }
+
+  renderVisitorList();
+}
+
+function appendMessage(msg) {
+  const area = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  const isAdmin = msg.sender === 'admin';
+  div.className = `msg ${isAdmin ? 'admin' : 'visitor'}`;
+  const time = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('es-PE', { hour:'2-digit', minute:'2-digit' }) : '';
+  div.innerHTML = `${msg.text}<div class="msg-time">${time}</div>`;
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+}
+
+function sendAdminMessage() {
+  const input = document.getElementById('adminInput');
+  const text = input.value.trim();
+  if (!text || !activeSession) return;
+
+  // Send via WebSocket
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({
+      type: 'message',
+      session_id: activeSession,
+      ref: visitors[activeSession]?.ref || '',
+      nombre: visitors[activeSession]?.nombre || '',
+      text: text,
+    }));
+  }
+
+  // Add to local messages
+  const msg = { sender: 'admin', text, timestamp: new Date().toISOString() };
+  if (!messages[activeSession]) messages[activeSession] = [];
+  messages[activeSession].push(msg);
+  appendMessage(msg);
+
+  input.value = '';
+  input.focus();
+}
+
+// ═══════════════════════════════════════════
+// EVENT LOG
+// ═══════════════════════════════════════════
+let eventCount = 0;
+function addEvent(type, text, ref) {
+  const list = document.getElementById('eventList');
+  if (eventCount === 0) list.innerHTML = '';
+  eventCount++;
+
+  const time = new Date().toLocaleTimeString('es-PE', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  const div = document.createElement('div');
+  div.className = `event-item ${type}`;
+  div.innerHTML = `<div>${text}</div><div class="ev-time">${time}</div>`;
+  list.insertBefore(div, list.firstChild);
+
+  // Keep max 50 events
+  while (list.children.length > 50) list.removeChild(list.lastChild);
+}
+
+// ═══════════════════════════════════════════
+// NOTIFICATIONS
+// ═══════════════════════════════════════════
+let audioCtx;
+function playNotificationSound() {
+  try {
+    if (!audioCtx) audioCtx = new AudioContext();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = 800;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.3);
+  } catch (e) {}
+}
+
+// Request notification permission
+if ('Notification' in window && Notification.permission === 'default') {
+  Notification.requestPermission();
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+connect();
+
+// Keyboard shortcut: Escape to deselect
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    activeSession = null;
+    document.getElementById('chatEmpty').style.display = 'flex';
+    document.getElementById('chatActive').style.display = 'none';
+    renderVisitorList();
+  }
+});
+</script>
+</body>
+</html>

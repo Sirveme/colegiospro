@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arquitectura SAAS vs CCPL Loreto — Guía de Referencia</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --surface2: #232735;
+  --border: #2e3345;
+  --text: #e2e4eb;
+  --text2: #9399ad;
+  --accent: #6c8aff;
+  --accent2: #4ecdc4;
+  --warn: #ff6b6b;
+  --ok: #51cf66;
+  --gold: #ffd43b;
+  --purple: #b197fc;
+  --saas: #6c8aff;
+  --ccpl: #4ecdc4;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  padding: 0;
+}
+.top-bar {
+  background: linear-gradient(135deg, #1e2233 0%, #141722 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+}
+.top-bar .logo { font-size: 20px; font-weight: 700; color: var(--accent); }
+.top-bar .sep { color: var(--border); }
+.top-bar .title { color: var(--text2); font-weight: 400; font-size: 14px; }
+.top-bar .version {
+  margin-left: auto;
+  background: var(--surface2);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  color: var(--text2);
+  font-family: var(--mono);
+}
+.container { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
+
+h1 {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.subtitle { color: var(--text2); font-size: 15px; margin-bottom: 40px; }
+
+h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 48px 0 20px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+h2 .num {
+  background: var(--accent);
+  color: var(--bg);
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700;
+  flex-shrink: 0;
+}
+h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 24px 0 12px;
+  color: var(--accent2);
+}
+
+/* Comparison table */
+.comp-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0 24px;
+  font-size: 14px;
+}
+.comp-table thead th {
+  padding: 10px 14px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 2px solid var(--border);
+}
+.comp-table thead th:nth-child(1) { color: var(--text2); width: 25%; }
+.comp-table thead th:nth-child(2) { color: var(--ccpl); }
+.comp-table thead th:nth-child(3) { color: var(--saas); }
+.comp-table tbody td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.comp-table tbody tr:hover { background: rgba(108,138,255,0.04); }
+.comp-table .aspect { color: var(--text2); font-weight: 500; }
+
+/* Code blocks */
+pre {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 12px 0 20px;
+  color: #c4c8d8;
+}
+code {
+  font-family: var(--mono);
+  font-size: 13px;
+  background: var(--surface2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--accent);
+}
+pre code { background: none; padding: 0; color: inherit; }
+
+/* Alert boxes */
+.alert {
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin: 16px 0;
+  font-size: 14px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.alert .icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+.alert-warn { background: rgba(255,107,107,0.08); border: 1px solid rgba(255,107,107,0.2); }
+.alert-info { background: rgba(108,138,255,0.08); border: 1px solid rgba(108,138,255,0.2); }
+.alert-ok { background: rgba(81,207,102,0.08); border: 1px solid rgba(81,207,102,0.2); }
+.alert-gold { background: rgba(255,212,59,0.08); border: 1px solid rgba(255,212,59,0.2); }
+
+/* Tags */
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--mono);
+  text-transform: uppercase;
+}
+.tag-ccpl { background: rgba(78,205,196,0.15); color: var(--ccpl); }
+.tag-saas { background: rgba(108,138,255,0.15); color: var(--saas); }
+.tag-both { background: rgba(177,151,252,0.15); color: var(--purple); }
+
+/* Diagram */
+.diagram {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+  margin: 16px 0 24px;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 2;
+  white-space: pre;
+  overflow-x: auto;
+  color: var(--text2);
+}
+.diagram b { color: var(--accent); font-weight: 600; }
+.diagram em { color: var(--accent2); font-style: normal; font-weight: 600; }
+.diagram .warn-text { color: var(--warn); }
+
+/* Checklist */
+.checklist { list-style: none; margin: 12px 0; }
+.checklist li {
+  padding: 6px 0 6px 28px;
+  position: relative;
+  font-size: 14px;
+}
+.checklist li::before {
+  content: '☐';
+  position: absolute;
+  left: 0;
+  color: var(--text2);
+  font-size: 16px;
+}
+.checklist li.done::before { content: '☑'; color: var(--ok); }
+
+/* Section card */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin: 16px 0;
+}
+.card-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Responsive */
+@media (max-width: 700px) {
+  .container { padding: 24px 16px 60px; }
+  h1 { font-size: 22px; }
+  .comp-table { font-size: 12px; }
+  .comp-table thead th, .comp-table tbody td { padding: 8px 8px; }
+  pre { font-size: 11px; padding: 12px; }
+}
+
+/* Print */
+@media print {
+  body { background: #fff; color: #222; }
+  .top-bar { background: #f5f5f5; border-bottom: 2px solid #333; position: static; }
+  .top-bar .logo { color: #333; }
+  pre { border: 1px solid #ccc; background: #f9f9f9; }
+  .alert { border: 1px solid #ccc; }
+}
+
+/* TOC */
+.toc {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin: 0 0 32px;
+}
+.toc-title { font-weight: 600; font-size: 13px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+.toc a {
+  display: block;
+  color: var(--text);
+  text-decoration: none;
+  padding: 4px 0;
+  font-size: 14px;
+  transition: color 0.15s;
+}
+.toc a:hover { color: var(--accent); }
+.toc a .tnum { color: var(--text2); font-family: var(--mono); font-size: 12px; margin-right: 8px; }
+
+.updated {
+  text-align: right;
+  color: var(--text2);
+  font-size: 12px;
+  font-family: var(--mono);
+  margin-top: 40px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <span class="logo">Perú Sistemas</span>
+  <span class="sep">│</span>
+  <span class="title">Guía Arquitectónica: SAAS vs CCPL Loreto</span>
+  <span class="version">v1.0 — 2026-02-14</span>
+</div>
+
+<div class="container">
+
+<h1>Arquitectura SAAS vs CCPL Loreto</h1>
+<p class="subtitle">Documento de referencia para desarrollo, despliegue y mantenimiento. Aplica a: ccploreto.metraes.com, colegiospro.org.pe y facturalo.pro</p>
+
+<nav class="toc">
+  <div class="toc-title">Contenido</div>
+  <a href="#s1"><span class="tnum">01</span> Visión General — Dos modos, un código</a>
+  <a href="#s2"><span class="tnum">02</span> Configuración y Credenciales</a>
+  <a href="#s3"><span class="tnum">03</span> Series de Comprobantes por Sede</a>
+  <a href="#s4"><span class="tnum">04</span> Certificado Digital y SOL</a>
+  <a href="#s5"><span class="tnum">05</span> Multi-tenancy y Base de Datos</a>
+  <a href="#s6"><span class="tnum">06</span> Facturación Electrónica (facturalo.pro)</a>
+  <a href="#s7"><span class="tnum">07</span> IGV y Tipo Afectación</a>
+  <a href="#s8"><span class="tnum">08</span> Usuarios, Roles y Autenticación</a>
+  <a href="#s9"><span class="tnum">09</span> Despliegue e Infraestructura</a>
+  <a href="#s10"><span class="tnum">10</span> Caja — Diferencias Operativas</a>
+  <a href="#s11"><span class="tnum">11</span> Roadmap de Migración</a>
+  <a href="#s12"><span class="tnum">12</span> Checklist Pre-Deploy</a>
+</nav>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<h2 id="s1"><span class="num">1</span> Visión General — Dos modos, un código</h2>
+
+<div class="diagram"><b>CCPL Loreto (Standalone)</b>                     <em>SAAS (ColegiosPro)</em>
+─────────────────────────────                ──────────────────────────────
+1 organización fija (org_id=1)               N organizaciones dinámicas
+ENV vars para configuración                  DB tables por org_id
+1 dominio: ccploreto.metraes.com             1 dominio: colegiospro.org.pe
+1 Railway project dedicado                   1 Railway project compartido
+1 certificado digital                        N certificados (vault/encrypted)
+Series fijas (B001, F001)                    Series por org + sede (tabla)
+Roles: admin,cajero,tesorero,colegiado       + superadmin, soporte
+Deploy manual (git push)                     CI/CD + staging + prod</div>
+
+<div class="alert alert-info">
+  <span class="icon">💡</span>
+  <div>El código base es el <strong>mismo repositorio</strong>. La diferencia es cómo se resuelve la configuración: <code>os.getenv()</code> vs <code>db.query(ConfiguracionFacturacion)</code>. Un flag <code>SAAS_MODE=true/false</code> puede controlar esto.</div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<h2 id="s2"><span class="num">2</span> Configuración y Credenciales</h2>
+
+<table class="comp-table">
+<thead>
+  <tr><th>Aspecto</th><th><span class="tag tag-ccpl">CCPL</span> Standalone</th><th><span class="tag tag-saas">SAAS</span> ColegiosPro</th></tr>
+</thead>
+<tbody>
+  <tr>
+    <td class="aspect">API credentials</td>
+    <td>ENV: <code>FACTURALO_API_KEY</code>, <code>FACTURALO_API_SECRET</code></td>
+    <td>DB: <code>configuracion_facturacion.facturalo_token</code> + <code>facturalo_secret</code> por org_id</td>
+  </tr>
+  <tr>
+    <td class="aspect">URL facturalo</td>
+    <td>ENV: <code>FACTURALO_API_URL</code></td>
+    <td>DB: <code>configuracion_facturacion.facturalo_url</code> (permitir override por org)</td>
+  </tr>
+  <tr>
+    <td class="aspect">Series</td>
+    <td>ENV: <code>FACTURALO_SERIES</code> (JSON)</td>
+    <td>DB: tabla <code>series_comprobante</code> por org + sede</td>
+  </tr>
+  <tr>
+    <td class="aspect">RUC emisor</td>
+    <td>ENV: <code>EMISOR_RUC=20103830991</code></td>
+    <td>DB: <code>configuracion_facturacion.ruc</code></td>
+  </tr>
+  <tr>
+    <td class="aspect">Tipo afectación IGV</td>
+    <td>ENV: <code>TIPO_AFECTACION_IGV=20</code> (exonerado)</td>
+    <td>DB: <code>configuracion_facturacion.tipo_afectacion_igv</code> (configurable)</td>
+  </tr>
+  <tr>
+    <td class="aspect">Flag modo</td>
+    <td><code>SAAS_MODE=false</code></td>
+    <td><code>SAAS_MODE=true</code></td>
+  </tr>
+</tbody>
+</table>
+
+<h3>Variables .env para CCPL Loreto</h3>
+<pre><code># ── facturalo.pro API ──
+FACTURALO_API_URL=https://facturalo.pro/api/v1
+FACTURALO_API_KEY=fpl_7c6af25aced4c631d06b481334f9d0223109936620239ab7
+FACTURALO_API_SECRET=87121507c51dc98416cdfe25526865456d28a294c0b14a3a4cbe5f158df0a574
+
+# ── Series por sede (JSON) ──
+FACTURALO_SERIES={"oficina_principal":{"boleta":"B001","factura":"F001","nc_boleta":"BC01","nc_factura":"FC01"},"centro_recreacional":{"boleta":"B002","factura":"F002","nc_boleta":"BC02","nc_factura":"FC02"}}
+
+# ── Emisor ──
+EMISOR_RUC=20103830991
+TIPO_AFECTACION_IGV=20
+
+# ── Modo ──
+SAAS_MODE=false</code></pre>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<h2 id="s3"><span class="num">3</span> Series de Comprobantes por Sede</h2>
+
+<div class="alert alert-warn">
+  <span class="icon">⚠️</span>
+  <div><strong>Regla SUNAT:</strong> Cada punto de emisión (establecimiento anexo) debe tener su propia serie. No se pueden mezclar series entre sedes. Las boletas empiezan con <code>B</code>, facturas con <code>F</code>, NC boleta con <code>BC</code>, NC factura con <code>FC</code>.</div>
+</div>
+
+<h3><span class="tag tag-ccpl">CCPL</span> Series fijas</h3>
+<table class="comp-table">
+<thead><tr><th>Sede</th><th>Boleta</th><th>Factura</th><th>NC Boleta</th><th>NC Factura</th></tr></thead>
+<tbody>
+  <tr><td class="aspect">Oficina Principal (Echenique 451)</td><td>B001</td><td>F001</td><td>BC01</td><td>FC01</td></tr>
+  <tr><td class="aspect">Centro Recreacional (Ctra. Nauta km 1)</td><td>B002</td><td>F002</td><td>BC02</td><td>FC02</td></tr>
+</tbody>
+</table>
+
+<h3>Cómo obtener la serie en el código</h3>
+<pre><code># facturacion.py — resolver serie según sede
+import json, os
+
+def obtener_serie(sede_key: str, tipo_comprobante: str) -> str:
+    """
+    sede_key: 'oficina_principal' | 'centro_recreacional'
+    tipo_comprobante: '01'=factura, '03'=boleta, '07'=NC
+    """
+    series_json = os.getenv("FACTURALO_SERIES", "{}")
+    series = json.loads(series_json)
+    
+    sede = series.get(sede_key, series.get("oficina_principal", {}))
+    
+    if tipo_comprobante == "01":
+        return sede.get("factura", "F001")
+    elif tipo_comprobante == "03":
+        return sede.get("boleta", "B001")
+    elif tipo_comprobante == "07":
+        # NC: detectar si el original era boleta o factura
+        return sede.get("nc_boleta", "BC01")  # default
+    
+    return "B001"</code></pre>
+
+<h3><span class="tag tag-saas">SAAS</span> Tabla series_comprobante</h3>
+<pre><code>CREATE TABLE series_comprobante (
+    id              SERIAL PRIMARY KEY,
+    organization_id INTEGER NOT NULL REFERENCES organizations(id),
+    sede_id         INTEGER REFERENCES centros_costo(id),
+    sede_nombre     VARCHAR(100),
+    tipo            VARCHAR(2) NOT NULL,    -- '01','03','07','08'
+    serie           VARCHAR(10) NOT NULL,   -- 'B001','F001','BC01'
+    ultimo_numero   INTEGER DEFAULT 0,
+    activo          BOOLEAN DEFAULT TRUE,
+    UNIQUE(organization_id, tipo, serie)
+);</code></pre>
+
+<div class="alert alert-info">
+  <span class="icon">📌</span>
+  <div><strong>En caja.html</strong>, al abrir sesión de caja, el cajero ya selecciona su sede/centro de costo. Ese dato se envía en el request de cobro como <code>sede_key</code> y determina la serie automáticamente.</div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<h2 id="s4"><span class="num">4</span> Certificado Digital y SOL</h2>
+
+<table class="comp-table">
+<thead><tr><th>Aspecto</th><th><span class="tag tag-ccpl">CCPL</span></th><th><span class="tag tag-saas">SAAS</span></th></tr></thead>
+<tbody>
+  <tr>
+    <td class="aspect">Certificado PFX/P12</td>
+    <td>Se sube a facturalo.pro vía <code>/configuracion</code>. Un solo cert para el RUC.</td>
+    <td>Cada org sube su cert a facturalo.pro al registrarse. Almacenado encriptado (Fernet) en DB de facturalo.</td>
+  </tr>
+  <tr>
+    <td class="aspect">Clave del certificado</td>
+    <td>Se ingresa al subir. Almacenada encriptada en <code>certificados.password_encrypted</code></td>
+    <td>Igual — cada org gestiona su propia clave.</td>
+  </tr>
+  <tr>
+    <td class="aspect">Credenciales SOL</td>
+    <td>Se configuran en facturalo.pro → <code>emisores.sol_usuario / sol_password</code></td>
+    <td>Igual — por emisor en facturalo.pro.</td>
+  </tr>
+  <tr>
+    <td class="aspect">Renovación</td>
+    <td>Manual. CDT vence cada 3 años. CCPL: vence 17/Feb/2026.</td>
+    <td>Alerta automática 30 días antes. Email al admin de la org.</td>
+  </tr>
+</tbody>
+</table>
+
+<div class="alert alert-warn">
+  <span class="icon">🔑</span>
+  <div><strong>CCPL — Situación actual del certificado:</strong><br>
+  • CDT actual vence el <strong>17 de febrero 2026</strong> (clave perdida por gestión anterior)<br>
+  • <strong>Opción A:</strong> A partir del 18/Feb, solicitar nuevo CDT gratuito vía SOL (máx 2 veces gratis)<br>
+  • <strong>Opción B:</strong> Comprar certificado privado (~S/ 700, proveedores ROPS/INDECOPI)<br>
+  • <strong>Mientras tanto:</strong> facturalo.pro opera en modo simulación (genera números pero no firma XML real)</div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<h2 id="s5"><span class="num">5</span> Multi-tenancy y Base de Datos</h2>
+
+<table class="comp-table">
+<thead><tr><th>Aspecto</th><th><span class="tag tag-ccpl">CCPL</span></th><th><span class="tag tag-saas">SAAS</span></th></tr></thead>
+<tbody>
+  <tr>
+    <td class="aspect">organization_id</td>
+    <td>Siempre <code>1</code>. Hardcodeado en queries.</td>
+    <td>Extraído del token JWT / sesión. Todos los queries filtran por org_id.</td>
+  </tr>
+  <tr>
+    <td class="aspect">Aislamiento de datos</td>
+    <td>N/A — una sola organización.</td>
+    <td><strong>Crítico:</strong> Cada query DEBE incluir <code>WHERE organization_id = :org_id</code>. Sin esto, un colegio vería datos de otro.</td>
+  </tr>
+  <tr>
+    <td class="aspect">Modelo Payment</td>
+    <td><code>org_id=1</code> implícito</td>
+    <td><code>org_id</code> del usuario autenticado</td>
+  </tr>
+  <tr>
+    <td class="aspect">Modelo Colegiado</td>
+    <td>Todos pertenecen a CCPL</td>
+    <td>Filtrar por org_id. Un colegiado puede estar en múltiples colegios (poco probable pero posible).</td>
+  </tr>
+</tbody>
+</table>
+
+<div class="alert alert-warn">
+  <span class="icon">🛡️</span>
+  <div><strong>Riesgo SAAS #1 — Data leak:</strong> Si algún endpoint olvida filtrar por <code>organization_id</code>, un colegio podría ver datos de otro. Solución: middleware que inyecta <code>org_id</code> en todas las queries automáticamente, o un <code>ScopedSession</code> que siempre filtra.</div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<h2 id="s6"><span class="num">6</span> Facturación Electrónica (facturalo.pro)</h2>
+
+<div class="diagram"><b>CCPL Loreto</b>                                <em>SAAS ColegiosPro</em>
+──────────────                               ─────────────────
+
+ccploreto.metraes.com                        colegiospro.org.pe
+      │                                            │
+      │ POST /api/v1/comprobantes                  │ POST /api/v1/comprobantes
+      │ X-API-Key: fpl_ccpl_xxx                    │ X-API-Key: fpl_{org}_xxx
+      ▼                                            ▼
+┌──────────────────────────────────────────────────────┐
+│                  <b>facturalo.pro</b>                       │
+│                                                      │
+│  emisores table:                                     │
+│    org_id=1 → RUC 20103830991 (CCPL)                │
+│    org_id=2 → RUC 20XXXXXXXXX (otro colegio)       │
+│    org_id=3 → ...                                    │
+│                                                      │
+│  Cada emisor tiene:                                  │
+│    • certificado PFX encriptado                      │
+│    • credenciales SOL                                │
+│    • series configuradas                             │
+│    • plan de facturación (límite docs/mes)           │
+└──────────────────────────────────────────────────────┘
+      │
+      │ SOAP sendBill()
+      ▼
+   SUNAT Beta / Producción</div>
+
+<h3>Flujo de emisión</h3>
+
+<table class="comp-table">
+<thead><tr><th>Paso</th><th><span class="tag tag-ccpl">CCPL</span></th><th><span class="tag tag-saas">SAAS</span></th></tr></thead>
+<tbody>
+  <tr>
+    <td class="aspect">1. Cobro en caja</td>
+    <td>POST /api/caja/cobrar</td>
+    <td>Igual</td>
+  </tr>
+  <tr>
+    <td class="aspect">2. Resolver API key</td>
+    <td><code>os.getenv("FACTURALO_API_KEY")</code></td>
+    <td><code>db.query(ConfiguracionFacturacion).filter(org_id=X).first()</code></td>
+  </tr>
+  <tr>
+    <td class="aspect">3. Resolver serie</td>
+    <td><code>json.loads(os.getenv("FACTURALO_SERIES"))[sede_key]</code></td>
+    <td><code>db.query(SeriesComprobante).filter(org_id=X, sede_id=Y, tipo=Z)</code></td>
+  </tr>
+  <tr>
+    <td class="aspect">4. Llamar facturalo.pro</td>
+    <td colspan="2">Igual — POST /api/v1/comprobantes con X-API-Key del emisor</td>
+  </tr>
+  <tr>
+    <td class="aspect">5. facturalo.pro procesa</td>
+    <td colspan="2">Genera XML → Firma con cert del emisor → Envía a SUNAT → Recibe CDR → Genera PDF</td>
+  </tr>
+  <tr>
+    <td class="aspect">6. Guardar resultado</td>
+    <td colspan="2">Igual — INSERT en comprobantes_electronicos con estado, hash, PDF URL</td>
+  </tr>
+</tbody>
+</table>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<h2 id="s7"><span class="num">7</span> IGV y Tipo Afectación</h2>
+
+<div class="card">
+  <div class="card-title">⚡ Diferencia crítica entre colegios</div>
+  <p style="font-size:14px;color:var(--text2);margin-bottom:12px;">No todos los colegios profesionales manejan IGV igual. Esto afecta directamente el cálculo en el comprobante.</p>
+
+  <table class="comp-table" style="margin:0;">
+  <thead><tr><th>Código</th><th>Significado</th><th>Ejemplo</th></tr></thead>
+  <tbody>
+    <tr><td><code>10</code></td><td>Gravado — Operación Onerosa (incluye IGV 18%)</td><td>Venta de mercadería, servicios comerciales</td></tr>
+    <tr><td><code>20</code></td><td>Exonerado — Operación Onerosa (sin IGV)</td><td><strong>CCPL Loreto: cuotas de colegiatura</strong></td></tr>
+    <tr><td><code>30</code></td><td>Inafecto — Operación Onerosa</td><td>Algunos servicios educativos</td></tr>
+    <tr><td><code>40</code></td><td>Exportación</td><td>N/A para colegios</td></tr>
+  </tbody>
+  </table>
+</div>
+
+<div class="alert alert-gold">
+  <span class="icon">📋</span>
+  <div><strong>CCPL Loreto:</strong> Las cuotas de colegiatura son <code>exoneradas (20)</code> de IGV. Pero items como venta de merchandise o servicios de restaurante pueden ser <code>gravados (10)</code>.<br><br>
+  <strong>Para SAAS:</strong> El <code>tipo_afectacion_igv</code> debe ser configurable POR CONCEPTO DE COBRO, no solo por organización. El modelo <code>ConceptoCobro</code> ya tiene campo <code>afecto_igv</code> — usarlo.</div>
+</div>
+
+<h3>Cálculo según tipo</h3>
+<pre><code># Gravado (10): precio incluye IGV
+#   subtotal = total / 1.18
+#   igv = total - subtotal
+
+# Exonerado (20): no hay IGV
+#   subtotal = total
+#   igv = 0
+
+# Mixto: calcular por línea
+def calcular_totales(items):
+    subtotal_gravado = 0
+    subtotal_exonerado = 0
+    igv_total = 0
+    
+    for item in items:
+        if item["tipo_afectacion"] == "10":
+            base = item["total"] / 1.18
+            subtotal_gravado += base
+            igv_total += item["total"] - base
+        elif item["tipo_afectacion"] == "20":
+            subtotal_exonerado += item["total"]
+    
+    return {
+        "subtotal_gravado": round(subtotal_gravado, 2),
+        "subtotal_exonerado": round(subtotal_exonerado, 2),
+        "igv": round(igv_total, 2),
+        "total": round(subtotal_gravado + subtotal_exonerado + igv_total, 2),
+    }</code></pre>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<h2 id="s8"><span class="num">8</span> Usuarios, Roles y Autenticación</h2>
+
+<table class="comp-table">
+<thead><tr><th>Aspecto</th><th><span class="tag tag-ccpl">CCPL</span></th><th><span class="tag tag-saas">SAAS</span></th></tr></thead>
+<tbody>
+  <tr>
+    <td class="aspect">Roles</td>
+    <td>admin, cajero, tesorero, secretaria, colegiado, security/staff</td>
+    <td>+ <strong>superadmin</strong> (Perú Sistemas), <strong>org_admin</strong> (decano/admin del colegio)</td>
+  </tr>
+  <tr>
+    <td class="aspect">Login redirect</td>
+    <td>cajero/tesorero → /caja<br>admin → /admin<br>staff/security → /centinela</td>
+    <td>Igual + superadmin → /superadmin (dashboard global)</td>
+  </tr>
+  <tr>
+    <td class="aspect">Creación usuarios</td>
+    <td>Admin crea manualmente o importa CSV</td>
+    <td>Self-service: colegio se registra → admin del colegio crea sus usuarios</td>
+  </tr>
+  <tr>
+    <td class="aspect">Colegiados</td>
+    <td>DNI como public_id, datos en tabla colegiados</td>
+    <td>Igual pero filtrado por org_id</td>
+  </tr>
+  <tr>
+    <td class="aspect">Permisos (RBAC)</td>
+    <td>47 permisos × 5 roles × 6 centros de costo</td>
+    <td>Igual estructura, pero permisos configurables por org (cada colegio puede personalizar qué puede hacer cada rol)</td>
+  </tr>
+</tbody>
+</table>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<h2 id="s9"><span class="num">9</span> Despliegue e Infraestructura</h2>
+
+<table class="comp-table">
+<thead><tr><th>Aspecto</th><th><span class="tag tag-ccpl">CCPL</span></th><th><span class="tag tag-saas">SAAS</span></th></tr></thead>
+<tbody>
+  <tr>
+    <td class="aspect">Railway</td>
+    <td>1 project dedicado con su propio PostgreSQL</td>
+    <td>1 project compartido, PostgreSQL con schemas o filtro por org_id</td>
+  </tr>
+  <tr>
+    <td class="aspect">Dominio</td>
+    <td>ccploreto.metraes.com</td>
+    <td>colegiospro.org.pe (subdominio por colegio: ccpl.colegiospro.org.pe)</td>
+  </tr>
+  <tr>
+    <td class="aspect">Base de datos</td>
+    <td>PostgreSQL dedicada (~$5/mes)</td>
+    <td>PostgreSQL compartida, particionada por org_id</td>
+  </tr>
+  <tr>
+    <td class="aspect">Backup</td>
+    <td>Railway automático + manual semanal</td>
+    <td>Automático diario + replicación</td>
+  </tr>
+  <tr>
+    <td class="aspect">SSL</td>
+    <td>Railway automático (Let's Encrypt)</td>
+    <td>Igual + wildcard para subdominios</td>
+  </tr>
+  <tr>
+    <td class="aspect">facturalo.pro</td>
+    <td>1 Railway project separado</td>
+    <td>Mismo — facturalo.pro es servicio independiente que atiende a todos</td>
+  </tr>
+</tbody>
+</table>
+
+<div class="diagram">                    ┌─────────────────────┐
+                    │  <b>facturalo.pro</b>      │
+                    │  Railway Project #1 │
+                    │  PostgreSQL propia  │
+                    └────────┬────────────┘
+                             │ API
+            ┌────────────────┼────────────────┐
+            ▼                ▼                ▼
+   ┌────────────────┐  ┌──────────────┐  ┌──────────────┐
+   │ <em>ccploreto</em>       │  │ <em>colegiospro</em>  │  │ otros        │
+   │ Railway #2     │  │ Railway #3   │  │ clientes     │
+   │ metraes.com    │  │ .org.pe      │  │ API directa  │
+   │ <span class="warn-text">standalone</span>      │  │ <span class="warn-text">SAAS</span>         │  │              │
+   └────────────────┘  └──────────────┘  └──────────────┘</div>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<h2 id="s10"><span class="num">10</span> Caja — Diferencias Operativas</h2>
+
+<table class="comp-table">
+<thead><tr><th>Feature</th><th><span class="tag tag-ccpl">CCPL</span></th><th><span class="tag tag-saas">SAAS</span></th></tr></thead>
+<tbody>
+  <tr>
+    <td class="aspect">Geolocalización</td>
+    <td>2 sedes hardcodeadas en JS (Echenique 451 + Ctra Nauta)</td>
+    <td>Sedes configurables por org en DB. API endpoint: <code>GET /api/sedes</code></td>
+  </tr>
+  <tr>
+    <td class="aspect">Conceptos de cobro</td>
+    <td>31 conceptos fijos de CCPL</td>
+    <td>Configurables por org. Cada colegio define sus propios conceptos.</td>
+  </tr>
+  <tr>
+    <td class="aspect">Métodos de pago</td>
+    <td>6: efectivo, yape, plin, tarjeta, transferencia, deposito</td>
+    <td>Configurables por org (algunos colegios pueden no aceptar tarjeta).</td>
+  </tr>
+  <tr>
+    <td class="aspect">Moneda</td>
+    <td>PEN (Soles) fijo</td>
+    <td>Configurable — PEN default, pero colegios fronterizos podrían necesitar USD.</td>
+  </tr>
+  <tr>
+    <td class="aspect">Reportes</td>
+    <td>Registro Ventas SUNAT (F14.1), Reporte Caja, Resumen Mensual</td>
+    <td>Igual + reporte consolidado inter-sedes + dashboard ejecutivo para org_admin</td>
+  </tr>
+</tbody>
+</table>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<h2 id="s11"><span class="num">11</span> Roadmap de Migración</h2>
+
+<div class="card">
+  <div class="card-title">🗺️ De CCPL Standalone a SAAS</div>
+  <p style="font-size:14px;color:var(--text2);margin-bottom:16px;">El plan es desarrollar todo en ccploreto primero (riesgo bajo, 1 cliente), luego generalizar para SAAS.</p>
+
+  <h3 style="color:var(--ccpl);">Fase 1 — CCPL Loreto (ACTUAL)</h3>
+  <ul class="checklist">
+    <li class="done">Caja con cobro presencial</li>
+    <li class="done">Sesión de caja (apertura/cierre)</li>
+    <li class="done">Egresos con liquidación</li>
+    <li class="done">Historial y reportes</li>
+    <li class="done">Anulación con Nota de Crédito</li>
+    <li class="done">Tabla comprobantes_electronicos</li>
+    <li class="done">Servicio facturacion.py (modo simulación)</li>
+    <li>Integrar facturación en endpoint /cobrar</li>
+    <li>Certificado digital CCPL activo en facturalo.pro</li>
+    <li>Primera boleta real emitida a SUNAT</li>
+    <li>Reportes admin (registro ventas SUNAT)</li>
+  </ul>
+
+  <h3 style="color:var(--purple);margin-top:20px;">Fase 2 — Generalización</h3>
+  <ul class="checklist">
+    <li>Extraer configuración de ENV vars a ConfiguracionFacturacion (DB)</li>
+    <li>Tabla series_comprobante por org + sede</li>
+    <li>Multi-org filtering en todos los endpoints</li>
+    <li>Onboarding wizard: registro → cert → SOL → series → primera boleta</li>
+    <li>Flag SAAS_MODE con factory pattern para config resolver</li>
+  </ul>
+
+  <h3 style="color:var(--saas);margin-top:20px;">Fase 3 — ColegiosPro SAAS</h3>
+  <ul class="checklist">
+    <li>Superadmin dashboard</li>
+    <li>Billing / planes (facturalo.pro limita docs/mes)</li>
+    <li>Subdominios por colegio</li>
+    <li>CI/CD con staging</li>
+    <li>Segundo colegio profesional onboarded</li>
+  </ul>
+</div>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<h2 id="s12"><span class="num">12</span> Checklist Pre-Deploy</h2>
+
+<div class="card">
+  <div class="card-title">✅ CCPL Loreto — Deploy inmediato</div>
+  <ul class="checklist">
+    <li class="done">migrate_comprobantes.sql ejecutado</li>
+    <li class="done">firma_digital.py actualizado (signxml 4.2.2 OK)</li>
+    <li class="done">sunat_client.py corregido (ZIP con tipo_comprobante)</li>
+    <li class="done">SUNAT Beta probado end-to-end con PERU SISTEMAS</li>
+    <li>Copiar facturacion.py a app/services/</li>
+    <li>Agregar <code>from sqlalchemy import text</code> a caja.py</li>
+    <li>Integrar facturación en endpoint /cobrar (INTEGRAR_facturacion_FINAL.py)</li>
+    <li>Agregar endpoints: historial-cobros, anular-cobro, comprobante, comprobantes, nota-credito</li>
+    <li>Variables .env / Railway: FACTURALO_API_URL, API_KEY, API_SECRET, SERIES</li>
+    <li>Actualizar roles: cajero(99999901), tesorero(99999902), secretaria(99999903)</li>
+    <li>Login redirect: cajero/tesorero → /caja</li>
+    <li>Deploy caja.html actualizado</li>
+    <li>Deploy reportes.py + reportes.html</li>
+    <li>Certificado CCPL subido a facturalo.pro (cuando disponible)</li>
+    <li>Credenciales SOL configuradas en facturalo.pro</li>
+    <li>Primera boleta real emitida</li>
+  </ul>
+</div>
+
+<div class="updated">
+  Última actualización: 2026-02-14 · v1.0<br>
+  Próxima revisión: cuando se active certificado CCPL o se inicie Fase 2
+</div>
+
+</div>
+</body>
+</html>
