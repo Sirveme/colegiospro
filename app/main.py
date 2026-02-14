@@ -125,6 +125,18 @@ async def health():
     return {"status": "ok", "app": "colegiospro"}
 
 
+@app.get("/debug/db")
+async def debug_db():
+    import os
+    db_url = os.environ.get("DATABASE_URL", "NO EXISTE")
+    # Mostrar solo el inicio, sin exponer password completo
+    safe = db_url[:30] + "..." if len(db_url) > 30 else db_url
+    return {
+        "db_url_prefix": safe,
+        "starts_with_postgres": db_url.startswith("postgres"),
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8080))
