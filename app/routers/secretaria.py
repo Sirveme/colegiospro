@@ -6,6 +6,7 @@
 from datetime import datetime, timezone
 from typing import Optional
 
+import httpx
 from fastapi import APIRouter, Request, Form, Depends, HTTPException
 from fastapi.responses import (
     HTMLResponse,
@@ -184,28 +185,20 @@ async def registro_submit(
                 "/secretaria/registro?error=Ese+correo+ya+est%C3%A1+registrado",
                 status_code=302,
             )
-        token = generar_token_verificacion()
         u = UsuarioSecretaria(
             nombre=nombre.strip(),
             correo=correo,
             password_hash=hash_password(password),
-            token_verificacion=token,
-            correo_verificado=False,
+            token_verificacion=generar_token_verificacion(),
+            correo_verificado=True,  # MVP: auto-verificado hasta que haya SMTP
             activo=True,
         )
         db.add(u)
         db.commit()
         db.refresh(u)
 
-        # TODO: enviar correo real con SMTP del colegio.
-        # Por ahora se deja la URL de verificación en el redirect para que la
-        # secretaria la pueda usar manualmente en MVP.
-        verif_url = f"/secretaria/verificar/{token}"
-        resp = RedirectResponse(
-            f"/secretaria/login?ok=Cuenta+creada.+Verifica+tu+correo:+{verif_url}",
-            status_code=302,
-        )
-        # Auto-login para el MVP (la verificación queda como paso opcional).
+        # Auto-login + ir directo al dashboard.
+        resp = RedirectResponse("/secretaria/", status_code=302)
         set_session_cookie(resp, u.id, u.nombre)
         return resp
     finally:
@@ -440,6 +433,7 @@ async def directorio_lista(request: Request, q: Optional[str] = None):
 async def directorio_nuevo(
     request: Request,
     nombre_institucion: str = Form(...),
+    ruc: Optional[str] = Form(None),
     tipo: Optional[str] = Form(None),
     region: Optional[str] = Form(None),
     ciudad: Optional[str] = Form(None),
@@ -455,6 +449,7 @@ async def directorio_nuevo(
     try:
         inst = DirectorioInstitucional(
             nombre_institucion=nombre_institucion.strip(),
+            ruc=(ruc or "").strip() or None,
             tipo=tipo,
             region=region,
             ciudad=ciudad,
@@ -473,6 +468,63 @@ async def directorio_nuevo(
     finally:
         db.close()
     return RedirectResponse("/secretaria/directorio", status_code=302)
+
+
+# ─── Proxy SUNAT (api.apis.net.pe — pública, sin key) ───
+@router.get("/api/sunat-ruc")
+async def sunat_ruc(request: Request, ruc: str):
+    """
+    Consulta el RUC en api.apis.net.pe y devuelve datos normalizados
+    listos para pre-llenar el formulario del directorio.
+    Requiere sesión iniciada.
+    """
+    _ = _require_user(request)
+    ruc = (ruc or "").strip()
+    if not ruc.isdigit() or len(ruc) != 11:
+        return JSONResponse(
+            {"ok": False, "error": "El RUC debe tener exactamente 11 dígitos"},
+            status_code=400,
+        )
+
+    # api.apis.net.pe v1 sigue siendo pública (sin token).
+    # v2 ya exige Bearer token, así que usamos v1.
+    url = f"https://api.apis.net.pe/v1/ruc?numero={ruc}"
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.get(url, headers={"Accept": "application/json"})
+        if r.status_code == 404:
+            return JSONResponse(
+                {"ok": False, "error": "RUC no encontrado en SUNAT"},
+                status_code=404,
+            )
+        if r.status_code >= 400:
+            return JSONResponse(
+                {"ok": False, "error": f"SUNAT respondió {r.status_code}"},
+                status_code=502,
+            )
+        data = r.json() or {}
+    except httpx.TimeoutException:
+        return JSONResponse(
+            {"ok": False, "error": "Timeout consultando SUNAT"}, status_code=504
+        )
+    except Exception as e:
+        return JSONResponse(
+            {"ok": False, "error": f"Error: {e}"}, status_code=502
+        )
+
+    # v1 devuelve: nombre, numeroDocumento, estado, condicion, direccion,
+    # ubigeo, departamento, provincia, distrito, viaNombre, etc.
+    return JSONResponse({
+        "ok": True,
+        "ruc": data.get("numeroDocumento") or ruc,
+        "nombre_institucion": data.get("nombre") or data.get("razonSocial") or "",
+        "direccion": data.get("direccion") or "",
+        "departamento": data.get("departamento") or "",
+        "provincia": data.get("provincia") or "",
+        "distrito": data.get("distrito") or "",
+        "estado": data.get("estado") or "",
+        "condicion": data.get("condicion") or "",
+    })
 
 
 @router.get("/directorio/{inst_id}", response_class=HTMLResponse)
