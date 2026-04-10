@@ -1,0 +1,29 @@
+{% extends "secretaria/base.html" %}
+{% block title %}Ingresar{% endblock %}
+{% block content %}
+<div class="sp-auth-wrap">
+  <div class="sp-auth-card">
+    <h1>SecretariaPro</h1>
+    <p class="sp-auth-sub">Entra a tu cuenta</p>
+
+    {% if error %}<div class="sp-alert sp-alert-error">{{ error }}</div>{% endif %}
+    {% if ok %}<div class="sp-alert sp-alert-ok">{{ ok }}</div>{% endif %}
+
+    <form method="post" action="/secretaria/login" class="sp-form">
+      <label>
+        <span>Correo</span>
+        <input type="email" name="correo" required autofocus>
+      </label>
+      <label>
+        <span>Contraseña</span>
+        <input type="password" name="password" required>
+      </label>
+      <button type="submit" class="sp-btn sp-btn-primary">Ingresar</button>
+    </form>
+
+    <p class="sp-auth-foot">
+      ¿No tienes cuenta? <a href="/secretaria/registro">Crear cuenta</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

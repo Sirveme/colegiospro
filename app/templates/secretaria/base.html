@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}SecretariaPro{% endblock %} · ColegiosPro</title>
+  <link rel="stylesheet" href="/static/secretaria/secretaria.css">
+  <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+</head>
+<body class="sp-body">
+  {% if usuario %}
+  <aside class="sp-sidebar">
+    <div class="sp-brand">
+      <span class="sp-logo">SP</span>
+      <div>
+        <strong>SecretariaPro</strong>
+        <small>{{ usuario.nombre }}</small>
+      </div>
+    </div>
+    <nav class="sp-nav">
+      <a href="/secretaria/" class="{% if modo_actual == 'dashboard' %}active{% endif %}">
+        <span class="ic">●</span> Inicio
+      </a>
+      <a href="/secretaria/redactor" class="{% if modo_actual == 'redactor' %}active{% endif %}">
+        <span class="ic">✎</span> Redactor
+      </a>
+      <a href="#" class="disabled" title="Próximamente">
+        <span class="ic">⌫</span> Corrector
+      </a>
+      <a href="#" class="disabled" title="Próximamente">
+        <span class="ic">📣</span> Comunicado
+      </a>
+      <a href="#" class="disabled" title="Próximamente">
+        <span class="ic">📷</span> Post Redes
+      </a>
+      <hr>
+      <a href="/secretaria/directorio" class="{% if modo_actual == 'directorio' %}active{% endif %}">
+        <span class="ic">📚</span> Directorio
+      </a>
+      <a href="/secretaria/historial" class="{% if modo_actual == 'historial' %}active{% endif %}">
+        <span class="ic">🗂</span> Historial
+      </a>
+    </nav>
+    <div class="sp-foot">
+      <a href="/secretaria/logout">Cerrar sesión</a>
+    </div>
+  </aside>
+  {% endif %}
+
+  <main class="sp-main {% if not usuario %}sp-main-full{% endif %}">
+    {% block content %}{% endblock %}
+  </main>
+
+  <script src="/static/secretaria/secretaria.js" defer></script>
+</body>
+</html>

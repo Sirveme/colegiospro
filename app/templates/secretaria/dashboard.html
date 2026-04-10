@@ -1,0 +1,38 @@
+{% extends "secretaria/base.html" %}
+{% block title %}Inicio{% endblock %}
+{% block content %}
+<header class="sp-header">
+  <h1>Hola, {{ usuario.nombre }}</h1>
+  <p>¿Qué necesitas resolver hoy?</p>
+</header>
+
+<section class="sp-modos">
+  <a class="sp-modo sp-modo--activo" href="/secretaria/redactor">
+    <div class="sp-modo-ic">✎</div>
+    <h2>Redactor ultrarrápido</h2>
+    <p>Convierte una instrucción coloquial en una carta formal lista para firmar.</p>
+    <span class="sp-cta">Abrir →</span>
+  </a>
+
+  <div class="sp-modo sp-modo--soon">
+    <div class="sp-modo-ic">⌫</div>
+    <h2>Corrector</h2>
+    <p>Corrige y mejora un texto que ya escribiste.</p>
+    <span class="sp-soon">Próximamente</span>
+  </div>
+
+  <div class="sp-modo sp-modo--soon">
+    <div class="sp-modo-ic">📣</div>
+    <h2>Comunicado</h2>
+    <p>Genera comunicados oficiales para los colegiados.</p>
+    <span class="sp-soon">Próximamente</span>
+  </div>
+
+  <div class="sp-modo sp-modo--soon">
+    <div class="sp-modo-ic">📷</div>
+    <h2>Post para redes</h2>
+    <p>Crea posts e imágenes con DALL-E para Facebook y WhatsApp.</p>
+    <span class="sp-soon">Próximamente</span>
+  </div>
+</section>
+{% endblock %}

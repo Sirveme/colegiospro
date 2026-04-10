@@ -1,0 +1,73 @@
+{% extends "secretaria/base.html" %}
+{% block title %}Redactor{% endblock %}
+{% block content %}
+<header class="sp-header">
+  <h1>Redactor ultrarrápido</h1>
+  <p>Escribe lo que te pidieron, como te lo dijeron. Lo convertimos en un documento formal.</p>
+</header>
+
+<section class="sp-redactor">
+  <form
+    class="sp-col sp-col-input"
+    hx-post="/secretaria/redactor/generar"
+    hx-target="#sp-resultado"
+    hx-swap="innerHTML"
+    hx-indicator="#sp-loader"
+  >
+    <label class="sp-field">
+      <span>Instrucción coloquial</span>
+      <textarea
+        name="texto_entrada"
+        rows="8"
+        required
+        placeholder="Ej: Dígale al Alcalde que no podré asistir por asuntos internos del Colegio"
+      ></textarea>
+    </label>
+
+    <label class="sp-field">
+      <span>Destinatario (opcional)</span>
+      <select name="institucion_id">
+        <option value="">— Sin destinatario específico —</option>
+        {% for inst in instituciones %}
+          <option value="{{ inst.id }}">
+            {{ inst.nombre_institucion }}{% if inst.titular_nombre %} · {{ inst.titular_nombre }}{% endif %}
+          </option>
+        {% endfor %}
+      </select>
+      <small>
+        ¿No está en la lista?
+        <a href="/secretaria/directorio">Agregar institución</a>
+      </small>
+    </label>
+
+    <fieldset class="sp-field">
+      <legend>Tono</legend>
+      <label class="sp-radio">
+        <input type="radio" name="tono" value="formal" checked>
+        🎩 Formal
+      </label>
+      <label class="sp-radio">
+        <input type="radio" name="tono" value="cordial">
+        🤝 Cordial
+      </label>
+      <label class="sp-radio">
+        <input type="radio" name="tono" value="protocolar">
+        📜 Protocolar
+      </label>
+    </fieldset>
+
+    <button type="submit" class="sp-btn sp-btn-primary">
+      Generar documento
+      <span id="sp-loader" class="sp-loader htmx-indicator">…</span>
+    </button>
+  </form>
+
+  <div class="sp-col sp-col-output">
+    <div id="sp-resultado" class="sp-resultado">
+      <div class="sp-placeholder">
+        <p>El documento generado aparecerá aquí.</p>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

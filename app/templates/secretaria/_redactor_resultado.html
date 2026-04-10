@@ -1,0 +1,14 @@
+<article class="sp-doc" data-doc-id="{{ documento_id }}">
+  <pre class="sp-doc-texto" id="sp-doc-texto-{{ documento_id }}">{{ texto_salida }}</pre>
+</article>
+<div class="sp-acciones">
+  <a class="sp-btn" href="/secretaria/documento/{{ documento_id }}/pdf" target="_blank">📄 Descargar PDF</a>
+  <button class="sp-btn" type="button" onclick="spCopiar({{ documento_id }})">📋 Copiar</button>
+  <button
+    class="sp-btn sp-btn-primary"
+    type="button"
+    hx-post="/secretaria/documento/{{ documento_id }}/guardar"
+    hx-swap="none"
+    onclick="this.textContent='✓ Guardado'"
+  >💾 Guardar en historial</button>
+</div>

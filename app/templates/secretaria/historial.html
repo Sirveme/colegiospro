@@ -1,0 +1,27 @@
+{% extends "secretaria/base.html" %}
+{% block title %}Historial{% endblock %}
+{% block content %}
+<header class="sp-header">
+  <h1>Historial de documentos</h1>
+  <p>Documentos que guardaste. Se conservan 365 días.</p>
+</header>
+
+<table class="sp-table">
+  <thead>
+    <tr><th>Fecha</th><th>Modo</th><th>Tono</th><th>Vista previa</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for d in documentos %}
+    <tr>
+      <td>{{ d.creado_en.strftime('%d/%m/%Y %H:%M') if d.creado_en else '—' }}</td>
+      <td>{{ d.modo }}</td>
+      <td>{{ d.tono or '—' }}</td>
+      <td class="sp-preview">{{ (d.texto_salida or '')[:120] }}…</td>
+      <td><a href="/secretaria/documento/{{ d.id }}/pdf" target="_blank">PDF</a></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5" class="sp-empty">Aún no has guardado documentos.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

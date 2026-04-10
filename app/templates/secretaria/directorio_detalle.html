@@ -1,0 +1,20 @@
+{% extends "secretaria/base.html" %}
+{% block title %}{{ inst.nombre_institucion }}{% endblock %}
+{% block content %}
+<header class="sp-header">
+  <a href="/secretaria/directorio">← Volver al directorio</a>
+  <h1>{{ inst.nombre_institucion }}</h1>
+</header>
+
+<dl class="sp-detalle">
+  <dt>Tipo</dt><dd>{{ inst.tipo or '—' }}</dd>
+  <dt>Región</dt><dd>{{ inst.region or '—' }}</dd>
+  <dt>Ciudad</dt><dd>{{ inst.ciudad or '—' }}</dd>
+  <dt>Titular</dt><dd>{{ inst.titular_tratamiento or '' }} {{ inst.titular_nombre or '—' }}</dd>
+  <dt>Cargo</dt><dd>{{ inst.titular_cargo or '—' }}</dd>
+  <dt>Correo</dt><dd>{{ inst.correo or '—' }}</dd>
+  <dt>Teléfono</dt><dd>{{ inst.telefono or '—' }}</dd>
+  <dt>Dirección</dt><dd>{{ inst.direccion or '—' }}</dd>
+  <dt>Validado</dt><dd>{{ 'Sí' if inst.validado else 'Pendiente de revisión' }}</dd>
+</dl>
+{% endblock %}

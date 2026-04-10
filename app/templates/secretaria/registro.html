@@ -1,0 +1,32 @@
+{% extends "secretaria/base.html" %}
+{% block title %}Crear cuenta{% endblock %}
+{% block content %}
+<div class="sp-auth-wrap">
+  <div class="sp-auth-card">
+    <h1>Crear cuenta</h1>
+    <p class="sp-auth-sub">Acceso para secretarias de colegios profesionales</p>
+
+    {% if error %}<div class="sp-alert sp-alert-error">{{ error }}</div>{% endif %}
+
+    <form method="post" action="/secretaria/registro" class="sp-form">
+      <label>
+        <span>Nombre completo</span>
+        <input type="text" name="nombre" required autofocus>
+      </label>
+      <label>
+        <span>Correo</span>
+        <input type="email" name="correo" required>
+      </label>
+      <label>
+        <span>Contraseña</span>
+        <input type="password" name="password" minlength="6" required>
+      </label>
+      <button type="submit" class="sp-btn sp-btn-primary">Crear cuenta</button>
+    </form>
+
+    <p class="sp-auth-foot">
+      ¿Ya tienes cuenta? <a href="/secretaria/login">Ingresar</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

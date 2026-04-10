@@ -1,0 +1,67 @@
+{% extends "secretaria/base.html" %}
+{% block title %}Directorio{% endblock %}
+{% block content %}
+<header class="sp-header">
+  <h1>Directorio institucional</h1>
+  <p>Instituciones a las que tu colegio puede dirigir documentos.</p>
+</header>
+
+<form method="get" action="/secretaria/directorio" class="sp-search">
+  <input type="search" name="q" value="{{ q }}" placeholder="Buscar institución…">
+  <button class="sp-btn" type="submit">Buscar</button>
+</form>
+
+<details class="sp-collapse">
+  <summary>+ Registrar nueva institución</summary>
+  <form method="post" action="/secretaria/directorio/nuevo" class="sp-form sp-form-grid">
+    <label><span>Nombre de la institución *</span><input name="nombre_institucion" required></label>
+    <label><span>Tipo</span>
+      <select name="tipo">
+        <option value="">—</option>
+        <option value="municipalidad">Municipalidad</option>
+        <option value="gr">Gobierno Regional</option>
+        <option value="osce">OSCE</option>
+        <option value="contraloria">Contraloría</option>
+        <option value="universidad">Universidad</option>
+        <option value="empresa">Empresa</option>
+        <option value="otro">Otro</option>
+      </select>
+    </label>
+    <label><span>Región</span><input name="region"></label>
+    <label><span>Ciudad</span><input name="ciudad"></label>
+    <label><span>Tratamiento del titular</span>
+      <select name="titular_tratamiento">
+        <option value="">—</option>
+        <option>Sr.</option><option>Sra.</option><option>Dr.</option>
+        <option>Dra.</option><option>Mg.</option><option>Ing.</option>
+        <option>CPC</option><option>Abog.</option>
+      </select>
+    </label>
+    <label><span>Nombre del titular</span><input name="titular_nombre"></label>
+    <label><span>Cargo del titular</span><input name="titular_cargo"></label>
+    <label><span>Correo</span><input type="email" name="correo"></label>
+    <label><span>Teléfono</span><input name="telefono"></label>
+    <label class="sp-col-2"><span>Dirección</span><input name="direccion"></label>
+    <button type="submit" class="sp-btn sp-btn-primary sp-col-2">Registrar institución</button>
+  </form>
+</details>
+
+<table class="sp-table">
+  <thead>
+    <tr><th>Institución</th><th>Titular</th><th>Cargo</th><th>Ciudad</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for inst in instituciones %}
+    <tr>
+      <td>{{ inst.nombre_institucion }}</td>
+      <td>{{ inst.titular_nombre or '—' }}</td>
+      <td>{{ inst.titular_cargo or '—' }}</td>
+      <td>{{ inst.ciudad or '—' }}</td>
+      <td><a href="/secretaria/directorio/{{ inst.id }}">Ver</a></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5" class="sp-empty">No hay instituciones registradas todavía.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
