@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sandra — Especialista en Gestión de Colegios Profesionales</title>
+
+<!-- SEO / Pain points ocultos -->
+<meta name="description" content="Herramientas digitales para secretarias de colegios profesionales. Redacción de oficios, constancias de habilidad, cobros digitales, comunicados y más.">
+<meta name="keywords" content="secretaria colegio profesional, herramientas secretaria, redactar oficios rápido, constancia habilidad digital, gestión colegio contadores, sistema colegio profesional perú, cobros yape plin colegio, actas asamblea transcripción, comunicados facebook colegio, modernizar colegio profesional">
+
+<!-- Pain points ocultos para motores de búsqueda -->
+<div style="position:absolute;left:-9999px;top:-9999px;" aria-hidden="true">
+  ¿Cómo redactar oficios más rápido? ¿Cómo emitir constancia de habilidad sin papeles?
+  ¿Cómo cobrar cuotas por Yape o Plin en el colegio? ¿Cómo transcribir actas de asamblea?
+  ¿Cómo publicar en Facebook del colegio profesional? ¿Cómo modernizar el sistema del colegio?
+  ¿Qué herramientas usa una secretaria eficiente? Software para colegios profesionales Perú.
+  Sistema de gestión colegio contadores abogados ingenieros médicos. Constancia habilidad online.
+</div>
+
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --noir: #0D0D0D;
+  --carbon: #1A1A1A;
+  --grafito: #2C2C2C;
+  --dorado: #C8A96E;
+  --dorado-v: #E8C98A;
+  --dorado-pale: rgba(200,169,110,0.12);
+  --crema: #F7F3EC;
+  --crema2: #EDE8DF;
+  --texto: #1A1610;
+  --muted: #7A7060;
+  --blanco: #FFFFFF;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--crema);
+  color: var(--texto);
+  overflow-x: hidden;
+}
+
+/* ========= CURSOR PERSONALIZADO ========= */
+* { cursor: none !important; }
+.cursor {
+  position: fixed;
+  width: 8px; height: 8px;
+  background: var(--dorado);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  transition: transform 0.1s;
+}
+.cursor-ring {
+  position: fixed;
+  width: 32px; height: 32px;
+  border: 1px solid rgba(200,169,110,0.5);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9998;
+  transform: translate(-50%, -50%);
+  transition: all 0.15s ease;
+}
+
+/* ========= HERO ========= */
+.hero {
+  min-height: 100vh;
+  background: var(--noir);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-ruido {
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.hero-linea-v {
+  position: absolute;
+  top: 0; bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(200,169,110,0.3) 30%, rgba(200,169,110,0.3) 70%, transparent);
+}
+
+.hero-izq {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 80px 60px 80px 80px;
+  position: relative;
+  z-index: 2;
+}
+
+.hero-etiqueta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 40px;
+  opacity: 0;
+  animation: fadeUp 0.8s 0.2s forwards;
+}
+.etiqueta-linea {
+  width: 40px; height: 1px;
+  background: var(--dorado);
+}
+.etiqueta-texto {
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--dorado);
+  font-weight: 500;
+}
+
+.hero-nombre {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(52px, 6vw, 88px);
+  font-weight: 600;
+  color: var(--blanco);
+  line-height: 0.95;
+  letter-spacing: -1px;
+  margin-bottom: 8px;
+  opacity: 0;
+  animation: fadeUp 0.8s 0.4s forwards;
+}
+.hero-nombre em {
+  font-style: italic;
+  color: var(--dorado-v);
+}
+
+.hero-apellido {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(52px, 6vw, 88px);
+  font-weight: 300;
+  color: rgba(255,255,255,0.25);
+  line-height: 0.95;
+  letter-spacing: -1px;
+  margin-bottom: 40px;
+  opacity: 0;
+  animation: fadeUp 0.8s 0.5s forwards;
+}
+
+.hero-rol {
+  font-size: 15px;
+  color: rgba(255,255,255,0.5);
+  line-height: 1.8;
+  max-width: 340px;
+  font-weight: 300;
+  opacity: 0;
+  animation: fadeUp 0.8s 0.7s forwards;
+}
+.hero-rol strong {
+  color: var(--dorado-v);
+  font-weight: 500;
+}
+
+.hero-ctas {
+  display: flex;
+  gap: 16px;
+  margin-top: 48px;
+  opacity: 0;
+  animation: fadeUp 0.8s 0.9s forwards;
+  flex-wrap: wrap;
+}
+.btn-dorado {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--dorado);
+  color: var(--noir);
+  padding: 14px 28px;
+  border-radius: 2px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-decoration: none;
+  transition: all 0.2s;
+  border: none;
+}
+.btn-dorado:hover { background: var(--dorado-v); transform: translateY(-2px); }
+.btn-outline-blanco {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  color: rgba(255,255,255,0.7);
+  padding: 14px 28px;
+  border-radius: 2px;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  text-decoration: none;
+  border: 1px solid rgba(255,255,255,0.15);
+  transition: all 0.2s;
+}
+.btn-outline-blanco:hover { border-color: var(--dorado); color: var(--dorado-v); }
+
+/* FOTO HERO */
+.hero-der {
+  position: relative;
+  overflow: hidden;
+}
+.hero-foto-container {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 0;
+}
+.foto-placeholder-hero {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(180deg, #1A1A1A 0%, #2C2C2C 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  position: relative;
+}
+.foto-placeholder-hero::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 40%;
+  background: linear-gradient(transparent, var(--noir));
+}
+.foto-marco {
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  border: 2px dashed rgba(200,169,110,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+}
+.foto-instruccion {
+  font-size: 12px;
+  color: rgba(255,255,255,0.2);
+  text-align: center;
+  line-height: 1.6;
+  padding: 0 40px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.hero-stats-bar {
+  position: absolute;
+  bottom: 40px;
+  left: 80px;
+  right: 60px;
+  display: flex;
+  gap: 40px;
+  z-index: 5;
+  opacity: 0;
+  animation: fadeUp 0.8s 1.1s forwards;
+}
+.hstat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.hstat-num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--dorado-v);
+  line-height: 1;
+}
+.hstat-label {
+  font-size: 11px;
+  color: rgba(255,255,255,0.35);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* ========= ANTES / AHORA ========= */
+.antes-ahora {
+  background: var(--crema);
+  padding: 120px 80px;
+}
+.section-eyebrow {
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--dorado);
+  font-weight: 500;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.section-eyebrow::before {
+  content: '';
+  width: 30px; height: 1px;
+  background: var(--dorado);
+}
+.section-titulo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(36px, 4vw, 56px);
+  font-weight: 600;
+  color: var(--texto);
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+  margin-bottom: 64px;
+  max-width: 600px;
+}
+.section-titulo em { font-style: italic; color: var(--dorado); }
+
+.dualidad-grid {
+  display: grid;
+  grid-template-columns: 1fr 60px 1fr;
+  gap: 0;
+  max-width: 1000px;
+  margin: 0 auto;
+  align-items: stretch;
+}
+
+.dualidad-card {
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+.dualidad-card.antes {
+  background: var(--grafito);
+  filter: grayscale(0.3);
+}
+.dualidad-card.ahora {
+  background: var(--noir);
+  border: 1px solid rgba(200,169,110,0.2);
+}
+
+.dualidad-foto {
+  width: 100%;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+  display: block;
+}
+.dualidad-foto-ph {
+  width: 100%;
+  aspect-ratio: 3/4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: var(--grafito);
+  font-size: 32px;
+}
+.dualidad-foto-ph p {
+  font-size: 11px;
+  color: rgba(255,255,255,0.2);
+  text-align: center;
+  line-height: 1.5;
+  padding: 0 20px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.dualidad-etiqueta {
+  position: absolute;
+  top: 20px; left: 20px;
+  background: rgba(0,0,0,0.7);
+  border: 1px solid rgba(255,255,255,0.1);
+  padding: 6px 14px;
+  border-radius: 2px;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.5);
+  backdrop-filter: blur(8px);
+}
+.dualidad-etiqueta.ahora-tag {
+  background: rgba(200,169,110,0.15);
+  border-color: rgba(200,169,110,0.3);
+  color: var(--dorado-v);
+}
+
+.dualidad-caption {
+  padding: 24px;
+  background: rgba(0,0,0,0.3);
+}
+.dualidad-caption p {
+  font-size: 13px;
+  color: rgba(255,255,255,0.5);
+  line-height: 1.7;
+  font-style: italic;
+}
+
+.dualidad-divisor {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.divisor-linea {
+  position: absolute;
+  top: 0; bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, var(--dorado) 50%, transparent);
+}
+.divisor-circulo {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: var(--dorado);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--noir);
+  font-weight: 700;
+  z-index: 2;
+  font-family: 'Cormorant Garamond', serif;
+}
+
+/* ========= DOLORES OCULTOS (visibles como features) ========= */
+.dolores-section {
+  background: var(--noir);
+  padding: 120px 80px;
+  position: relative;
+  overflow: hidden;
+}
+.dolores-section::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--dorado), transparent);
+}
+
+.dolores-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2px;
+  margin-top: 64px;
+  max-width: 1100px;
+}
+.dolor-item {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.05);
+  padding: 36px 32px;
+  position: relative;
+  transition: all 0.3s;
+  overflow: hidden;
+}
+.dolor-item::before {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0;
+  width: 0; height: 2px;
+  background: var(--dorado);
+  transition: width 0.4s;
+}
+.dolor-item:hover::before { width: 100%; }
+.dolor-item:hover { background: rgba(200,169,110,0.04); }
+
+.dolor-numero {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 48px;
+  font-weight: 700;
+  color: rgba(200,169,110,0.15);
+  line-height: 1;
+  margin-bottom: 16px;
+}
+.dolor-titulo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--blanco);
+  margin-bottom: 10px;
+  line-height: 1.3;
+}
+.dolor-desc {
+  font-size: 13px;
+  color: rgba(255,255,255,0.4);
+  line-height: 1.7;
+  font-weight: 300;
+}
+.dolor-solucion {
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--dorado);
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dolor-solucion::before {
+  content: '→';
+  font-size: 14px;
+}
+
+/* ========= PRODUCTOS ========= */
+.productos-section {
+  background: var(--crema);
+  padding: 120px 80px;
+}
+.productos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 24px;
+  margin-top: 64px;
+  max-width: 1100px;
+}
+.producto-card {
+  background: white;
+  border: 1px solid var(--crema2);
+  border-radius: 4px;
+  padding: 32px;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+.producto-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 3px; height: 0;
+  background: var(--dorado);
+  transition: height 0.4s;
+}
+.producto-card:hover::after { height: 100%; }
+.producto-card:hover { transform: translateY(-4px); box-shadow: 0 20px 60px rgba(0,0,0,0.08); }
+
+.producto-icono {
+  width: 44px; height: 44px;
+  background: var(--dorado-pale);
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(200,169,110,0.2);
+}
+.producto-nombre {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--texto);
+  margin-bottom: 8px;
+}
+.producto-desc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+  font-weight: 300;
+  margin-bottom: 20px;
+}
+.producto-tag {
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--dorado);
+  font-weight: 500;
+}
+
+/* ========= VIDEOS ========= */
+.videos-section {
+  background: var(--carbon);
+  padding: 120px 80px;
+}
+.videos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 64px;
+  max-width: 1100px;
+}
+.video-card {
+  position: relative;
+  border-radius: 4px;
+  overflow: hidden;
+  aspect-ratio: 9/16;
+  background: var(--grafito);
+  cursor: none;
+}
+.video-card:hover .video-overlay { opacity: 1; }
+.video-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(200,169,110,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.play-btn-dorado {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--dorado);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.play-triangle {
+  width: 0; height: 0;
+  border-top: 10px solid transparent;
+  border-bottom: 10px solid transparent;
+  border-left: 16px solid var(--noir);
+  margin-left: 4px;
+}
+.video-ph {
+  width: 100%; height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 20px;
+}
+.video-ph p {
+  font-size: 11px;
+  color: rgba(255,255,255,0.2);
+  text-align: center;
+  line-height: 1.5;
+  letter-spacing: 0.5px;
+}
+.video-caption {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 20px 16px 16px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.8));
+  font-size: 12px;
+  color: rgba(255,255,255,0.7);
+  line-height: 1.4;
+  font-style: italic;
+}
+
+/* ========= PRUEBA GRATUITA ========= */
+.prueba-section {
+  background: var(--crema);
+  padding: 120px 80px;
+}
+.prueba-inner {
+  max-width: 800px;
+  margin: 0 auto;
+}
+.prueba-opciones {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  margin: 64px 0 48px;
+  background: var(--noir);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.prueba-opcion {
+  background: var(--noir);
+  padding: 36px 24px;
+  text-align: center;
+  border: none;
+  cursor: none;
+  transition: background 0.2s;
+  position: relative;
+}
+.prueba-opcion.activa,
+.prueba-opcion:hover { background: rgba(200,169,110,0.08); }
+.prueba-opcion.activa::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--dorado);
+}
+.po-dias {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 52px;
+  font-weight: 700;
+  color: var(--dorado-v);
+  line-height: 1;
+}
+.po-unidad {
+  font-size: 12px;
+  color: rgba(255,255,255,0.4);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.po-compromiso {
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+  line-height: 1.6;
+}
+.po-compromiso strong {
+  color: var(--dorado);
+  display: block;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+/* FORMULARIO */
+.prueba-form {
+  background: var(--noir);
+  border-radius: 4px;
+  padding: 48px;
+  border: 1px solid rgba(200,169,110,0.1);
+}
+.form-titulo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 28px;
+  color: var(--blanco);
+  margin-bottom: 32px;
+  font-weight: 600;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.form-group { display: flex; flex-direction: column; gap: 8px; }
+.form-group label {
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.35);
+  font-weight: 500;
+}
+.form-group input,
+.form-group select {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 2px;
+  padding: 14px 16px;
+  font-size: 14px;
+  color: var(--blanco);
+  font-family: 'DM Sans', sans-serif;
+  outline: none;
+  transition: border-color 0.2s;
+  cursor: none;
+}
+.form-group input:focus,
+.form-group select:focus { border-color: rgba(200,169,110,0.4); }
+.form-group input::placeholder { color: rgba(255,255,255,0.2); }
+.form-group select option { background: var(--noir); }
+
+.dias-display {
+  background: rgba(200,169,110,0.08);
+  border: 1px solid rgba(200,169,110,0.2);
+  border-radius: 2px;
+  padding: 14px 16px;
+  font-size: 13px;
+  color: var(--dorado-v);
+  margin-bottom: 24px;
+  font-style: italic;
+}
+
+.btn-solicitar {
+  width: 100%;
+  padding: 18px;
+  background: var(--dorado);
+  color: var(--noir);
+  border: none;
+  border-radius: 2px;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: none;
+  transition: all 0.2s;
+  font-family: 'DM Sans', sans-serif;
+}
+.btn-solicitar:hover { background: var(--dorado-v); }
+
+/* ========= CONTACTO ========= */
+.contacto-section {
+  background: var(--noir);
+  padding: 120px 80px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 60px;
+  flex-wrap: wrap;
+  position: relative;
+}
+.contacto-section::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--dorado), transparent);
+}
+.contacto-izq h2 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(36px, 4vw, 56px);
+  color: var(--blanco);
+  font-weight: 600;
+  line-height: 1.1;
+  margin-bottom: 16px;
+}
+.contacto-izq h2 em { font-style: italic; color: var(--dorado-v); }
+.contacto-izq p {
+  font-size: 15px;
+  color: rgba(255,255,255,0.4);
+  font-weight: 300;
+  line-height: 1.7;
+  max-width: 380px;
+}
+.contacto-der {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.contacto-btn {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 2px;
+  padding: 20px 28px;
+  text-decoration: none;
+  transition: all 0.2s;
+  min-width: 280px;
+}
+.contacto-btn:hover {
+  border-color: rgba(200,169,110,0.3);
+  background: rgba(200,169,110,0.05);
+  transform: translateX(4px);
+}
+.cb-icono {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.cb-icono.wa { background: rgba(37,211,102,0.15); }
+.cb-icono.mail { background: rgba(200,169,110,0.15); }
+.cb-texto { display: flex; flex-direction: column; gap: 2px; }
+.cb-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.3); }
+.cb-valor { font-size: 15px; color: var(--blanco); font-weight: 400; }
+
+/* ========= FOOTER ========= */
+footer {
+  background: #080808;
+  padding: 24px 80px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+footer p { font-size: 11px; color: rgba(255,255,255,0.2); letter-spacing: 0.5px; }
+.footer-logo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 14px;
+  color: rgba(200,169,110,0.4);
+  letter-spacing: 2px;
+}
+
+/* ========= ANIMATIONS ========= */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.reveal {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+/* ========= RESPONSIVE ========= */
+@media (max-width: 900px) {
+  .hero { grid-template-columns: 1fr; }
+  .hero-der { display: none; }
+  .hero-linea-v { display: none; }
+  .hero-izq { padding: 80px 32px; }
+  .hero-stats-bar { left: 32px; right: 32px; }
+  .antes-ahora, .dolores-section, .productos-section,
+  .videos-section, .prueba-section, .contacto-section { padding: 80px 32px; }
+  .dualidad-grid { grid-template-columns: 1fr; }
+  .dualidad-divisor { display: none; }
+  .form-grid { grid-template-columns: 1fr; }
+  .prueba-form { padding: 28px; }
+  .prueba-opciones { grid-template-columns: 1fr; }
+  footer { flex-direction: column; gap: 8px; text-align: center; padding: 20px 32px; }
+  * { cursor: auto !important; }
+  .cursor, .cursor-ring { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-ruido"></div>
+  <div class="hero-linea-v"></div>
+
+  <div class="hero-izq">
+    <div class="hero-etiqueta">
+      <div class="etiqueta-linea"></div>
+      <span class="etiqueta-texto">Especialista en Gestión Institucional</span>
+    </div>
+
+    <div class="hero-nombre">Sandra</div>
+    <div class="hero-apellido">Apellido</div>
+
+    <p class="hero-rol">
+      Contadora Pública · Ex secretaria del<br>
+      <strong>Colegio de Contadores Públicos de Loreto</strong><br>
+      Ahora ayudo a colegios profesionales de todo el Perú<br>
+      a <strong>modernizar su gestión</strong> — sin complicaciones.
+    </p>
+
+    <div class="hero-ctas">
+      <a href="#prueba" class="btn-dorado">Prueba gratis →</a>
+      <a href="#contacto" class="btn-outline-blanco">Escríbeme</a>
+    </div>
+
+    <div class="hero-stats-bar">
+      <div class="hstat">
+        <div class="hstat-num">4+</div>
+        <div class="hstat-label">años en CCPL</div>
+      </div>
+      <div class="hstat">
+        <div class="hstat-num">1,800+</div>
+        <div class="hstat-label">colegiados gestionados</div>
+      </div>
+      <div class="hstat">
+        <div class="hstat-num">5</div>
+        <div class="hstat-label">productos disponibles</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-der">
+    <div class="hero-foto-container">
+      <div class="foto-placeholder-hero">
+        <div class="foto-marco">📷</div>
+        <div class="foto-instruccion">
+          foto profesional<br>de Sandra<br>aquí
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ANTES / AHORA -->
+<section class="antes-ahora">
+  <div class="section-eyebrow">Mi historia</div>
+  <h2 class="section-titulo reveal">Cuatro años <em>dentro</em> del sistema.<br>Ahora lo comparto.</h2>
+
+  <div class="dualidad-grid reveal">
+    <div class="dualidad-card antes">
+      <div class="dualidad-foto-ph">
+        📷
+        <p>foto con uniforme<br>del CCPL</p>
+      </div>
+      <div class="dualidad-etiqueta">Hasta abril 2026</div>
+      <div class="dualidad-caption">
+        <p>"Cuatro años como secretaria del CCPL — aprendí cada dolor, cada proceso, cada ineficiencia."</p>
+      </div>
+    </div>
+
+    <div class="dualidad-divisor">
+      <div class="divisor-linea"></div>
+      <div class="divisor-circulo">→</div>
+    </div>
+
+    <div class="dualidad-card ahora">
+      <div class="dualidad-foto-ph" style="background:#1A1A1A;">
+        ✨
+        <p>foto con logo<br>ColegiosPro</p>
+      </div>
+      <div class="dualidad-etiqueta ahora-tag">Desde mayo 2026</div>
+      <div class="dualidad-caption">
+        <p>"Ahora llevo esas soluciones a cualquier colegio profesional del Perú."</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DOLORES (ocultos como beneficios) -->
+<section class="dolores-section">
+  <div class="section-eyebrow" style="color:var(--dorado);">Lo que resolvemos</div>
+  <h2 class="section-titulo reveal" style="color:var(--blanco);">Los problemas que <em>ningún colegio</em><br>debería tener en 2026</h2>
+
+  <div class="dolores-grid reveal">
+    <div class="dolor-item">
+      <div class="dolor-numero">01</div>
+      <div class="dolor-titulo">Redactar oficios toma horas</div>
+      <div class="dolor-desc">La secretaria escribe la misma carta formal una y otra vez, buscando el documento anterior como modelo.</div>
+      <div class="dolor-solucion">Redactor IA: 30 segundos, tono perfecto</div>
+    </div>
+    <div class="dolor-item">
+      <div class="dolor-numero">02</div>
+      <div class="dolor-titulo">Constancias de habilidad en papel</div>
+      <div class="dolor-desc">El colegiado llama, viene, espera. La secretaria verifica en Excel, imprime, firma, sella. Todo el día.</div>
+      <div class="dolor-solucion">Constancia QR digital: al instante, post-pago</div>
+    </div>
+    <div class="dolor-item">
+      <div class="dolor-numero">03</div>
+      <div class="dolor-titulo">Cobros en efectivo sin control</div>
+      <div class="dolor-desc">Yape y Plin llegan al celular del tesorero. Alguien tiene que verificar cada pago a mano y registrarlo.</div>
+      <div class="dolor-solucion">Validación automática Yape/Plin</div>
+    </div>
+    <div class="dolor-item">
+      <div class="dolor-numero">04</div>
+      <div class="dolor-titulo">Transcribir actas de asamblea</div>
+      <div class="dolor-desc">Horas retrocediendo la grabación, pausando, escribiendo. Cuando hablan a la vez, imposible.</div>
+      <div class="dolor-solucion">Transcripción IA — sube el audio, recibe el texto</div>
+    </div>
+    <div class="dolor-item">
+      <div class="dolor-numero">05</div>
+      <div class="dolor-titulo">Facebook del colegio: solo cumpleaños</div>
+      <div class="dolor-desc">Sin tiempo ni herramientas para comunicar logros, eventos, acuerdos. La institución parece inactiva.</div>
+      <div class="dolor-solucion">Generador de comunicados y posts en segundos</div>
+    </div>
+    <div class="dolor-item">
+      <div class="dolor-numero">06</div>
+      <div class="dolor-titulo">Deudas de colegiados sin gestionar</div>
+      <div class="dolor-desc">Miles de soles en cuotas impagas. No hay sistema para cobrar, fraccionar ni emitir comprobante.</div>
+      <div class="dolor-solucion">Gestión de deudas + fraccionamiento online</div>
+    </div>
+  </div>
+</section>
+
+<!-- PRODUCTOS -->
+<section class="productos-section">
+  <div class="section-eyebrow">Soluciones</div>
+  <h2 class="section-titulo reveal">Cinco productos.<br>Un solo <em>objetivo</em>.</h2>
+
+  <div class="productos-grid reveal">
+    <div class="producto-card">
+      <div class="producto-icono">🏛</div>
+      <div class="producto-nombre">ColegiosPro</div>
+      <div class="producto-desc">Sistema completo de gestión para colegios profesionales. Deudas, habilitación, constancias, caja, facturación.</div>
+      <div class="producto-tag">colegiospro.org.pe</div>
+    </div>
+    <div class="producto-card">
+      <div class="producto-icono">✍️</div>
+      <div class="producto-nombre">SecretariaPro</div>
+      <div class="producto-desc">Herramientas IA para secretarias. Redacción, corrección, comunicados, posts, directorio institucional.</div>
+      <div class="producto-tag">incluido en ColegiosPro</div>
+    </div>
+    <div class="producto-card">
+      <div class="producto-icono">🧾</div>
+      <div class="producto-nombre">Facturalo.pro</div>
+      <div class="producto-desc">Facturación electrónica SUNAT para cualquier negocio o institución. Integrado con ColegiosPro.</div>
+      <div class="producto-tag">facturalo.pro</div>
+    </div>
+    <div class="producto-card">
+      <div class="producto-icono">🛒</div>
+      <div class="producto-nombre">QueVendi.pro</div>
+      <div class="producto-desc">Sistema POS con carta virtual, pagos digitales, facturación y control de caja para comercios.</div>
+      <div class="producto-tag">quevendi.pro</div>
+    </div>
+    <div class="producto-card">
+      <div class="producto-icono">🔔</div>
+      <div class="producto-nombre">Alerta.pe</div>
+      <div class="producto-desc">Alertas contables, control de pagos SUNAT y comunicación institucional inteligente.</div>
+      <div class="producto-tag">alerta.pe</div>
+    </div>
+  </div>
+</section>
+
+<!-- VIDEOS -->
+<section class="videos-section">
+  <div class="section-eyebrow" style="color:var(--dorado);">En acción</div>
+  <h2 class="section-titulo reveal" style="color:var(--blanco);">Lo que <em>antes</em> tomaba horas.<br>Ahora, segundos.</h2>
+
+  <div class="videos-grid reveal">
+    <div class="video-card">
+      <div class="video-ph">
+        <span style="font-size:32px;">🎬</span>
+        <p>video: redactar un oficio<br>en 30 segundos</p>
+      </div>
+      <div class="video-overlay"><div class="play-btn-dorado"><div class="play-triangle"></div></div></div>
+      <div class="video-caption">"Lo que antes me tomaba 20 minutos..."</div>
+    </div>
+    <div class="video-card">
+      <div class="video-ph">
+        <span style="font-size:32px;">🎬</span>
+        <p>video: constancia de<br>habilidad al instante</p>
+      </div>
+      <div class="video-overlay"><div class="play-btn-dorado"><div class="play-triangle"></div></div></div>
+      <div class="video-caption">"El colegiado la descarga solo, desde su celular"</div>
+    </div>
+    <div class="video-card">
+      <div class="video-ph">
+        <span style="font-size:32px;">🎬</span>
+        <p>video: post para facebook<br>del colegio</p>
+      </div>
+      <div class="video-overlay"><div class="play-btn-dorado"><div class="play-triangle"></div></div></div>
+      <div class="video-caption">"Justo cuando me voy, aparece esto..."</div>
+    </div>
+    <div class="video-card">
+      <div class="video-ph">
+        <span style="font-size:32px;">🎬</span>
+        <p>video: lo que todo colegio<br>debería tener</p>
+      </div>
+      <div class="video-overlay"><div class="play-btn-dorado"><div class="play-triangle"></div></div></div>
+      <div class="video-caption">"Lo que todo colegiado debe exigir..."</div>
+    </div>
+  </div>
+</section>
+
+<!-- PRUEBA GRATUITA -->
+<section class="prueba-section" id="prueba">
+  <div class="prueba-inner">
+    <div class="section-eyebrow">Prueba sin riesgo</div>
+    <h2 class="section-titulo reveal">Elige cuánto tiempo<br>quieres <em>explorar</em>.</h2>
+
+    <div class="prueba-opciones reveal" id="opcionesContainer">
+      <button class="prueba-opcion" onclick="elegirOpcion(30, 'Solo tu correo verificado', this)">
+        <div class="po-dias">30</div>
+        <div class="po-unidad">días</div>
+        <div class="po-compromiso"><strong>A cambio</strong>Tu correo verificado</div>
+      </button>
+      <button class="prueba-opcion activa" onclick="elegirOpcion(60, 'Correo + nombre de tu colegio y región', this)">
+        <div class="po-dias">60</div>
+        <div class="po-unidad">días</div>
+        <div class="po-compromiso"><strong>A cambio</strong>Correo + datos de tu colegio</div>
+      </button>
+      <button class="prueba-opcion" onclick="elegirOpcion(90, 'Comparte tu experiencia en un video o foto usando la herramienta', this)">
+        <div class="po-dias">90</div>
+        <div class="po-unidad">días</div>
+        <div class="po-compromiso"><strong>A cambio</strong>Un video o foto de tu experiencia</div>
+      </button>
+    </div>
+
+    <div class="prueba-form reveal">
+      <div class="form-titulo">Solicita tu acceso gratuito</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Tu nombre</label>
+          <input type="text" placeholder="Sandra García">
+        </div>
+        <div class="form-group">
+          <label>Tu correo</label>
+          <input type="email" placeholder="secretaria@colegio.pe">
+        </div>
+        <div class="form-group">
+          <label>Nombre del colegio</label>
+          <input type="text" placeholder="Colegio de Contadores de...">
+        </div>
+        <div class="form-group">
+          <label>Región</label>
+          <select>
+            <option value="">Selecciona tu región</option>
+            <option>Loreto</option><option>Lima</option><option>Arequipa</option>
+            <option>La Libertad</option><option>Cusco</option><option>Piura</option>
+            <option>Junín</option><option>Lambayeque</option><option>Áncash</option>
+            <option>Otra región</option>
+          </select>
+        </div>
+      </div>
+      <div class="dias-display" id="diasDisplay">
+        60 días de acceso completo — a cambio de tu correo y datos del colegio
+      </div>
+      <button class="btn-solicitar" onclick="enviarFormulario()">
+        SOLICITAR ACCESO GRATUITO →
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACTO -->
+<section class="contacto-section" id="contacto">
+  <div class="contacto-izq reveal">
+    <h2>¿Hablamos<br><em>ahora mismo</em>?</h2>
+    <p>Te cuento cómo funciona, qué le resuelve a tu colegio y cómo empezar. Sin compromiso, sin tecnicismos.</p>
+  </div>
+  <div class="contacto-der reveal">
+    <a href="https://wa.me/51XXXXXXXXX" class="contacto-btn" target="_blank">
+      <div class="cb-icono wa">💬</div>
+      <div class="cb-texto">
+        <span class="cb-label">WhatsApp directo</span>
+        <span class="cb-valor">+51 XXX XXX XXX</span>
+      </div>
+    </a>
+    <a href="mailto:sandra@colegiospro.org.pe" class="contacto-btn">
+      <div class="cb-icono mail">✉️</div>
+      <div class="cb-texto">
+        <span class="cb-label">Correo</span>
+        <span class="cb-valor">sandra@colegiospro.org.pe</span>
+      </div>
+    </a>
+  </div>
+</section>
+
+<footer>
+  <p>© 2026 · Sandra · Promotora ColegiosPro · Perú Sistemas Pro E.I.R.L.</p>
+  <div class="footer-logo">ColegiosPro</div>
+</footer>
+
+<script>
+const cursor = document.getElementById('cursor');
+const ring = document.getElementById('cursorRing');
+let mx = 0, my = 0, rx = 0, ry = 0;
+
+document.addEventListener('mousemove', e => {
+  mx = e.clientX; my = e.clientY;
+  cursor.style.left = mx + 'px';
+  cursor.style.top = my + 'px';
+});
+
+function animRing() {
+  rx += (mx - rx) * 0.12;
+  ry += (my - ry) *.12;
+  ring.style.left = rx + 'px';
+  ring.style.top = ry + 'px';
+  requestAnimationFrame(animRing);
+}
+animRing();
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach((e, i) => {
+    if (e.isIntersecting) setTimeout(() => e.target.classList.add('visible'), i * 100);
+  });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+function elegirOpcion(dias, compromiso, btn) {
+  document.querySelectorAll('.prueba-opcion').forEach(b => b.classList.remove('activa'));
+  btn.classList.add('activa');
+  document.getElementById('diasDisplay').textContent =
+    dias + ' días de acceso completo — a cambio de: ' + compromiso;
+}
+
+function enviarFormulario() {
+  const nombre = document.querySelector('input[placeholder="Sandra García"]').value;
+  const correo = document.querySelector('input[type="email"]').value;
+  if (!nombre || !correo) { alert('Por favor completa tu nombre y correo.'); return; }
+  const wa = `https://wa.me/51963359217?text=Hola Sandra, soy ${encodeURIComponent(nombre)} y quiero solicitar acceso gratuito a ColegiosPro.`;
+  window.open(wa, '_blank');
+}
+</script>
+</body>
+</html>
