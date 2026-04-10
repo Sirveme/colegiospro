@@ -12,7 +12,10 @@ from pydantic import BaseModel
 from typing import Optional
 
 from app.database import SessionLocal, Lead
-from app.routers import verificacion, chat
+from app.routers import verificacion, chat, secretaria
+# Importar models_secretaria garantiza que las tablas del módulo
+# se creen al iniciar la app (Base.metadata.create_all).
+from app import models_secretaria  # noqa: F401
 
 app = FastAPI(
     title="ColegiosPro",
@@ -39,6 +42,7 @@ templates = Jinja2Templates(directory="app/templates")
 # -- Routers --
 app.include_router(verificacion.router)
 app.include_router(chat.router)       # ← NUEVO: WebSocket + tracking
+app.include_router(secretaria.router) # ← SecretariaPro (módulo /secretaria)
 
 
 # -- Schemas --
