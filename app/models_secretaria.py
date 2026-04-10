@@ -42,6 +42,7 @@ class DirectorioInstitucional(Base):
     __tablename__ = "directorio_institucional"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    ruc = Column(String(20), index=True, nullable=True)
     nombre_institucion = Column(String(200), nullable=False, index=True)
     tipo = Column(String(50))  # municipalidad/gr/osce/contraloria/universidad/empresa/otro
     region = Column(String(100))
@@ -118,3 +119,28 @@ class ConfigSecretariaColegio(Base):
 # create_all es idempotente: solo crea las tablas que faltan.
 # Las tablas existentes (leads, visits, chat_messages) no se tocan.
 Base.metadata.create_all(engine)
+
+
+# ─── MIGRACIONES LIGERAS (sin Alembic) ───
+# Para tablas que ya existen en Railway de despliegues previos, agregamos
+# columnas nuevas con ALTER TABLE. Es idempotente: si la columna ya existe,
+# se ignora el error silenciosamente.
+def _migrar_columnas():
+    from sqlalchemy import inspect, text
+
+    insp = inspect(engine)
+    if not insp.has_table("directorio_institucional"):
+        return
+
+    cols_existentes = {c["name"] for c in insp.get_columns("directorio_institucional")}
+    if "ruc" not in cols_existentes:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(
+                    "ALTER TABLE directorio_institucional ADD COLUMN ruc VARCHAR(20)"
+                ))
+        except Exception:
+            pass  # Otra instancia ya hizo la migración
+
+
+_migrar_columnas()
