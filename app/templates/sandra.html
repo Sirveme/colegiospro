@@ -514,6 +514,60 @@ footer p { font-size: 11px; color: rgba(255,255,255,0.2); letter-spacing: 0.5px;
   * { cursor: auto !important; }
   .cursor, .cursor-ring { display: none; }
 }
+
+
+.dolores-section,
+.productos-section,
+.videos-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.dolores-grid,
+.productos-grid,
+.videos-grid {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* El eyebrow y título también centrados en esas secciones */
+.dolores-section .section-eyebrow,
+.dolores-section .section-titulo,
+.videos-section .section-eyebrow,
+.videos-section .section-titulo {
+  text-align: center;
+}
+.dolores-section .section-eyebrow::before,
+.videos-section .section-eyebrow::before {
+  display: none; /* quita la línea lateral cuando está centrado */
+}
+
+
+.hero-foto-principal {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 10%; /* muestra desde la cabeza */
+  display: block;
+}
+
+.hero-foto-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to right,
+    var(--noir) 0%,
+    transparent 30%,
+    transparent 70%,
+    var(--noir) 100%
+  ),
+  linear-gradient(
+    to top,
+    var(--noir) 0%,
+    transparent 40%
+  );
+}
 </style>
 </head>
 <body>
@@ -533,12 +587,12 @@ footer p { font-size: 11px; color: rgba(255,255,255,0.2); letter-spacing: 0.5px;
     </div>
 
     <div class="hero-nombre">Sandra</div>
-    <div class="hero-apellido">Apellido</div>
+    <div class="hero-apellido">Martínez</div>
 
     <p class="hero-rol">
       Contadora Pública · Ex secretaria del<br>
       <strong>Colegio de Contadores Públicos de Loreto</strong><br>
-      Ahora ayudo a colegios profesionales de todo el Perú<br>
+      Ahora ayudo a Colegios Profesionales de todo el Perú<br>
       a <strong>modernizar su gestión</strong> — sin complicaciones.
     </p>
 
@@ -563,16 +617,14 @@ footer p { font-size: 11px; color: rgba(255,255,255,0.2); letter-spacing: 0.5px;
     </div>
   </div>
 
-  <div class="hero-der">
-    <div class="hero-foto-container">
-      <div class="foto-placeholder-hero">
-        <div class="foto-marco">📷</div>
-        <div class="foto-instruccion">
-          foto profesional<br>de Sandra<br>aquí
+    <div class="hero-der">
+        <div class="hero-foto-container">
+            <img src="/static/img/sandra_hero.jpg" 
+                alt="Sandra" 
+                class="hero-foto-principal">
+            <div class="hero-foto-overlay"></div>
         </div>
-      </div>
     </div>
-  </div>
 </section>
 
 <!-- ANTES / AHORA -->
@@ -802,18 +854,18 @@ footer p { font-size: 11px; color: rgba(255,255,255,0.2); letter-spacing: 0.5px;
     <p>Te cuento cómo funciona, qué le resuelve a tu colegio y cómo empezar. Sin compromiso, sin tecnicismos.</p>
   </div>
   <div class="contacto-der reveal">
-    <a href="https://wa.me/51XXXXXXXXX" class="contacto-btn" target="_blank">
+    <a href="https://wa.me/51963359217" class="contacto-btn" target="_blank">
       <div class="cb-icono wa">💬</div>
       <div class="cb-texto">
         <span class="cb-label">WhatsApp directo</span>
-        <span class="cb-valor">+51 XXX XXX XXX</span>
+        <span class="cb-valor">+51 96359217</span>
       </div>
     </a>
-    <a href="mailto:sandra@colegiospro.org.pe" class="contacto-btn">
+    <a href="mailto:info@colegiospro.org.pe" class="contacto-btn">
       <div class="cb-icono mail">✉️</div>
       <div class="cb-texto">
         <span class="cb-label">Correo</span>
-        <span class="cb-valor">sandra@colegiospro.org.pe</span>
+        <span class="cb-valor">info@colegiospro.org.pe</span>
       </div>
     </a>
   </div>
