@@ -70,8 +70,8 @@ def _user_or_redirect(request: Request):
         db.close()
 
 
-def _ctx(request: Request, usuario: Optional[UsuarioSecretaria] = None, **extra):
-    base = {"request": request, "usuario": usuario, "modo_actual": None}
+def _ctx(usuario: Optional[UsuarioSecretaria] = None, **extra):
+    base = {"usuario": usuario, "modo_actual": None}
     base.update(extra)
     return base
 
@@ -102,8 +102,9 @@ async def dashboard(request: Request):
     if not usuario:
         return RedirectResponse("/secretaria/login", status_code=302)
     return templates.TemplateResponse(
+        request,
         "secretaria/dashboard.html",
-        _ctx(request, usuario=usuario, modo_actual="dashboard"),
+        _ctx(usuario=usuario, modo_actual="dashboard"),
     )
 
 
@@ -111,8 +112,9 @@ async def dashboard(request: Request):
 @router.get("/login", response_class=HTMLResponse)
 async def login_form(request: Request, error: Optional[str] = None, ok: Optional[str] = None):
     return templates.TemplateResponse(
+        request,
         "secretaria/login.html",
-        _ctx(request, error=error, ok=ok),
+        _ctx(error=error, ok=ok),
     )
 
 
@@ -153,8 +155,9 @@ async def logout():
 @router.get("/registro", response_class=HTMLResponse)
 async def registro_form(request: Request, error: Optional[str] = None):
     return templates.TemplateResponse(
+        request,
         "secretaria/registro.html",
-        _ctx(request, error=error),
+        _ctx(error=error),
     )
 
 
@@ -247,9 +250,9 @@ async def redactor_view(request: Request):
     finally:
         db.close()
     return templates.TemplateResponse(
+        request,
         "secretaria/redactor.html",
         _ctx(
-            request,
             usuario=usuario,
             modo_actual="redactor",
             instituciones=instituciones,
@@ -316,9 +319,9 @@ async def redactor_generar(
         db.close()
 
     return templates.TemplateResponse(
+        request,
         "secretaria/_redactor_resultado.html",
         {
-            "request": request,
             "texto_salida": texto_salida,
             "documento_id": doc_id,
         },
@@ -398,8 +401,9 @@ async def historial(request: Request):
     finally:
         db.close()
     return templates.TemplateResponse(
+        request,
         "secretaria/historial.html",
-        _ctx(request, usuario=usuario, modo_actual="historial", documentos=docs),
+        _ctx(usuario=usuario, modo_actual="historial", documentos=docs),
     )
 
 
@@ -421,9 +425,9 @@ async def directorio_lista(request: Request, q: Optional[str] = None):
     finally:
         db.close()
     return templates.TemplateResponse(
+        request,
         "secretaria/directorio.html",
         _ctx(
-            request,
             usuario=usuario,
             modo_actual="directorio",
             instituciones=instituciones,
@@ -486,6 +490,7 @@ async def directorio_detalle(inst_id: int, request: Request):
     finally:
         db.close()
     return templates.TemplateResponse(
+        request,
         "secretaria/directorio_detalle.html",
-        _ctx(request, usuario=usuario, modo_actual="directorio", inst=inst),
+        _ctx(usuario=usuario, modo_actual="directorio", inst=inst),
     )
