@@ -77,6 +77,12 @@ async def admin_chat_panel(request: Request):
     return templates.TemplateResponse(request, "admin_chat.html")
 
 
+@app.get("/sandra", response_class=HTMLResponse)
+async def sandra_page(request: Request):
+    """Página estática /sandra — sin autenticación, sin base de datos."""
+    return templates.TemplateResponse(request, "sandra.html")
+
+
 @app.post("/api/contacto")
 async def recibir_contacto(form: ContactForm, request: Request):
     db = SessionLocal()
