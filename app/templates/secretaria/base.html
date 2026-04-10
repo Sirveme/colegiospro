@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/static/secretaria/secretaria.css">
   <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
 </head>
-<body class="sp-body">
+<body class="sp-body" hx-boost="true" hx-target="body" hx-swap="outerHTML show:window:top">
   {% if usuario %}
   <aside class="sp-sidebar">
     <div class="sp-brand">
@@ -24,13 +24,13 @@
       <a href="/secretaria/redactor" class="{% if modo_actual == 'redactor' %}active{% endif %}">
         <span class="ic">✎</span> Redactor
       </a>
-      <a href="#" class="disabled" title="Próximamente">
+      <a href="#" class="disabled" hx-disable title="Próximamente">
         <span class="ic">⌫</span> Corrector
       </a>
-      <a href="#" class="disabled" title="Próximamente">
+      <a href="#" class="disabled" hx-disable title="Próximamente">
         <span class="ic">📣</span> Comunicado
       </a>
-      <a href="#" class="disabled" title="Próximamente">
+      <a href="#" class="disabled" hx-disable title="Próximamente">
         <span class="ic">📷</span> Post Redes
       </a>
       <hr>
@@ -42,7 +42,7 @@
       </a>
     </nav>
     <div class="sp-foot">
-      <a href="/secretaria/logout">Cerrar sesión</a>
+      <a href="/secretaria/logout" hx-boost="false">Cerrar sesión</a>
     </div>
   </aside>
   {% endif %}
