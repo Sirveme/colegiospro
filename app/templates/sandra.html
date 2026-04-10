@@ -331,8 +331,9 @@ body {
 
 .dualidad-card {
   border-radius: 4px;
-  overflow: visible;   /* cambia de hidden a visible */
+  overflow: hidden;
   position: relative;
+  min-width: 0;  /* evita que desborde la grilla */
 }
 .dualidad-card.antes {
   background: var(--grafito);
@@ -343,12 +344,28 @@ body {
   border: 1px solid rgba(200,169,110,0.2);
 }
 
+/* Sección — no recortar hijos */
+.antes-ahora {
+  overflow: visible;
+}
+/* Celular — fotos más compactas */
+@media (max-width: 900px) {
+  .dualidad-foto {
+    max-height: 420px;
+    object-fit: cover;
+    object-position: center 15%;
+  }
+}
+
+
 .dualidad-foto {
   width: 100%;
-  height: auto;        /* altura automática según la imagen */
-  aspect-ratio: unset; /* elimina el recorte forzado */
-  object-fit: contain; /* muestra la imagen completa */
+  height: auto;
+  aspect-ratio: unset;
+  object-fit: cover;
+  object-position: center top;
   display: block;
+  max-height: 600px;  /* limita altura en escritorio */
 }
 .dualidad-foto-ph {
   width: 100%;
