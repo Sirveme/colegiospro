@@ -1,4 +1,14 @@
-<article class="sp-doc" data-doc-id="{{ documento_id }}">
+{% if ref_aviso %}
+<div class="sp-alert sp-alert-error" style="margin-bottom:.75rem;">
+  ⚠ {{ ref_aviso }}
+</div>
+{% elif ref_usado %}
+<div class="sp-alert sp-alert-ok" style="margin-bottom:.75rem;">
+  ✓ Documento de referencia procesado por la IA.
+</div>
+{% endif %}
+
+<article class="sp-doc sp-doc--{{ tono or 'formal' }}" data-doc-id="{{ documento_id }}" data-tono="{{ tono or 'formal' }}">
   <pre class="sp-doc-texto" id="sp-doc-texto-{{ documento_id }}">{{ texto_salida }}</pre>
 </article>
 <div class="sp-acciones">
@@ -19,3 +29,4 @@
     onclick="this.textContent='✓ Guardado'"
   >💾 Guardar en historial</button>
 </div>
+<script>spStopSpinner();</script>

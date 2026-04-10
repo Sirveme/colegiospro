@@ -1,0 +1,63 @@
+<div class="sp-ficha-content">
+  <header class="sp-ficha-titular">
+    {% if ficha.foto_url %}
+    <img src="{{ ficha.foto_url }}" alt="Foto" class="sp-ficha-foto">
+    {% else %}
+    <div class="sp-ficha-foto sp-ficha-foto--vacia">👤</div>
+    {% endif %}
+    <div>
+      <strong>{{ inst.titular_tratamiento or '' }} {{ inst.titular_nombre or '—' }}</strong>
+      <small>{{ inst.titular_cargo or '' }}</small>
+      <small>{{ inst.nombre_institucion }}</small>
+    </div>
+  </header>
+
+  <details open class="sp-ficha-section">
+    <summary>Datos institucionales (compartidos)</summary>
+    <dl class="sp-detalle">
+      <dt>RUC</dt><dd>{{ inst.ruc or '—' }}</dd>
+      <dt>Tipo</dt><dd>{{ inst.tipo or '—' }}</dd>
+      <dt>Región</dt><dd>{{ inst.region or '—' }}</dd>
+      <dt>Ciudad</dt><dd>{{ inst.ciudad or '—' }}</dd>
+      <dt>Correo</dt><dd>{{ inst.correo or '—' }}</dd>
+      <dt>Teléfono</dt><dd>{{ inst.telefono or '—' }}</dd>
+      <dt>Dirección</dt><dd>{{ inst.direccion or '—' }}</dd>
+    </dl>
+  </details>
+
+  <details open class="sp-ficha-section">
+    <summary>Datos privados de tu colegio</summary>
+    <form
+      class="sp-form sp-ficha-form"
+      hx-post="/secretaria/destinatario/{{ inst.id }}/ficha"
+      hx-swap="none"
+      onsubmit="spFichaGuardadaToast(event)"
+    >
+      <label>
+        <span>Foto (URL)</span>
+        <input type="url" name="foto_url" value="{{ ficha.foto_url }}" placeholder="https://...">
+      </label>
+      <label>
+        <span>WhatsApp</span>
+        <input type="text" name="whatsapp" value="{{ ficha.whatsapp }}" placeholder="+51 9...">
+      </label>
+      <label>
+        <span>Red social</span>
+        <input type="text" name="red_social" value="{{ ficha.red_social }}" placeholder="@usuario / link">
+      </label>
+      <label>
+        <span>Nombre de su secretaria</span>
+        <input type="text" name="nombre_secretaria" value="{{ ficha.nombre_secretaria }}">
+      </label>
+      <label>
+        <span>Fecha de inicio en el cargo</span>
+        <input type="date" name="fecha_inicio_cargo" value="{{ ficha.fecha_inicio_cargo }}">
+      </label>
+      <label>
+        <span>Notas de relacionamiento (privadas)</span>
+        <textarea name="notas_relacionamiento" rows="5" placeholder="Ej: amigo del decano anterior, asistió a la última gala, simpatizante de...">{{ ficha.notas_relacionamiento }}</textarea>
+      </label>
+      <button type="submit" class="sp-btn sp-btn-primary">Guardar ficha</button>
+    </form>
+  </details>
+</div>
