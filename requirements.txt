@@ -1,8 +1,12 @@
 fastapi
-httpx
 uvicorn[standard]
 jinja2
 sqlalchemy
 openpyxl
 python-multipart
 psycopg2-binary
+# ─── SecretariaPro ───
+openai>=1.30.0
+argon2-cffi
+cryptography
+reportlab
