@@ -61,20 +61,20 @@ class ContactForm(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse("home.html", {"request": request})
+    return templates.TemplateResponse(request, "home.html")
 
 
 @app.get("/demo", response_class=HTMLResponse)
 async def landing_demo(request: Request):
     """Landing page de ventas con videos y chat"""
-    return templates.TemplateResponse("landing.html", {"request": request})
+    return templates.TemplateResponse(request, "landing.html")
 
 
 @app.get("/admin/chat", response_class=HTMLResponse)
 async def admin_chat_panel(request: Request):
     """Panel de chat para admin (Duil)"""
     # TODO: Add authentication middleware
-    return templates.TemplateResponse("admin_chat.html", {"request": request})
+    return templates.TemplateResponse(request, "admin_chat.html")
 
 
 @app.post("/api/contacto")
