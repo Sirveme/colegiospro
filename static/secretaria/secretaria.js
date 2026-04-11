@@ -1,5 +1,33 @@
 // SecretariaPro — JS del módulo
 
+// ─── Toggle tema claro/oscuro ───
+function toggleTema() {
+  var html = document.documentElement;
+  var actual = html.getAttribute("data-tema") || "claro";
+  var nuevo = actual === "claro" ? "oscuro" : "claro";
+  html.setAttribute("data-tema", nuevo);
+  try { localStorage.setItem("sp-tema", nuevo); } catch (e) {}
+  spActualizarIconoTema();
+}
+
+function spActualizarIconoTema() {
+  var icon = document.getElementById("sp-tema-icon");
+  if (!icon) return;
+  var t = document.documentElement.getAttribute("data-tema") || "claro";
+  icon.textContent = t === "oscuro" ? "🌙" : "☀";
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  // El tema ya fue aplicado por el script inline del <head>; aquí solo el icono.
+  spActualizarIconoTema();
+});
+
+// HTMX boost reemplaza el body — re-sincronizar el icono después de navegar
+document.addEventListener("htmx:afterSwap", function () {
+  spActualizarIconoTema();
+});
+
+
 // ─── Copiar al portapapeles ───
 function spCopiar(docId) {
   var el = document.getElementById("sp-doc-texto-" + docId);
@@ -91,10 +119,151 @@ function spBuscarRuc() {
     });
 }
 
-// ─── HTMX hooks ───
-// Re-aplicar nada especial; hx-boost en <body> ya maneja navegación.
-// Cuando htmx reemplaza el body, los listeners onclick=" " quedan vivos
-// porque están en HTML inline.
-document.addEventListener("htmx:afterSwap", function (e) {
-  // Por si en el futuro queremos rerun de algo tras navegar
+// ─── Spinner del botón "Generar documento" ───
+// Reemplaza el contenido del botón btn-generar con un spinner + mensaje
+// rotativo cada 2 segundos mientras dura la request HTMX.
+var SP_LOADER_MSGS = [
+  "Redactando…",
+  "Revisando el tono…",
+  "Aplicando formato oficial…",
+  "Casi listo…"
+];
+var _spInterval = null;
+var _spBtnLabelOriginal = null;
+
+function spStartSpinner() {
+  var btn = document.getElementById("btn-generar");
+  if (!btn) return;
+  if (_spBtnLabelOriginal === null) {
+    _spBtnLabelOriginal = btn.innerHTML;
+  }
+  btn.disabled = true;
+  var i = 0;
+  btn.innerHTML = '<span class="sp-spinner"></span> ' + SP_LOADER_MSGS[0];
+  if (_spInterval) clearInterval(_spInterval);
+  _spInterval = setInterval(function () {
+    i = (i + 1) % SP_LOADER_MSGS.length;
+    btn.innerHTML = '<span class="sp-spinner"></span> ' + SP_LOADER_MSGS[i];
+  }, 2000);
+}
+
+function spStopSpinner() {
+  if (_spInterval) {
+    clearInterval(_spInterval);
+    _spInterval = null;
+  }
+  var btn = document.getElementById("btn-generar");
+  if (!btn) return;
+  btn.disabled = false;
+  btn.innerHTML = _spBtnLabelOriginal || "Generar documento";
+}
+
+// ─── Spinner del botón Corregir (modo Corrector) ───
+var SP_CORR_MSGS = [
+  "Procesando…",
+  "Aplicando la acción…",
+  "Revisando el resultado…",
+  "Casi listo…"
+];
+var _spCorrInterval = null;
+var _spCorrBtnLabel = null;
+
+function spStartCorrSpinner() {
+  var btn = document.getElementById("btn-corregir");
+  if (!btn) return;
+  if (_spCorrBtnLabel === null) _spCorrBtnLabel = btn.innerHTML;
+  btn.disabled = true;
+  var i = 0;
+  btn.innerHTML = '<span class="sp-spinner"></span> ' + SP_CORR_MSGS[0];
+  if (_spCorrInterval) clearInterval(_spCorrInterval);
+  _spCorrInterval = setInterval(function () {
+    i = (i + 1) % SP_CORR_MSGS.length;
+    btn.innerHTML = '<span class="sp-spinner"></span> ' + SP_CORR_MSGS[i];
+  }, 2000);
+}
+
+function spStopCorrSpinner() {
+  if (_spCorrInterval) {
+    clearInterval(_spCorrInterval);
+    _spCorrInterval = null;
+  }
+  var btn = document.getElementById("btn-corregir");
+  if (!btn) return;
+  btn.disabled = false;
+  btn.innerHTML = _spCorrBtnLabel || "Procesar texto";
+}
+
+// Feedback visual al seleccionar archivo
+document.addEventListener("change", function (e) {
+  if (e.target && e.target.id === "doc-referencia") {
+    var estado = document.getElementById("doc-estado");
+    if (!estado) return;
+    if (e.target.files && e.target.files[0]) {
+      estado.style.display = "block";
+      estado.style.color = "#2d8a48";
+      estado.textContent = "✓ Archivo cargado: " + e.target.files[0].name;
+    } else {
+      estado.style.display = "none";
+      estado.textContent = "";
+    }
+  }
 });
+
+// ─── Ficha del destinatario ───
+function spAbrirFicha() {
+  var sel = document.getElementById("sp-institucion-select");
+  var panel = document.getElementById("sp-ficha-panel");
+  var body = document.getElementById("sp-ficha-body");
+  if (!sel || !panel || !body) return;
+  var instId = sel.value;
+  if (!instId) {
+    spToast("Primero elige un destinatario en el selector");
+    return;
+  }
+  panel.classList.add("is-open");
+  panel.setAttribute("aria-hidden", "false");
+  body.innerHTML = '<p class="sp-placeholder">Cargando ficha…</p>';
+  fetch("/secretaria/destinatario/" + encodeURIComponent(instId) + "/ficha", {
+    credentials: "same-origin",
+    headers: { "Accept": "text/html" }
+  })
+    .then(function (r) { return r.text(); })
+    .then(function (html) {
+      body.innerHTML = html;
+      if (window.htmx) window.htmx.process(body);
+    })
+    .catch(function () {
+      body.innerHTML = '<p class="sp-alert sp-alert-error">No se pudo cargar la ficha.</p>';
+    });
+}
+
+function spCerrarFicha() {
+  var panel = document.getElementById("sp-ficha-panel");
+  if (!panel) return;
+  panel.classList.remove("is-open");
+  panel.setAttribute("aria-hidden", "true");
+}
+
+function spFichaGuardadaToast(e) {
+  // El form usa htmx — interceptamos solo para mostrar un toast en éxito.
+  // htmx dispara htmx:afterRequest después; aquí solo evitamos el submit nativo.
+  // Devolvemos true para dejar que htmx tome el control.
+  return true;
+}
+
+document.addEventListener("htmx:afterRequest", function (e) {
+  // Si una request del form de ficha terminó OK, toast.
+  var path = (e.detail && e.detail.requestConfig && e.detail.requestConfig.path) || "";
+  if (/\/destinatario\/\d+\/ficha$/.test(path) && e.detail.successful) {
+    spToast("Ficha guardada");
+  }
+});
+
+// Cerrar panel con Escape
+document.addEventListener("keydown", function (e) {
+  if (e.key === "Escape") spCerrarFicha();
+});
+
+// Por si una request HTMX falla, paramos el spinner
+document.addEventListener("htmx:responseError", spStopSpinner);
+document.addEventListener("htmx:sendError", spStopSpinner);
