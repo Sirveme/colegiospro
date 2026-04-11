@@ -81,6 +81,25 @@ class DocumentoSecretaria(Base):
     creado_en = Column(DateTime, default=_utcnow, index=True)
 
 
+# ─── directorio_contacto_extendido ───
+# Datos privados de cada colegio sobre sus contactos en el directorio.
+# NO se comparten entre colegios. PK compuesta (colegio_id, institucion_id).
+class DirectorioContactoExtendido(Base):
+    __tablename__ = "directorio_contacto_extendido"
+
+    colegio_id = Column(Integer, primary_key=True)
+    institucion_id = Column(
+        Integer, ForeignKey("directorio_institucional.id"), primary_key=True
+    )
+    foto_url = Column(String(500))
+    whatsapp = Column(String(30))
+    red_social = Column(String(200))
+    nombre_secretaria = Column(String(150))
+    fecha_inicio_cargo = Column(String(20))  # ISO date string para flexibilidad
+    notas_relacionamiento = Column(Text)
+    actualizado_en = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+
 # ─── imagenes_generadas ───
 class ImagenGenerada(Base):
     __tablename__ = "imagenes_generadas"
