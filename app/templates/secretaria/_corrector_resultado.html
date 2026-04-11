@@ -1,0 +1,32 @@
+{% if ref_aviso %}
+<div class="sp-alert sp-alert-error" style="margin-bottom:.75rem;">⚠ {{ ref_aviso }}</div>
+{% endif %}
+
+<div class="sp-resultado-head">
+  <small style="color: var(--sp-muted);">Acción aplicada:</small>
+  <strong>{{ accion_etiqueta }}</strong>
+</div>
+
+<article class="sp-doc sp-doc--formal" data-doc-id="{{ documento_id }}" data-accion="{{ accion }}">
+  <pre class="sp-doc-texto" id="sp-doc-texto-{{ documento_id }}">{{ texto_salida }}</pre>
+</article>
+
+<div class="sp-acciones">
+  <a class="sp-btn" href="/secretaria/documento/{{ documento_id }}/pdf" target="_blank" rel="noopener">
+    📄 Descargar PDF
+  </a>
+  <button class="sp-btn" type="button" onclick="spImprimir({{ documento_id }})">
+    🖨 Imprimir
+  </button>
+  <button class="sp-btn" type="button" onclick="spCopiar({{ documento_id }})">
+    📋 Copiar texto
+  </button>
+  <button
+    class="sp-btn sp-btn-primary"
+    type="button"
+    hx-post="/secretaria/documento/{{ documento_id }}/guardar"
+    hx-swap="none"
+    onclick="this.textContent='✓ Guardado'"
+  >💾 Guardar en historial</button>
+</div>
+<script>spStopCorrSpinner();</script>
