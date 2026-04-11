@@ -96,6 +96,127 @@ def _tono_cfg(tono: str) -> dict:
     return TONOS.get((tono or "").strip().lower(), TONOS["formal"])
 
 
+# ─── Tipos de documento ────────────────────────────────────────────
+TIPOS = {
+    "carta": {
+        "label": "Carta",
+        "icono": "✉️",
+        "estructura": "Comunicación entre instituciones o personas. Encabezado formal, cuerpo en párrafos, despedida.",
+        "partes": "Lugar y fecha / Destinatario con tratamiento / Asunto / Saludo / Cuerpo / Despedida / Firma",
+    },
+    "oficio": {
+        "label": "Oficio",
+        "icono": "📄",
+        "estructura": "Documento oficial numerado entre instituciones públicas peruanas.",
+        "partes": "Número de oficio (OFICIO N° ___-2026-[SIGLAS]) / Lugar y fecha / Destinatario / Asunto / Referencia (si aplica) / Cuerpo / Atentamente / Firma y sello",
+    },
+    "memorandum": {
+        "label": "Memorándum",
+        "icono": "📋",
+        "estructura": "Comunicación interna rápida entre áreas o funcionarios.",
+        "partes": "MEMORÁNDUM N° / PARA: / DE: / ASUNTO: / FECHA: / Cuerpo breve / Firma",
+    },
+    "circular": {
+        "label": "Circular",
+        "icono": "📢",
+        "estructura": "Comunicado general dirigido a múltiples destinatarios simultáneamente.",
+        "partes": "CIRCULAR N° / Lugar y fecha / A: (destinatarios) / ASUNTO: / Cuerpo / Firma",
+    },
+    "acta": {
+        "label": "Acta de reunión",
+        "icono": "📝",
+        "estructura": "Registro formal de acuerdos tomados en una reunión o asamblea.",
+        "partes": "ACTA N° / Lugar, fecha y hora / Asistentes / Agenda / Desarrollo de puntos / Acuerdos / Hora de cierre / Firmas",
+    },
+    "invitacion": {
+        "label": "Invitación",
+        "icono": "🎟️",
+        "estructura": "Convocatoria formal a un evento institucional.",
+        "partes": "Encabezado institucional / Fórmula de honor (tiene el agrado de invitar) / Detalles del evento / RSVP si aplica / Firma",
+    },
+    "certificado": {
+        "label": "Certificado / Constancia",
+        "icono": "🏅",
+        "estructura": "Documento que certifica un hecho, cargo o condición.",
+        "partes": "EL DECANO / HACE CONSTAR QUE: / Datos del certificado / A solicitud del interesado / Firma y sello",
+    },
+}
+
+
+def _tipo_cfg(tipo: str) -> dict:
+    return TIPOS.get((tipo or "").strip().lower(), TIPOS["carta"])
+
+
+def listar_tipos() -> list:
+    return [
+        {"id": k, "label": v["label"], "icono": v["icono"]}
+        for k, v in TIPOS.items()
+    ]
+
+
+# ─── Ajustes post-generación ───────────────────────────────────────
+AJUSTES = {
+    "mas_corto": {
+        "label": "Más corto",
+        "icono": "✂️",
+        "system": (
+            "Eres un editor experto en concisión institucional peruana. "
+            "Acorta el documento al mínimo indispensable. CONSERVA la "
+            "estructura formal completa (encabezado, destinatario, asunto, "
+            "saludo, cuerpo, despedida, firma) y el tono. Elimina "
+            "redundancias y fórmulas innecesarias. Devuelve SOLO el "
+            "documento acortado, sin explicaciones."
+        ),
+    },
+    "mas_largo": {
+        "label": "Más largo",
+        "icono": "📝",
+        "system": (
+            "Eres un redactor oficial peruano. Amplía este documento con "
+            "más detalle, fundamento y formalidades apropiadas para el tono. "
+            "Mantén la estructura. NO inventes datos que no existan. "
+            "Devuelve SOLO el documento ampliado, sin explicaciones."
+        ),
+    },
+    "sugerir_asunto": {
+        "label": "Sugerir asunto",
+        "icono": "💡",
+        "system": (
+            "Lee este documento y sugiere EXACTAMENTE 3 opciones de línea "
+            "de 'Asunto:' — claras, precisas, formales, máximo 10 palabras "
+            "cada una. Formato: '1. ...\\n2. ...\\n3. ...' — solo eso, sin "
+            "encabezados ni explicaciones."
+        ),
+    },
+    "version_whatsapp": {
+        "label": "Versión WhatsApp",
+        "icono": "💬",
+        "system": (
+            "Convierte este documento formal en un mensaje corto y directo "
+            "para WhatsApp. Máximo 3 oraciones. Tono cordial y respetuoso, "
+            "pero conversacional. Sin encabezados ni firma. Devuelve SOLO "
+            "el mensaje."
+        ),
+    },
+    "traducir_ingles": {
+        "label": "Traducir al inglés",
+        "icono": "🌐",
+        "system": (
+            "Traduce este documento al inglés formal manteniendo la "
+            "estructura institucional, el tono y todos los datos. Devuelve "
+            "SOLO la traducción."
+        ),
+    },
+}
+
+
+def listar_ajustes() -> list:
+    return [
+        {"id": k, "label": v["label"], "icono": v["icono"]}
+        for k, v in AJUSTES.items()
+    ]
+
+
 def _fecha_lima_legible() -> str:
     meses = [
         "enero", "febrero", "marzo", "abril", "mayo", "junio",
@@ -108,59 +229,58 @@ def _fecha_lima_legible() -> str:
     return f"{ahora.day} de {meses[ahora.month - 1]} de {ahora.year}"
 
 
-def _build_system_prompt(tono: str) -> str:
+def _build_system_prompt(tono: str, tipo_documento: str = "carta") -> str:
     cfg = _tono_cfg(tono)
-    return f"""Eres un redactor oficial experto en correspondencia institucional del Perú. Trabajas para secretarias de colegios profesionales (CCP, CIP, CMP, CAL, etc.) que reciben instrucciones verbales y necesitan convertirlas en cartas oficiales bien redactadas.
+    tipo = _tipo_cfg(tipo_documento)
+    return f"""Eres un redactor oficial experto en documentos administrativos peruanos. Trabajas para secretarias de colegios profesionales (CCP, CIP, CMP, CAL, etc.) que reciben instrucciones verbales y necesitan convertirlas en documentos formales perfectos.
 
 ================================================================
-REGLA #1 — INTERPRETACIÓN, NO COPIA
+REGLA FUNDAMENTAL — INTERPRETACIÓN, NO COPIA
 ================================================================
-La instrucción que recibes del usuario es coloquial, informal, a veces telegráfica. NUNCA la copies textualmente en la carta. Tu trabajo es ENTENDER la intención y REDACTARLA de nuevo en lenguaje formal peruano apropiado.
+La instrucción del usuario describe QUÉ comunicar, en lenguaje coloquial, informal, a veces telegráfica. TÚ decides CÓMO decirlo en lenguaje formal peruano. NUNCA copies la instrucción literal.
 
-NUNCA escribas frases como "en atención a lo siguiente: [texto del usuario]" — eso es copiar, no redactar.
+Ejemplos de transformación correcta:
+- Instrucción: "dile al alcalde que no podré ir a la reunión del jueves"
+  → Cuerpo: "Por la presente, me dirijo a Usted con la finalidad de comunicarle, con el debido respeto, que por motivos institucionales del Colegio me veré imposibilitado de asistir a la reunión convocada para el día jueves..."
+- Instrucción: "agradécele al rector por el préstamo del auditorio"
+  → Cuerpo: "Tengo el agrado de dirigirme a Usted para expresarle, en nombre de nuestra institución, nuestro más sincero agradecimiento por la gentil atención de habernos facilitado el auditorio de la universidad..."
+
+⚠️ Si la instrucción dice "dile al Alcalde que no voy", redacta una excusa formal de inasistencia — JAMÁS copies "dile al Alcalde que no voy". NUNCA escribas frases como "en atención a lo siguiente: [texto del usuario]" — eso es copiar, no redactar.
 
 ================================================================
-REGLA #2 — TONO OBLIGATORIO: {cfg['etiqueta'].upper()}
+TIPO DE DOCUMENTO: {tipo['label'].upper()}
 ================================================================
-Esta carta debe escribirse en TONO {cfg['etiqueta'].upper()}. Esto NO es decorativo — define la forma completa del texto.
+{tipo['estructura']}
 
+Estructura obligatoria de partes:
+{tipo['partes']}
+
+================================================================
+TONO OBLIGATORIO: {cfg['etiqueta'].upper()}
+================================================================
 Persona gramatical: {cfg['persona_gramatical']}.
 
 Reglas específicas del tono {cfg['etiqueta']}:
 {cfg['reglas']}
 
 Saludo OBLIGATORIO de apertura: "{cfg['saludo']}"
-Despedida OBLIGATORIA (debe ir al final del cuerpo, antes de la firma):
+Despedida OBLIGATORIA (al final del cuerpo, antes de la firma):
 \"\"\"{cfg['despedida']}\"\"\"
 
 Ejemplo de cómo debe sentirse la apertura del cuerpo en este tono:
 «{cfg['ejemplo_apertura']}»
 
-⚠️ El lector debe poder distinguir CLARAMENTE este tono de los otros dos (Formal, Cordial, Protocolar). Si el resultado se parece a otro tono, has fallado.
-
-================================================================
-ESTRUCTURA OBLIGATORIA DE LA CARTA
-================================================================
-1. Lugar y fecha
-2. Línea en blanco
-3. Bloque del destinatario: tratamiento + nombre / cargo / institución / "Presente.-"
-4. Línea en blanco
-5. "Asunto: <resumen breve de máximo 8 palabras>"
-6. Línea en blanco
-7. Saludo de apertura (el indicado arriba)
-8. Cuerpo (extensión según el tono)
-9. Despedida formal (la indicada arriba)
-10. Firma: nombre del decano / "Decano" / nombre del colegio
+⚠️ El lector debe poder distinguir CLARAMENTE este tono de los otros (Formal, Cordial, Protocolar). Si el resultado se parece a otro tono, has fallado.
 
 ================================================================
 REGLAS ADICIONALES
 ================================================================
 - Español peruano estándar. Sin tuteo. Sin emojis.
-- NUNCA inventes datos que no te dieron (números, fechas concretas, nombres). Si la instrucción no los menciona, redacta sin ellos.
-- Si no hay nombre del decano, deja "[Nombre del Decano]" como placeholder.
+- NUNCA inventes datos que no te dieron (números, fechas concretas, nombres). Si no los hay, redacta sin ellos o usa "[ ___ ]".
+- Si algún dato del firmante está vacío, deja el espacio con guiones bajos.
 - Si no hay destinatario, usa "Señor(a):" y "Presente.-".
-- Si se te entrega un "Documento de referencia", úsalo SOLO como contexto para entender mejor el caso (números de oficio, fechas, antecedentes). NO lo copies dentro de la carta nueva. Cita en el cuerpo lo que sea relevante en redacción propia.
-- Responde EXCLUSIVAMENTE con el texto de la carta, sin explicaciones, sin markdown, sin comillas envolventes."""
+- Si se te entrega un "Documento de referencia", úsalo SOLO como contexto (antecedentes, números de oficio, fechas). NO lo copies dentro del documento nuevo. Referéncialo con tus propias palabras.
+- Responde EXCLUSIVAMENTE con el texto del documento, sin explicaciones, sin markdown, sin comillas envolventes."""
 
 
 def _build_user_prompt(
@@ -168,8 +288,10 @@ def _build_user_prompt(
     destinatario: Optional[dict],
     remitente: Optional[dict],
     documento_referencia: Optional[str] = None,
+    tipo_documento: str = "carta",
 ) -> str:
     fecha = _fecha_lima_legible()
+    tipo = _tipo_cfg(tipo_documento)
 
     # Bloque destinatario
     if destinatario:
@@ -209,25 +331,37 @@ def _build_user_prompt(
             f"\"\"\"{ref}\"\"\"\n"
         )
 
-    return f"""=== DATOS PARA LA CARTA ===
+    # Datos extra del remitente (perfil personalizado)
+    nombre_firmante = (rem.get("nombre_firmante") or rem.get("nombre_decano") or "").strip()
+    cargo_firmante = (rem.get("cargo_firmante") or "Decano").strip()
+    tratamiento_firmante = (rem.get("tratamiento_firmante") or "").strip()
+
+    return f"""=== TIPO DE DOCUMENTO ===
+{tipo['label']}
+
+=== INSTRUCCIÓN DEL USUARIO (en lenguaje coloquial — NO copies esto en el documento) ===
+\"\"\"{texto_entrada}\"\"\"
+
+Tu tarea:
+1. Lee y COMPRENDE qué se necesita comunicar.
+2. Redacta el documento completo en español peruano formal.
+3. El cuerpo del documento debe expresar el CONTENIDO de la instrucción, NO la instrucción misma.
+4. Si la instrucción dice "dile al Alcalde que no voy", redacta una excusa formal de inasistencia — no copies "dile al Alcalde que no voy".
+
+=== DATOS DE LA CARTA ===
 
 LUGAR Y FECHA: {ciudad}, {fecha}
 
 DESTINATARIO:
 {bloque_dest}
 
-REMITENTE:
+REMITENTE / FIRMANTE:
 - Colegio: {colegio or '[Nombre del Colegio]'}
-- Decano: {decano or '[Nombre del Decano]'}
+- Firmante: {(tratamiento_firmante + ' ' + nombre_firmante).strip() or '[Nombre del Firmante]'}
+- Cargo: {cargo_firmante}
 - Ciudad: {ciudad}
 {bloque_ref}
-=== INSTRUCCIÓN COLOQUIAL DEL USUARIO ===
-(Esto es lo que la secretaria escribió en lenguaje informal. NO lo copies textualmente. Interpreta la intención y redacta la carta formal correspondiente.)
-
-\"\"\"{texto_entrada}\"\"\"
-
-=== TAREA ===
-Redacta la carta oficial completa siguiendo la estructura y el TONO indicados en las instrucciones del sistema. Devuelve SOLO el texto de la carta."""
+Responde ÚNICAMENTE con el texto del documento. Sin explicaciones, sin markdown."""
 
 
 def generar_documento(
@@ -236,6 +370,7 @@ def generar_documento(
     destinatario: Optional[dict] = None,
     remitente: Optional[dict] = None,
     documento_referencia: Optional[str] = None,
+    tipo_documento: str = "carta",
     api_key: Optional[str] = None,
     modelo: str = "gpt-4o",
 ) -> str:
@@ -248,9 +383,13 @@ def generar_documento(
     if tono_norm not in TONOS:
         tono_norm = "formal"
 
-    system_prompt = _build_system_prompt(tono_norm)
+    tipo_norm = (tipo_documento or "carta").strip().lower()
+    if tipo_norm not in TIPOS:
+        tipo_norm = "carta"
+
+    system_prompt = _build_system_prompt(tono_norm, tipo_norm)
     user_prompt = _build_user_prompt(
-        texto_entrada, destinatario, remitente, documento_referencia
+        texto_entrada, destinatario, remitente, documento_referencia, tipo_norm
     )
 
     key = api_key or os.environ.get("OPENAI_API_KEY")
@@ -266,7 +405,6 @@ def generar_documento(
                 ],
             )
             texto = (resp.choices[0].message.content or "").strip()
-            # Si por alguna razón la API devolvió vacío, caer al borrador
             if texto:
                 return texto
         except Exception as e:
@@ -275,6 +413,50 @@ def generar_documento(
             )
 
     return _fallback_borrador(texto_entrada, tono_norm, destinatario, remitente)
+
+
+def ajustar_documento(
+    texto_actual: str,
+    ajuste: str,
+    api_key: Optional[str] = None,
+    modelo: str = "gpt-4o",
+) -> str:
+    """
+    Aplica un ajuste post-generación al texto: más corto, más largo,
+    sugerir asunto, versión WhatsApp, traducir al inglés.
+    """
+    ajuste_norm = (ajuste or "").strip().lower()
+    if ajuste_norm not in AJUSTES:
+        return texto_actual
+
+    cfg = AJUSTES[ajuste_norm]
+    key = api_key or os.environ.get("OPENAI_API_KEY")
+
+    if _openai_available and key:
+        try:
+            client = OpenAI(api_key=key)
+            resp = client.chat.completions.create(
+                model=modelo,
+                temperature=0.4,
+                messages=[
+                    {"role": "system", "content": cfg["system"]},
+                    {"role": "user", "content": texto_actual},
+                ],
+            )
+            out = (resp.choices[0].message.content or "").strip()
+            if out:
+                return out
+        except Exception as e:
+            return (
+                f"[BORRADOR LOCAL — Error al aplicar ajuste '{cfg['label']}': {e}]\n\n"
+                f"{texto_actual}"
+            )
+
+    return (
+        f"[BORRADOR LOCAL — La IA no está conectada. Para aplicar el ajuste "
+        f"'{cfg['label']}' configura OPENAI_API_KEY en Railway.]\n\n"
+        f"{texto_actual}"
+    )
 
 
 def _fallback_borrador(
