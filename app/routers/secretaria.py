@@ -57,6 +57,30 @@ router = APIRouter(prefix="/secretaria", tags=["SecretariaPro"])
 templates = Jinja2Templates(directory="app/templates")
 
 
+# ─── Cache busting de assets estáticos ────────────────────────────
+# Inyecta `static_version` global en TODAS las plantillas como sufijo
+# `?v=N` en los <link>/<script> para invalidar la caché del navegador
+# automáticamente en cada deploy (mtime del archivo cambia → N cambia).
+def _static_version() -> str:
+    import os, time
+    candidatos = [
+        "static/secretaria/secretaria.js",
+        "static/secretaria/secretaria.css",
+    ]
+    mt = 0
+    for p in candidatos:
+        try:
+            m = int(os.path.getmtime(p))
+            if m > mt:
+                mt = m
+        except OSError:
+            pass
+    return str(mt or int(time.time()))
+
+
+templates.env.globals["static_version"] = _static_version()
+
+
 # ─── Helpers ───
 def _db():
     return SessionLocal()
