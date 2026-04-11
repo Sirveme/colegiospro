@@ -9,56 +9,126 @@
 <section class="sp-redactor">
   <form
     class="sp-col sp-col-input"
+    enctype="multipart/form-data"
     hx-post="/secretaria/redactor/generar"
     hx-target="#sp-resultado"
     hx-swap="innerHTML"
-    hx-indicator="#sp-loader"
+    hx-encoding="multipart/form-data"
+    hx-on::before-request="spStartSpinner()"
+    hx-on::after-request="spStopSpinner()"
   >
+    <!-- Tipo de documento -->
+    <div class="sp-field">
+      <label><span>Tipo de documento</span></label>
+      <div class="sp-tipo-grid" id="tipo-grid">
+        {% for t in tipos %}
+        <button
+          type="button"
+          class="sp-tipo-btn {% if loop.first %}activo{% endif %}"
+          data-tipo="{{ t.id }}"
+          onclick="spSeleccionarTipo('{{ t.id }}')"
+        >
+          <span class="tipo-icono">{{ t.icono }}</span>
+          {{ t.label }}
+        </button>
+        {% endfor %}
+      </div>
+      <input type="hidden" name="tipo_documento" id="tipo-seleccionado" value="carta">
+    </div>
+
+    <label class="sp-field">
+      <span>📎 Documento de referencia (opcional)</span>
+      <input
+        type="file"
+        id="doc-referencia"
+        name="documento_referencia"
+        accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp,.gif,.bmp,.txt,.md"
+      >
+      <small>PDF, Word, imagen o texto. Máximo 10 MB. La IA lo usará como contexto, no lo copiará.</small>
+      <div id="doc-estado" style="display:none; margin-top:6px; font-size:12px;"></div>
+    </label>
+
     <label class="sp-field">
       <span>Instrucción coloquial</span>
-      <textarea
-        name="texto_entrada"
-        rows="8"
-        required
-        placeholder="Ej: Dígale al Alcalde que no podré asistir por asuntos internos del Colegio"
-      ></textarea>
+      <div class="sp-textarea-wrap">
+        <textarea
+          name="texto_entrada"
+          id="instruccion"
+          rows="6"
+          required
+          placeholder="Ej: Dígale al Alcalde que no podré asistir por asuntos internos del Colegio"
+        ></textarea>
+        <button
+          type="button"
+          id="btn-voz"
+          onclick="spToggleVoz()"
+          title="Dictar instrucción"
+          class="sp-btn-voz"
+        >🎤</button>
+      </div>
+      <div id="voz-estado" style="display:none; margin-top:4px; font-size:11px; color:var(--sp-muted);">
+        🎙 Escuchando… habla ahora
+      </div>
     </label>
 
     <label class="sp-field">
       <span>Destinatario (opcional)</span>
-      <select name="institucion_id">
-        <option value="">— Sin destinatario específico —</option>
-        {% for inst in instituciones %}
-          <option value="{{ inst.id }}">
-            {{ inst.nombre_institucion }}{% if inst.titular_nombre %} · {{ inst.titular_nombre }}{% endif %}
-          </option>
-        {% endfor %}
-      </select>
+      <div class="sp-dest-row">
+        <select name="institucion_id" id="sp-institucion-select">
+          <option value="">— Sin destinatario específico —</option>
+          {% for inst in instituciones %}
+            <option value="{{ inst.id }}">
+              {{ inst.nombre_institucion }}{% if inst.titular_nombre %} · {{ inst.titular_nombre }}{% endif %}
+            </option>
+          {% endfor %}
+        </select>
+        <button
+          type="button"
+          class="sp-btn sp-btn-icon"
+          title="Ver ficha del destinatario"
+          onclick="spAbrirFicha()"
+        >👤</button>
+      </div>
       <small>
         ¿No está en la lista?
         <a href="/secretaria/directorio">Agregar institución</a>
       </small>
     </label>
 
-    <fieldset class="sp-field">
+    <label class="sp-field">
+      <span>Remitente / Firmante</span>
+      <select name="perfil_remitente_id" id="perfil-remitente">
+        <option value="">— Usar datos del colegio —</option>
+        {% for p in perfiles %}
+          <option value="{{ p.id }}" {% if p.es_default %}selected{% endif %}>
+            {% if p.tratamiento %}{{ p.tratamiento }} {% endif %}{{ p.nombre }}{% if p.cargo %} · {{ p.cargo }}{% endif %}{% if p.es_default %} (default){% endif %}
+          </option>
+        {% endfor %}
+      </select>
+      <small>
+        <a href="/secretaria/remitentes/nuevo">+ Agregar remitente</a> ·
+        <a href="/secretaria/remitentes">Gestionar perfiles</a>
+      </small>
+    </label>
+
+    <fieldset class="sp-field sp-tonos">
       <legend>Tono</legend>
-      <label class="sp-radio">
+      <label class="sp-radio sp-radio--formal">
         <input type="radio" name="tono" value="formal" checked>
-        🎩 Formal
+        <span>🎩 Formal</span>
       </label>
-      <label class="sp-radio">
+      <label class="sp-radio sp-radio--cordial">
         <input type="radio" name="tono" value="cordial">
-        🤝 Cordial
+        <span>🤝 Cordial</span>
       </label>
-      <label class="sp-radio">
+      <label class="sp-radio sp-radio--protocolar">
         <input type="radio" name="tono" value="protocolar">
-        📜 Protocolar
+        <span>📜 Protocolar</span>
       </label>
     </fieldset>
 
-    <button type="submit" class="sp-btn sp-btn-primary">
+    <button type="submit" id="btn-generar" class="sp-btn sp-btn-primary">
       Generar documento
-      <span id="sp-loader" class="sp-loader htmx-indicator">…</span>
     </button>
   </form>
 
@@ -70,4 +140,18 @@
     </div>
   </div>
 </section>
+
+<!-- Panel lateral de la ficha del destinatario -->
+<aside id="sp-ficha-panel" class="sp-ficha-panel" aria-hidden="true">
+  <div class="sp-ficha-backdrop" onclick="spCerrarFicha()"></div>
+  <div class="sp-ficha-card" role="dialog" aria-label="Ficha del destinatario">
+    <div class="sp-ficha-head">
+      <h2>Ficha del destinatario</h2>
+      <button type="button" class="sp-btn sp-btn-icon" onclick="spCerrarFicha()" aria-label="Cerrar">✕</button>
+    </div>
+    <div id="sp-ficha-body">
+      <p class="sp-placeholder">Selecciona un destinatario y vuelve a abrir la ficha.</p>
+    </div>
+  </div>
+</aside>
 {% endblock %}

@@ -4,6 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}SecretariaPro{% endblock %} · ColegiosPro</title>
+  <script>
+    // Aplica el tema y la fuente guardados ANTES de pintar para evitar flicker
+    (function () {
+      try {
+        var t = localStorage.getItem("sp-tema") || "claro";
+        document.documentElement.setAttribute("data-tema", t);
+        var f = localStorage.getItem("sp-fuente") || "normal";
+        document.documentElement.setAttribute("data-fuente", f);
+      } catch (e) {}
+    })();
+  </script>
   <link rel="stylesheet" href="/static/secretaria/secretaria.css">
   <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
 </head>
@@ -24,13 +35,13 @@
       <a href="/secretaria/redactor" class="{% if modo_actual == 'redactor' %}active{% endif %}">
         <span class="ic">✎</span> Redactor
       </a>
-      <a href="#" class="disabled" hx-disable title="Próximamente">
+      <a href="/secretaria/corrector" class="{% if modo_actual == 'corrector' %}active{% endif %}">
         <span class="ic">⌫</span> Corrector
       </a>
-      <a href="#" class="disabled" hx-disable title="Próximamente">
+      <a href="/secretaria/comunicado" class="{% if modo_actual == 'comunicado' %}active{% endif %}">
         <span class="ic">📣</span> Comunicado
       </a>
-      <a href="#" class="disabled" hx-disable title="Próximamente">
+      <a href="/secretaria/post-redes" class="{% if modo_actual == 'post-redes' %}active{% endif %}">
         <span class="ic">📷</span> Post Redes
       </a>
       <hr>
@@ -40,9 +51,23 @@
       <a href="/secretaria/historial" class="{% if modo_actual == 'historial' %}active{% endif %}">
         <span class="ic">🗂</span> Historial
       </a>
+      <a href="/secretaria/configuracion" class="{% if modo_actual == 'configuracion' %}active{% endif %}">
+        <span class="ic">⚙</span> Configuración
+      </a>
     </nav>
     <div class="sp-foot">
-      <a href="/secretaria/logout" hx-boost="false">Cerrar sesión</a>
+      <div class="sp-foot-row">
+        <a href="/secretaria/logout" hx-boost="false">Cerrar sesión</a>
+        <button
+          type="button"
+          class="sp-tema-toggle"
+          onclick="toggleTema()"
+          title="Cambiar tema claro/oscuro"
+          aria-label="Cambiar tema"
+        >
+          <span id="sp-tema-icon">☀</span>
+        </button>
+      </div>
     </div>
   </aside>
   {% endif %}

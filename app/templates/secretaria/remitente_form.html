@@ -1,0 +1,44 @@
+{% extends "secretaria/base.html" %}
+{% block title %}Nuevo remitente{% endblock %}
+{% block content %}
+<header class="sp-header">
+  <a href="/secretaria/remitentes">← Volver a remitentes</a>
+  <h1>Nuevo perfil de remitente</h1>
+</header>
+
+<div class="sp-col" style="max-width:640px;">
+  <form method="post" action="/secretaria/remitentes/nuevo" class="sp-form sp-form-grid">
+    <label>
+      <span>Tratamiento</span>
+      <select name="tratamiento">
+        <option value="">—</option>
+        <option>Sr.</option><option>Sra.</option>
+        <option>Dr.</option><option>Dra.</option>
+        <option>Mg.</option><option>Ing.</option>
+        <option>CPC</option><option>Abog.</option>
+      </select>
+    </label>
+    <label>
+      <span>Nombre completo *</span>
+      <input type="text" name="nombre" required>
+    </label>
+    <label>
+      <span>Cargo</span>
+      <input type="text" name="cargo" placeholder="Decano / Director / Secretario...">
+    </label>
+    <label>
+      <span>Institución</span>
+      <input type="text" name="institucion" placeholder="Colegio de Contadores Públicos de Loreto">
+    </label>
+    <label>
+      <span>Ciudad</span>
+      <input type="text" name="ciudad" value="Iquitos">
+    </label>
+    <label class="sp-col-2" style="display:flex; align-items:center; gap:.5rem;">
+      <input type="checkbox" name="es_default" value="1">
+      <span style="font-weight:600;">Marcar como remitente por defecto</span>
+    </label>
+    <button type="submit" class="sp-btn sp-btn-primary sp-col-2">Crear perfil</button>
+  </form>
+</div>
+{% endblock %}

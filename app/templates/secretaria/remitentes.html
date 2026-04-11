@@ -1,0 +1,48 @@
+{% extends "secretaria/base.html" %}
+{% block title %}Remitentes{% endblock %}
+{% block content %}
+<header class="sp-header">
+  <h1>Perfiles de remitente</h1>
+  <p>Personas que firman los documentos. Marca uno como default para que aparezca seleccionado en el Redactor.</p>
+</header>
+
+<div style="margin-bottom:1rem;">
+  <a class="sp-btn sp-btn-primary" href="/secretaria/remitentes/nuevo">+ Nuevo perfil</a>
+</div>
+
+<table class="sp-table">
+  <thead>
+    <tr><th>Nombre</th><th>Cargo</th><th>Institución</th><th>Ciudad</th><th>Default</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for p in perfiles %}
+    <tr>
+      <td>{% if p.tratamiento %}{{ p.tratamiento }} {% endif %}{{ p.nombre }}</td>
+      <td>{{ p.cargo or '—' }}</td>
+      <td>{{ p.institucion or '—' }}</td>
+      <td>{{ p.ciudad or '—' }}</td>
+      <td>
+        {% if p.es_default %}
+          ⭐ Default
+        {% else %}
+          <button
+            type="button"
+            class="sp-btn"
+            hx-post="/secretaria/remitentes/{{ p.id }}/default"
+            hx-swap="none"
+            hx-on::after-request="window.location.reload()"
+          >Marcar default</button>
+        {% endif %}
+      </td>
+      <td>
+        <form method="post" action="/secretaria/remitentes/{{ p.id }}/eliminar" style="display:inline;">
+          <button type="submit" class="sp-btn" onclick="return confirm('¿Eliminar perfil?');">🗑</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="sp-empty">No hay perfiles aún. Crea uno para personalizar la firma del Redactor.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

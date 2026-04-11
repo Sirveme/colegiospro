@@ -8,9 +8,26 @@
 </div>
 {% endif %}
 
-<article class="sp-doc sp-doc--{{ tono or 'formal' }}" data-doc-id="{{ documento_id }}" data-tono="{{ tono or 'formal' }}">
+<!-- Barra de ajustes post-generación -->
+<div class="sp-ajustes-bar">
+  {% for a in ajustes %}
+  <button
+    class="sp-ajuste-btn"
+    type="button"
+    hx-post="/secretaria/redactor/ajustar"
+    hx-vals='{"ajuste": "{{ a.id }}", "doc_id": "{{ documento_id }}"}'
+    hx-target="{% if a.id == 'sugerir_asunto' %}#sugerencias-asunto{% else %}#sp-resultado{% endif %}"
+    hx-swap="innerHTML"
+    hx-disabled-elt="this"
+  >{{ a.icono }} {{ a.label }}</button>
+  {% endfor %}
+</div>
+<div id="sugerencias-asunto"></div>
+
+<article class="sp-doc sp-doc--{{ tono or 'formal' }}" data-doc-id="{{ documento_id }}" data-tono="{{ tono or 'formal' }}" data-tipo="{{ tipo_documento or 'carta' }}">
   <pre class="sp-doc-texto" id="sp-doc-texto-{{ documento_id }}">{{ texto_salida }}</pre>
 </article>
+
 <div class="sp-acciones">
   <a class="sp-btn" href="/secretaria/documento/{{ documento_id }}/pdf" target="_blank" rel="noopener">
     📄 Descargar PDF

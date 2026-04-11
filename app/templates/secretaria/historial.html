@@ -3,12 +3,51 @@
 {% block content %}
 <header class="sp-header">
   <h1>Historial de documentos</h1>
-  <p>Documentos que guardaste. Se conservan 365 días.</p>
+  <p>Documentos guardados. Se conservan 365 días.</p>
 </header>
+
+<form method="get" action="/secretaria/historial" class="sp-form sp-form-grid" style="margin-bottom:1rem;">
+  <label class="sp-col-2">
+    <span>Buscar en el texto</span>
+    <input type="search" name="q" value="{{ filtro_q }}" placeholder="Buscar palabra…">
+  </label>
+  <label>
+    <span>Modo</span>
+    <select name="modo">
+      <option value="">— todos —</option>
+      <option value="redactor"  {% if filtro_modo == 'redactor' %}selected{% endif %}>Redactor</option>
+      <option value="corrector" {% if filtro_modo == 'corrector' %}selected{% endif %}>Corrector</option>
+    </select>
+  </label>
+  <label>
+    <span>Tono</span>
+    <select name="tono">
+      <option value="">— todos —</option>
+      <option value="formal"     {% if filtro_tono == 'formal' %}selected{% endif %}>Formal</option>
+      <option value="cordial"    {% if filtro_tono == 'cordial' %}selected{% endif %}>Cordial</option>
+      <option value="protocolar" {% if filtro_tono == 'protocolar' %}selected{% endif %}>Protocolar</option>
+    </select>
+  </label>
+  <label>
+    <span>Desde</span>
+    <input type="date" name="desde" value="{{ filtro_desde }}">
+  </label>
+  <label>
+    <span>Hasta</span>
+    <input type="date" name="hasta" value="{{ filtro_hasta }}">
+  </label>
+  <button type="submit" class="sp-btn sp-btn-primary sp-col-2">Filtrar</button>
+</form>
 
 <table class="sp-table">
   <thead>
-    <tr><th>Fecha</th><th>Modo</th><th>Tono</th><th>Vista previa</th><th></th></tr>
+    <tr>
+      <th>Fecha</th>
+      <th>Modo</th>
+      <th>Tono</th>
+      <th>Vista previa</th>
+      <th>Acciones</th>
+    </tr>
   </thead>
   <tbody>
     {% for d in documentos %}
@@ -17,10 +56,13 @@
       <td>{{ d.modo }}</td>
       <td>{{ d.tono or '—' }}</td>
       <td class="sp-preview">{{ (d.texto_salida or '')[:120] }}…</td>
-      <td><a href="/secretaria/documento/{{ d.id }}/pdf" target="_blank">PDF</a></td>
+      <td>
+        <a class="sp-btn" href="/secretaria/documento/{{ d.id }}/pdf" target="_blank">PDF</a>
+        <a class="sp-btn" href="/secretaria/historial/{{ d.id }}/reabrir">Reabrir</a>
+      </td>
     </tr>
     {% else %}
-    <tr><td colspan="5" class="sp-empty">Aún no has guardado documentos.</td></tr>
+    <tr><td colspan="5" class="sp-empty">No hay documentos guardados con esos filtros.</td></tr>
     {% endfor %}
   </tbody>
 </table>

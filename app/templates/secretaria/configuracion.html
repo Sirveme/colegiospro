@@ -1,0 +1,114 @@
+{% extends "secretaria/base.html" %}
+{% block title %}Configuración{% endblock %}
+{% block content %}
+<header class="sp-header">
+  <h1>Configuración</h1>
+  <p>Ajustes de apariencia, colegio y cuenta.</p>
+</header>
+
+<!-- 1. Apariencia -->
+<section class="sp-col" style="margin-bottom:1rem;">
+  <h2 style="margin-top:0;">🎨 Apariencia</h2>
+  <form
+    class="sp-form"
+    hx-post="/secretaria/configuracion/apariencia"
+    hx-swap="none"
+    hx-on::after-request="spOnPrefsGuardadas(event)"
+  >
+    <div class="sp-field">
+      <span>Tema</span>
+      <div class="sp-temas-grid">
+        {% for t in [('claro','☀','Claro'),('oscuro','🌙','Oscuro'),('pastel','🌸','Pastel'),('elegante','✨','Elegante')] %}
+        <label class="sp-tema-card sp-tema-card--{{ t[0] }}">
+          <input type="radio" name="tema" value="{{ t[0] }}" {% if prefs.tema == t[0] %}checked{% endif %} onchange="spAplicarTemaInline(this.value)">
+          <div class="sp-tema-icon">{{ t[1] }}</div>
+          <div>{{ t[2] }}</div>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="sp-field">
+      <span>Tamaño de fuente</span>
+      <div class="sp-temas-grid">
+        {% for f in [('pequeno','aA','Pequeño'),('normal','Aa','Normal'),('grande','AA','Grande'),('xl','AA+','Muy grande')] %}
+        <label class="sp-tema-card">
+          <input type="radio" name="fuente_size" value="{{ f[0] }}" {% if prefs.fuente_size == f[0] %}checked{% endif %} onchange="spAplicarFuenteInline(this.value)">
+          <div class="sp-tema-icon" style="font-size:1rem;">{{ f[1] }}</div>
+          <div>{{ f[2] }}</div>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <label class="sp-field">
+      <span>Tipo de documento por defecto en el Redactor</span>
+      <select name="tipo_doc_default">
+        {% for k, v in [('carta','Carta'),('oficio','Oficio'),('memorandum','Memorándum'),('circular','Circular'),('acta','Acta'),('invitacion','Invitación'),('certificado','Certificado')] %}
+        <option value="{{ k }}" {% if prefs.tipo_doc_default == k %}selected{% endif %}>{{ v }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label class="sp-field">
+      <span>Tono por defecto en el Redactor</span>
+      <select name="tono_default">
+        <option value="formal" {% if prefs.tono_default == 'formal' %}selected{% endif %}>Formal</option>
+        <option value="cordial" {% if prefs.tono_default == 'cordial' %}selected{% endif %}>Cordial</option>
+        <option value="protocolar" {% if prefs.tono_default == 'protocolar' %}selected{% endif %}>Protocolar</option>
+      </select>
+    </label>
+
+    <button type="submit" class="sp-btn sp-btn-primary">Guardar apariencia</button>
+  </form>
+</section>
+
+<!-- 2. Mi colegio -->
+<section class="sp-col" style="margin-bottom:1rem;">
+  <h2 style="margin-top:0;">🏛 Mi colegio</h2>
+  <form method="post" action="/secretaria/configuracion/colegio" class="sp-form sp-form-grid">
+    <label>
+      <span>Nombre del colegio</span>
+      <input type="text" name="nombre_colegio" value="{{ colegio_cfg.nombre_colegio if colegio_cfg else '' }}" placeholder="Colegio de Contadores Públicos de Loreto">
+    </label>
+    <label>
+      <span>Nombre del Decano</span>
+      <input type="text" name="nombre_decano" value="{{ colegio_cfg.nombre_decano if colegio_cfg else '' }}">
+    </label>
+    <label>
+      <span>Ciudad</span>
+      <input type="text" name="ciudad" value="{{ colegio_cfg.ciudad if colegio_cfg else 'Iquitos' }}">
+    </label>
+    <label>
+      <span>Membrete (URL de imagen, ancho ~800px)</span>
+      <input type="url" name="membrete_url" value="{{ colegio_cfg.membrete_url if colegio_cfg else '' }}" placeholder="https://...">
+    </label>
+    <label class="sp-col-2">
+      <span>API key de OpenAI propia (opcional, encriptada con Fernet)</span>
+      <input type="password" name="api_key_openai" placeholder="sk-... (déjalo vacío para usar la del sistema)">
+    </label>
+    <button type="submit" class="sp-btn sp-btn-primary sp-col-2">Guardar datos del colegio</button>
+  </form>
+</section>
+
+<!-- 3. Remitentes -->
+<section class="sp-col" style="margin-bottom:1rem;">
+  <h2 style="margin-top:0;">✍ Remitentes</h2>
+  <p>Gestiona las personas que firman tus documentos.</p>
+  <a class="sp-btn" href="/secretaria/remitentes">Ver perfiles de remitente →</a>
+</section>
+
+<!-- 4. Mi cuenta -->
+<section class="sp-col">
+  <h2 style="margin-top:0;">👤 Mi cuenta</h2>
+  <dl class="sp-detalle">
+    <dt>Nombre</dt><dd>{{ usuario.nombre }}</dd>
+    <dt>Correo</dt><dd>{{ usuario.correo }}</dd>
+    <dt>Verificado</dt><dd>{% if usuario.correo_verificado %}✓ Sí{% else %}— Pendiente{% endif %}</dd>
+    <dt>Rol</dt><dd>{{ usuario.rol }}</dd>
+  </dl>
+  <p style="margin-top:1rem;">
+    <a class="sp-btn" href="/secretaria/logout">Cerrar sesión</a>
+  </p>
+</section>
+{% endblock %}
