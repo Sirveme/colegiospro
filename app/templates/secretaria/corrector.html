@@ -1,0 +1,64 @@
+{% extends "secretaria/base.html" %}
+{% block title %}Corrector{% endblock %}
+{% block content %}
+<header class="sp-header">
+  <h1>Corrector</h1>
+  <p>Pega un texto o sube un archivo y elige qué hacer con él.</p>
+</header>
+
+<section class="sp-redactor">
+  <form
+    class="sp-col sp-col-input"
+    enctype="multipart/form-data"
+    hx-post="/secretaria/corrector/procesar"
+    hx-target="#sp-resultado"
+    hx-swap="innerHTML"
+    hx-encoding="multipart/form-data"
+    hx-on::before-request="spStartCorrSpinner()"
+    hx-on::after-request="spStopCorrSpinner()"
+  >
+    <label class="sp-field">
+      <span>📎 Subir archivo (opcional)</span>
+      <input
+        type="file"
+        id="doc-referencia"
+        name="documento_referencia"
+        accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp,.gif,.bmp,.txt,.md"
+      >
+      <small>Si subes un archivo y dejas el textarea vacío, leemos el archivo.</small>
+      <div id="doc-estado" style="display:none; margin-top:6px; font-size:12px;"></div>
+    </label>
+
+    <label class="sp-field">
+      <span>Texto a procesar</span>
+      <textarea
+        name="texto"
+        rows="10"
+        placeholder="Pega aquí el texto que quieres corregir o transformar…"
+      ></textarea>
+    </label>
+
+    <fieldset class="sp-field sp-acciones-grid">
+      <legend>Acción</legend>
+      {% for a in acciones %}
+      <label class="sp-radio sp-radio-action">
+        <input type="radio" name="accion" value="{{ a.id }}" {% if loop.first %}checked{% endif %}>
+        <span>{{ a.icono }} {{ a.etiqueta }}</span>
+      </label>
+      {% endfor %}
+    </fieldset>
+
+    <button type="submit" id="btn-corregir" class="sp-btn sp-btn-primary">
+      Procesar texto
+    </button>
+  </form>
+
+  <div class="sp-col sp-col-output">
+    <div id="sp-resultado" class="sp-resultado">
+      <div class="sp-placeholder">
+        <p>El resultado aparecerá aquí.</p>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

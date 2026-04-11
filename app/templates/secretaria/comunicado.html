@@ -1,0 +1,24 @@
+{% extends "secretaria/base.html" %}
+{% block title %}Comunicado{% endblock %}
+{% block content %}
+<header class="sp-header">
+  <h1>Comunicado</h1>
+  <p>Genera comunicados oficiales para tus colegiados.</p>
+</header>
+
+<div class="sp-col" style="max-width: 720px;">
+  <div class="sp-placeholder" style="min-height: auto; padding: 2rem;">
+    <h2 style="margin-top:0;">📣 Próximamente</h2>
+    <p>
+      El módulo de Comunicados está en construcción. Permitirá generar
+      avisos institucionales para enviar a los colegiados por correo,
+      WhatsApp o publicar en el portal del colegio.
+    </p>
+    <p style="margin-bottom:0;">
+      Mientras tanto, puedes usar el
+      <a href="/secretaria/redactor"><strong>Redactor</strong></a>
+      con el tono <em>Cordial</em> para generar comunicados básicos.
+    </p>
+  </div>
+</div>
+{% endblock %}
