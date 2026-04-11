@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import httpx
-from fastapi import APIRouter, Request, Form, Depends, HTTPException
+from fastapi import APIRouter, Request, Form, Depends, HTTPException, UploadFile, File
 from fastapi.responses import (
     HTMLResponse,
     RedirectResponse,
@@ -20,6 +20,7 @@ from app.database import SessionLocal
 from app.models_secretaria import (
     UsuarioSecretaria,
     DirectorioInstitucional,
+    DirectorioContactoExtendido,
     DocumentoSecretaria,
     ConfigSecretariaColegio,
 )
@@ -32,8 +33,14 @@ from app.services.auth_service import (
     generar_token_verificacion,
     COOKIE_NAME,
 )
-from app.services.redactor_service import generar_documento
+from app.services.redactor_service import generar_documento, TONOS
 from app.services.pdf_service import texto_a_pdf_bytes, pdf_disponible
+from app.services.extract_service import extraer_texto, soportado as extract_soportado
+from app.services.corrector_service import (
+    corregir_texto,
+    listar_acciones as corrector_acciones,
+    ACCIONES as CORRECTOR_ACCIONES,
+)
 
 
 router = APIRouter(prefix="/secretaria", tags=["SecretariaPro"])
@@ -259,11 +266,18 @@ async def redactor_generar(
     texto_entrada: str = Form(...),
     tono: str = Form("formal"),
     institucion_id: Optional[int] = Form(None),
+    documento_referencia: Optional[UploadFile] = File(None),
 ):
     usuario = _user_or_redirect(request)
     if not usuario:
         return HTMLResponse("<p class='error'>Sesión expirada</p>", status_code=401)
 
+    # Normalizar tono
+    tono_norm = (tono or "formal").strip().lower()
+    if tono_norm not in TONOS:
+        tono_norm = "formal"
+
+    # Destinatario desde el directorio
     destinatario = None
     db = _db()
     try:
@@ -283,11 +297,29 @@ async def redactor_generar(
 
     remitente = _config_remitente(usuario.colegio_id)
 
+    # Documento de referencia opcional
+    ref_texto: Optional[str] = None
+    ref_aviso: Optional[str] = None
+    if documento_referencia is not None and documento_referencia.filename:
+        if not extract_soportado(documento_referencia.filename):
+            ref_aviso = (
+                f"Tipo de archivo no soportado: {documento_referencia.filename}"
+            )
+        else:
+            contenido = await documento_referencia.read()
+            ref_texto, err = extraer_texto(
+                documento_referencia.filename, contenido
+            )
+            if err:
+                ref_aviso = f"No se pudo extraer texto de {documento_referencia.filename}: {err}"
+                ref_texto = None
+
     texto_salida = generar_documento(
         texto_entrada=texto_entrada.strip(),
-        tono=tono,
+        tono=tono_norm,
         destinatario=destinatario,
         remitente=remitente,
+        documento_referencia=ref_texto,
     )
 
     # Guardar borrador (no marcado como guardado=True hasta que el usuario lo guarde)
@@ -299,7 +331,7 @@ async def redactor_generar(
             modo="redactor",
             texto_entrada=texto_entrada.strip(),
             texto_salida=texto_salida,
-            tono=tono,
+            tono=tono_norm,
             institucion_destino_id=institucion_id,
             formato_salida="txt",
             guardado=False,
@@ -317,6 +349,9 @@ async def redactor_generar(
         {
             "texto_salida": texto_salida,
             "documento_id": doc_id,
+            "tono": tono_norm,
+            "ref_aviso": ref_aviso,
+            "ref_usado": bool(ref_texto),
         },
     )
 
@@ -545,4 +580,219 @@ async def directorio_detalle(inst_id: int, request: Request):
         request,
         "secretaria/directorio_detalle.html",
         _ctx(usuario=usuario, modo_actual="directorio", inst=inst),
+    )
+
+
+# ─── Ficha del destinatario (datos extendidos privados del colegio) ───
+def _colegio_id_de(usuario: UsuarioSecretaria) -> int:
+    """colegio_id usable para PK compuesta. 0 cuando el usuario aún no
+    tiene colegio asociado (MVP)."""
+    return int(usuario.colegio_id or 0)
+
+
+def _ficha_to_dict(ficha: Optional[DirectorioContactoExtendido]) -> dict:
+    if not ficha:
+        return {
+            "foto_url": "",
+            "whatsapp": "",
+            "red_social": "",
+            "nombre_secretaria": "",
+            "fecha_inicio_cargo": "",
+            "notas_relacionamiento": "",
+        }
+    return {
+        "foto_url": ficha.foto_url or "",
+        "whatsapp": ficha.whatsapp or "",
+        "red_social": ficha.red_social or "",
+        "nombre_secretaria": ficha.nombre_secretaria or "",
+        "fecha_inicio_cargo": ficha.fecha_inicio_cargo or "",
+        "notas_relacionamiento": ficha.notas_relacionamiento or "",
+    }
+
+
+@router.get("/destinatario/{inst_id}/ficha", response_class=HTMLResponse)
+async def destinatario_ficha(inst_id: int, request: Request):
+    """Devuelve el panel HTML de la ficha del destinatario (institución +
+    datos extendidos privados del colegio). Pensado para HTMX."""
+    usuario = _require_user(request)
+    db = _db()
+    try:
+        inst = db.query(DirectorioInstitucional).filter(
+            DirectorioInstitucional.id == inst_id
+        ).first()
+        if not inst:
+            raise HTTPException(404, "Institución no encontrada")
+        ficha = db.query(DirectorioContactoExtendido).filter(
+            DirectorioContactoExtendido.colegio_id == _colegio_id_de(usuario),
+            DirectorioContactoExtendido.institucion_id == inst_id,
+        ).first()
+    finally:
+        db.close()
+
+    return templates.TemplateResponse(
+        request,
+        "secretaria/_ficha_destinatario.html",
+        {
+            "inst": inst,
+            "ficha": _ficha_to_dict(ficha),
+        },
+    )
+
+
+@router.post("/destinatario/{inst_id}/ficha")
+async def destinatario_ficha_guardar(
+    inst_id: int,
+    request: Request,
+    foto_url: Optional[str] = Form(None),
+    whatsapp: Optional[str] = Form(None),
+    red_social: Optional[str] = Form(None),
+    nombre_secretaria: Optional[str] = Form(None),
+    fecha_inicio_cargo: Optional[str] = Form(None),
+    notas_relacionamiento: Optional[str] = Form(None),
+):
+    usuario = _require_user(request)
+    cid = _colegio_id_de(usuario)
+    db = _db()
+    try:
+        inst = db.query(DirectorioInstitucional).filter(
+            DirectorioInstitucional.id == inst_id
+        ).first()
+        if not inst:
+            raise HTTPException(404, "Institución no encontrada")
+
+        ficha = db.query(DirectorioContactoExtendido).filter(
+            DirectorioContactoExtendido.colegio_id == cid,
+            DirectorioContactoExtendido.institucion_id == inst_id,
+        ).first()
+        if not ficha:
+            ficha = DirectorioContactoExtendido(
+                colegio_id=cid,
+                institucion_id=inst_id,
+            )
+            db.add(ficha)
+
+        ficha.foto_url = (foto_url or "").strip() or None
+        ficha.whatsapp = (whatsapp or "").strip() or None
+        ficha.red_social = (red_social or "").strip() or None
+        ficha.nombre_secretaria = (nombre_secretaria or "").strip() or None
+        ficha.fecha_inicio_cargo = (fecha_inicio_cargo or "").strip() or None
+        ficha.notas_relacionamiento = (notas_relacionamiento or "").strip() or None
+
+        db.commit()
+        db.refresh(ficha)
+        return JSONResponse({"ok": True})
+    finally:
+        db.close()
+
+
+# ─── Modo 2: Corrector ─────────────────────────────────────────────
+@router.get("/corrector", response_class=HTMLResponse)
+async def corrector_view(request: Request):
+    usuario = _user_or_redirect(request)
+    if not usuario:
+        return RedirectResponse("/secretaria/login", status_code=302)
+    return templates.TemplateResponse(
+        request,
+        "secretaria/corrector.html",
+        _ctx(
+            usuario=usuario,
+            modo_actual="corrector",
+            acciones=corrector_acciones(),
+        ),
+    )
+
+
+@router.post("/corrector/procesar", response_class=HTMLResponse)
+async def corrector_procesar(
+    request: Request,
+    texto: Optional[str] = Form(""),
+    accion: str = Form("ortografia"),
+    documento_referencia: Optional[UploadFile] = File(None),
+):
+    usuario = _user_or_redirect(request)
+    if not usuario:
+        return HTMLResponse("<p class='error'>Sesión expirada</p>", status_code=401)
+
+    accion_norm = (accion or "ortografia").strip().lower()
+    if accion_norm not in CORRECTOR_ACCIONES:
+        accion_norm = "ortografia"
+
+    # Si se subió un archivo y el textarea está vacío, extraemos su texto
+    texto_final = (texto or "").strip()
+    ref_aviso: Optional[str] = None
+    if (not texto_final) and documento_referencia and documento_referencia.filename:
+        if not extract_soportado(documento_referencia.filename):
+            ref_aviso = f"Tipo no soportado: {documento_referencia.filename}"
+        else:
+            contenido = await documento_referencia.read()
+            extraido, err = extraer_texto(documento_referencia.filename, contenido)
+            if err:
+                ref_aviso = f"No se pudo extraer texto: {err}"
+            else:
+                texto_final = extraido
+
+    if not texto_final:
+        return HTMLResponse(
+            "<p class='sp-alert sp-alert-error'>"
+            "Pega un texto o sube un archivo con texto para procesar.</p>",
+            status_code=400,
+        )
+
+    texto_salida = corregir_texto(texto_final, accion_norm)
+
+    db = _db()
+    try:
+        doc = DocumentoSecretaria(
+            secretaria_id=usuario.id,
+            colegio_id=usuario.colegio_id,
+            modo="corrector",
+            texto_entrada=texto_final[:5000],
+            texto_salida=texto_salida,
+            tono=accion_norm,
+            formato_salida="txt",
+            guardado=False,
+        )
+        db.add(doc)
+        db.commit()
+        db.refresh(doc)
+        doc_id = doc.id
+    finally:
+        db.close()
+
+    return templates.TemplateResponse(
+        request,
+        "secretaria/_corrector_resultado.html",
+        {
+            "texto_salida": texto_salida,
+            "documento_id": doc_id,
+            "accion": accion_norm,
+            "accion_etiqueta": CORRECTOR_ACCIONES[accion_norm]["etiqueta"],
+            "ref_aviso": ref_aviso,
+        },
+    )
+
+
+# ─── Modo 3: Comunicado (placeholder navegable) ────────────────────
+@router.get("/comunicado", response_class=HTMLResponse)
+async def comunicado_view(request: Request):
+    usuario = _user_or_redirect(request)
+    if not usuario:
+        return RedirectResponse("/secretaria/login", status_code=302)
+    return templates.TemplateResponse(
+        request,
+        "secretaria/comunicado.html",
+        _ctx(usuario=usuario, modo_actual="comunicado"),
+    )
+
+
+# ─── Modo 4: Post Redes (placeholder navegable) ────────────────────
+@router.get("/post-redes", response_class=HTMLResponse)
+async def post_redes_view(request: Request):
+    usuario = _user_or_redirect(request)
+    if not usuario:
+        return RedirectResponse("/secretaria/login", status_code=302)
+    return templates.TemplateResponse(
+        request,
+        "secretaria/post_redes.html",
+        _ctx(usuario=usuario, modo_actual="post-redes"),
     )
