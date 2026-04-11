@@ -15,7 +15,7 @@
       } catch (e) {}
     })();
   </script>
-  <link rel="stylesheet" href="/static/secretaria/secretaria.css">
+  <link rel="stylesheet" href="/static/secretaria/secretaria.css?v={{ static_version }}">
   <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
 </head>
 <body class="sp-body" hx-boost="true" hx-target="body" hx-swap="outerHTML show:window:top">
@@ -76,6 +76,98 @@
     {% block content %}{% endblock %}
   </main>
 
-  <script src="/static/secretaria/secretaria.js" defer></script>
+  <!-- ─── Red de seguridad: stubs inline de funciones críticas ───
+       Si por cualquier razón el JS externo falla en cargar (caché viejo,
+       proxy intermedio, error de build), estas stubs evitan que los
+       onclick/hx-on inline produzcan ReferenceError. El archivo externo
+       se carga después y SOBRESCRIBE estas versiones con las completas. -->
+  <script>
+  (function () {
+    var W = window;
+    // Spinner del Redactor
+    if (!W.spStartSpinner) W.spStartSpinner = function () {
+      var b = document.getElementById("btn-generar");
+      if (!b) return;
+      b._html = b.innerHTML;
+      b.disabled = true;
+      b.innerHTML = "⏳ Procesando…";
+    };
+    if (!W.spStopSpinner) W.spStopSpinner = function () {
+      var b = document.getElementById("btn-generar");
+      if (!b) return;
+      b.disabled = false;
+      b.innerHTML = b._html || "Generar documento";
+    };
+    // Spinner del Corrector
+    if (!W.spStartCorrSpinner) W.spStartCorrSpinner = function () {
+      var b = document.getElementById("btn-corregir");
+      if (!b) return;
+      b._html = b.innerHTML;
+      b.disabled = true;
+      b.innerHTML = "⏳ Procesando…";
+    };
+    if (!W.spStopCorrSpinner) W.spStopCorrSpinner = function () {
+      var b = document.getElementById("btn-corregir");
+      if (!b) return;
+      b.disabled = false;
+      b.innerHTML = b._html || "Procesar texto";
+    };
+    // Selector de tipo de documento
+    if (!W.spSeleccionarTipo) W.spSeleccionarTipo = function (tipo) {
+      var inp = document.getElementById("tipo-seleccionado");
+      if (inp) inp.value = tipo;
+      var btns = document.querySelectorAll(".sp-tipo-btn");
+      btns.forEach(function (b) {
+        if (b.dataset && b.dataset.tipo === tipo) b.classList.add("activo");
+        else b.classList.remove("activo");
+      });
+    };
+    // Voz (placeholder, la versión real está en secretaria.js)
+    if (!W.spToggleVoz) W.spToggleVoz = function () {
+      alert("Dictado por voz: cargando módulo… intenta de nuevo en 2 segundos.");
+    };
+    // Ficha del destinatario
+    if (!W.spAbrirFicha) W.spAbrirFicha = function () {
+      var sel = document.getElementById("sp-institucion-select");
+      var panel = document.getElementById("sp-ficha-panel");
+      if (!sel || !sel.value) { alert("Primero elige un destinatario."); return; }
+      if (panel) panel.classList.add("is-open");
+    };
+    if (!W.spCerrarFicha) W.spCerrarFicha = function () {
+      var p = document.getElementById("sp-ficha-panel");
+      if (p) p.classList.remove("is-open");
+    };
+    // Copiar / imprimir (versiones mínimas)
+    if (!W.spCopiar) W.spCopiar = function (id) {
+      var el = document.getElementById("sp-doc-texto-" + id);
+      if (!el) return;
+      var t = el.innerText || el.textContent;
+      if (navigator.clipboard) navigator.clipboard.writeText(t);
+    };
+    if (!W.spImprimir) W.spImprimir = function () { window.print(); };
+    // Toggle tema
+    if (!W.toggleTema) W.toggleTema = function () {
+      var html = document.documentElement;
+      var temas = ["claro", "oscuro", "pastel", "elegante"];
+      var idx = temas.indexOf(html.getAttribute("data-tema") || "claro");
+      var nuevo = temas[(idx + 1) % temas.length];
+      html.setAttribute("data-tema", nuevo);
+      try { localStorage.setItem("sp-tema", nuevo); } catch (e) {}
+    };
+    if (!W.spAplicarTemaInline) W.spAplicarTemaInline = function (n) {
+      document.documentElement.setAttribute("data-tema", n);
+      try { localStorage.setItem("sp-tema", n); } catch (e) {}
+    };
+    if (!W.spAplicarFuenteInline) W.spAplicarFuenteInline = function (s) {
+      document.documentElement.setAttribute("data-fuente", s);
+      try { localStorage.setItem("sp-fuente", s); } catch (e) {}
+    };
+    if (!W.spOnPrefsGuardadas) W.spOnPrefsGuardadas = function () {};
+  })();
+  </script>
+  <!-- Versión completa del JS (sobrescribe los stubs anteriores con
+       implementaciones completas: spinner animado, dictado por voz real,
+       fetch HTMX de la ficha, etc.) -->
+  <script src="/static/secretaria/secretaria.js?v={{ static_version }}"></script>
 </body>
 </html>
