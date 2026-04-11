@@ -1,20 +1,110 @@
 // SecretariaPro — JS del módulo
 
-// ─── Toggle tema claro/oscuro ───
+// ─── Toggle tema (cicla los 4 temas disponibles) ───
+var SP_TEMAS = ["claro", "oscuro", "pastel", "elegante"];
 function toggleTema() {
   var html = document.documentElement;
   var actual = html.getAttribute("data-tema") || "claro";
-  var nuevo = actual === "claro" ? "oscuro" : "claro";
-  html.setAttribute("data-tema", nuevo);
-  try { localStorage.setItem("sp-tema", nuevo); } catch (e) {}
+  var idx = SP_TEMAS.indexOf(actual);
+  var nuevo = SP_TEMAS[(idx + 1) % SP_TEMAS.length];
+  spAplicarTemaInline(nuevo);
+}
+
+function spAplicarTemaInline(nombre) {
+  if (SP_TEMAS.indexOf(nombre) === -1) nombre = "claro";
+  document.documentElement.setAttribute("data-tema", nombre);
+  try { localStorage.setItem("sp-tema", nombre); } catch (e) {}
   spActualizarIconoTema();
+}
+
+function spAplicarFuenteInline(size) {
+  if (["pequeno","normal","grande","xl"].indexOf(size) === -1) size = "normal";
+  document.documentElement.setAttribute("data-fuente", size);
+  try { localStorage.setItem("sp-fuente", size); } catch (e) {}
 }
 
 function spActualizarIconoTema() {
   var icon = document.getElementById("sp-tema-icon");
   if (!icon) return;
   var t = document.documentElement.getAttribute("data-tema") || "claro";
-  icon.textContent = t === "oscuro" ? "🌙" : "☀";
+  var iconos = { claro: "☀", oscuro: "🌙", pastel: "🌸", elegante: "✨" };
+  icon.textContent = iconos[t] || "☀";
+}
+
+// ─── Selector de tipo de documento ───
+function spSeleccionarTipo(tipoId) {
+  var input = document.getElementById("tipo-seleccionado");
+  if (input) input.value = tipoId;
+  var btns = document.querySelectorAll(".sp-tipo-btn");
+  btns.forEach(function (b) {
+    if (b.dataset.tipo === tipoId) b.classList.add("activo");
+    else b.classList.remove("activo");
+  });
+}
+
+// ─── Dictado por voz (Web Speech API) ───
+var spRecognition = null;
+var spVozActiva = false;
+
+function spToggleVoz() {
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    alert("Tu navegador no soporta dictado por voz. Usa Chrome.");
+    return;
+  }
+  if (spVozActiva && spRecognition) {
+    spRecognition.stop();
+    return;
+  }
+  spRecognition = new SR();
+  spRecognition.lang = "es-PE";
+  spRecognition.continuous = true;
+  spRecognition.interimResults = true;
+
+  var btn = document.getElementById("btn-voz");
+  var estado = document.getElementById("voz-estado");
+  var ta = document.getElementById("instruccion");
+  var textoBase = ta ? (ta.value || "") : "";
+
+  spRecognition.onstart = function () {
+    spVozActiva = true;
+    if (btn) { btn.textContent = "🔴"; btn.classList.add("activo"); }
+    if (estado) estado.style.display = "block";
+  };
+
+  spRecognition.onresult = function (e) {
+    var final = "";
+    var interim = "";
+    for (var i = e.resultIndex; i < e.results.length; i++) {
+      var t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) final += t;
+      else interim += t;
+    }
+    if (ta) {
+      ta.value = (textoBase + " " + final + " " + interim).trim();
+    }
+  };
+
+  spRecognition.onerror = function () {
+    spVozActiva = false;
+    if (btn) { btn.textContent = "🎤"; btn.classList.remove("activo"); }
+    if (estado) estado.style.display = "none";
+  };
+
+  spRecognition.onend = function () {
+    spVozActiva = false;
+    if (btn) { btn.textContent = "🎤"; btn.classList.remove("activo"); }
+    if (estado) estado.style.display = "none";
+  };
+
+  spRecognition.start();
+}
+
+// ─── Toast tras guardar preferencias ───
+function spOnPrefsGuardadas(e) {
+  if (e && e.detail && e.detail.successful) {
+    spToast("Preferencias guardadas");
+  }
 }
 
 document.addEventListener("DOMContentLoaded", function () {
