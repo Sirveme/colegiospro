@@ -23,6 +23,8 @@ from app.models_secretaria import (
     DirectorioContactoExtendido,
     DocumentoSecretaria,
     ConfigSecretariaColegio,
+    PerfilRemitente,
+    PreferenciasSecretaria,
 )
 from app.services.auth_service import (
     hash_password,
@@ -33,7 +35,15 @@ from app.services.auth_service import (
     generar_token_verificacion,
     COOKIE_NAME,
 )
-from app.services.redactor_service import generar_documento, TONOS
+from app.services.redactor_service import (
+    generar_documento,
+    ajustar_documento,
+    TONOS,
+    TIPOS,
+    AJUSTES,
+    listar_tipos,
+    listar_ajustes,
+)
 from app.services.pdf_service import texto_a_pdf_bytes, pdf_disponible
 from app.services.extract_service import extraer_texto, soportado as extract_soportado
 from app.services.corrector_service import (
@@ -84,21 +94,62 @@ def _ctx(usuario: Optional[UsuarioSecretaria] = None, **extra):
     return base
 
 
-def _config_remitente(colegio_id: Optional[int]) -> dict:
-    if not colegio_id:
-        return {}
+def _config_remitente(
+    colegio_id: Optional[int],
+    perfil_id: Optional[int] = None,
+    secretaria_id: Optional[int] = None,
+) -> dict:
+    """Devuelve un dict con los datos del remitente para el prompt.
+    Combina la config del colegio con un perfil de remitente opcional."""
+    base = {
+        "nombre_colegio": "",
+        "nombre_decano": "",
+        "nombre_firmante": "",
+        "cargo_firmante": "Decano",
+        "tratamiento_firmante": "",
+        "ciudad": "",
+    }
     db = _db()
     try:
-        cfg = db.query(ConfigSecretariaColegio).filter(
-            ConfigSecretariaColegio.colegio_id == colegio_id
-        ).first()
-        if not cfg:
-            return {}
-        return {
-            "nombre_colegio": cfg.nombre_colegio or "",
-            "nombre_decano": cfg.nombre_decano or "",
-            "ciudad": cfg.ciudad or "",
-        }
+        if colegio_id:
+            cfg = db.query(ConfigSecretariaColegio).filter(
+                ConfigSecretariaColegio.colegio_id == colegio_id
+            ).first()
+            if cfg:
+                base["nombre_colegio"] = cfg.nombre_colegio or ""
+                base["nombre_decano"] = cfg.nombre_decano or ""
+                base["nombre_firmante"] = cfg.nombre_decano or ""
+                base["ciudad"] = cfg.ciudad or ""
+
+        if perfil_id and secretaria_id:
+            perf = db.query(PerfilRemitente).filter(
+                PerfilRemitente.id == perfil_id,
+                PerfilRemitente.secretaria_id == secretaria_id,
+            ).first()
+            if perf:
+                base["nombre_firmante"] = perf.nombre or base["nombre_firmante"]
+                base["cargo_firmante"] = perf.cargo or "Decano"
+                base["tratamiento_firmante"] = perf.tratamiento or ""
+                if perf.institucion:
+                    base["nombre_colegio"] = perf.institucion
+                if perf.ciudad:
+                    base["ciudad"] = perf.ciudad
+        elif secretaria_id:
+            # Si no se pasó perfil explícito, intentar el default del usuario
+            perf = db.query(PerfilRemitente).filter(
+                PerfilRemitente.secretaria_id == secretaria_id,
+                PerfilRemitente.es_default == True,  # noqa: E712
+            ).first()
+            if perf:
+                base["nombre_firmante"] = perf.nombre or base["nombre_firmante"]
+                base["cargo_firmante"] = perf.cargo or "Decano"
+                base["tratamiento_firmante"] = perf.tratamiento or ""
+                if perf.institucion:
+                    base["nombre_colegio"] = perf.institucion
+                if perf.ciudad:
+                    base["ciudad"] = perf.ciudad
+
+        return base
     finally:
         db.close()
 
@@ -247,6 +298,12 @@ async def redactor_view(request: Request):
             .limit(200)
             .all()
         )
+        perfiles = (
+            db.query(PerfilRemitente)
+            .filter(PerfilRemitente.secretaria_id == usuario.id)
+            .order_by(PerfilRemitente.es_default.desc(), PerfilRemitente.nombre.asc())
+            .all()
+        )
     finally:
         db.close()
     return templates.TemplateResponse(
@@ -256,6 +313,9 @@ async def redactor_view(request: Request):
             usuario=usuario,
             modo_actual="redactor",
             instituciones=instituciones,
+            perfiles=perfiles,
+            tipos=listar_tipos(),
+            ajustes=listar_ajustes(),
         ),
     )
 
@@ -265,17 +325,22 @@ async def redactor_generar(
     request: Request,
     texto_entrada: str = Form(...),
     tono: str = Form("formal"),
+    tipo_documento: str = Form("carta"),
     institucion_id: Optional[int] = Form(None),
+    perfil_remitente_id: Optional[int] = Form(None),
     documento_referencia: Optional[UploadFile] = File(None),
 ):
     usuario = _user_or_redirect(request)
     if not usuario:
         return HTMLResponse("<p class='error'>Sesión expirada</p>", status_code=401)
 
-    # Normalizar tono
+    # Normalizar tono y tipo
     tono_norm = (tono or "formal").strip().lower()
     if tono_norm not in TONOS:
         tono_norm = "formal"
+    tipo_norm = (tipo_documento or "carta").strip().lower()
+    if tipo_norm not in TIPOS:
+        tipo_norm = "carta"
 
     # Destinatario desde el directorio
     destinatario = None
@@ -295,7 +360,11 @@ async def redactor_generar(
     finally:
         db.close()
 
-    remitente = _config_remitente(usuario.colegio_id)
+    remitente = _config_remitente(
+        usuario.colegio_id,
+        perfil_id=perfil_remitente_id,
+        secretaria_id=usuario.id,
+    )
 
     # Documento de referencia opcional
     ref_texto: Optional[str] = None
@@ -320,6 +389,7 @@ async def redactor_generar(
         destinatario=destinatario,
         remitente=remitente,
         documento_referencia=ref_texto,
+        tipo_documento=tipo_norm,
     )
 
     # Guardar borrador (no marcado como guardado=True hasta que el usuario lo guarde)
@@ -333,7 +403,7 @@ async def redactor_generar(
             texto_salida=texto_salida,
             tono=tono_norm,
             institucion_destino_id=institucion_id,
-            formato_salida="txt",
+            formato_salida=tipo_norm,
             guardado=False,
         )
         db.add(doc)
@@ -350,8 +420,76 @@ async def redactor_generar(
             "texto_salida": texto_salida,
             "documento_id": doc_id,
             "tono": tono_norm,
+            "tipo_documento": tipo_norm,
             "ref_aviso": ref_aviso,
             "ref_usado": bool(ref_texto),
+            "ajustes": listar_ajustes(),
+        },
+    )
+
+
+# ─── Modo 1: Ajustes post-generación ───
+@router.post("/redactor/ajustar", response_class=HTMLResponse)
+async def redactor_ajustar(
+    request: Request,
+    ajuste: str = Form(...),
+    doc_id: int = Form(...),
+):
+    usuario = _user_or_redirect(request)
+    if not usuario:
+        return HTMLResponse("<p class='error'>Sesión expirada</p>", status_code=401)
+
+    if ajuste not in AJUSTES:
+        return HTMLResponse(
+            f"<p class='sp-alert sp-alert-error'>Ajuste no válido: {ajuste}</p>",
+            status_code=400,
+        )
+
+    db = _db()
+    try:
+        doc = db.query(DocumentoSecretaria).filter(
+            DocumentoSecretaria.id == doc_id,
+            DocumentoSecretaria.secretaria_id == usuario.id,
+        ).first()
+        if not doc:
+            return HTMLResponse(
+                "<p class='sp-alert sp-alert-error'>Documento no encontrado.</p>",
+                status_code=404,
+            )
+
+        texto_actual = doc.texto_salida or ""
+        nuevo_texto = ajustar_documento(texto_actual, ajuste)
+
+        # "sugerir_asunto" devuelve solo 3 sugerencias — no machacar el documento.
+        # Para los demás ajustes sí actualizamos el texto guardado.
+        if ajuste == "sugerir_asunto":
+            return HTMLResponse(
+                "<div class='sp-sugerencias'>"
+                "<h4 style='margin:0 0 .5rem;'>💡 Sugerencias de asunto</h4>"
+                f"<pre style='white-space:pre-wrap; margin:0;'>{nuevo_texto}</pre>"
+                "</div>"
+            )
+
+        doc.texto_salida = nuevo_texto
+        db.commit()
+        db.refresh(doc)
+        tono_norm = doc.tono or "formal"
+        tipo_norm = doc.formato_salida or "carta"
+        doc_id_final = doc.id
+    finally:
+        db.close()
+
+    return templates.TemplateResponse(
+        request,
+        "secretaria/_redactor_resultado.html",
+        {
+            "texto_salida": nuevo_texto,
+            "documento_id": doc_id_final,
+            "tono": tono_norm,
+            "tipo_documento": tipo_norm,
+            "ref_aviso": None,
+            "ref_usado": False,
+            "ajustes": listar_ajustes(),
         },
     )
 
@@ -389,10 +527,21 @@ async def documento_pdf(doc_id: int, request: Request):
         if not doc:
             raise HTTPException(404, "Documento no encontrado")
         texto = doc.texto_salida or ""
+        tono_doc = doc.tono or "formal"
+        cfg_col = None
+        if usuario.colegio_id:
+            cfg_col = db.query(ConfigSecretariaColegio).filter(
+                ConfigSecretariaColegio.colegio_id == usuario.colegio_id
+            ).first()
     finally:
         db.close()
 
-    contenido = texto_a_pdf_bytes(texto, titulo=f"Documento_{doc_id}")
+    contenido = texto_a_pdf_bytes(
+        texto,
+        titulo=f"Documento_{doc_id}",
+        tono=tono_doc,
+        config_colegio=cfg_col,
+    )
     if pdf_disponible():
         return Response(
             content=contenido,
@@ -410,28 +559,93 @@ async def documento_pdf(doc_id: int, request: Request):
 
 # ─── Historial ───
 @router.get("/historial", response_class=HTMLResponse)
-async def historial(request: Request):
+async def historial(
+    request: Request,
+    q: Optional[str] = None,
+    modo: Optional[str] = None,
+    tono: Optional[str] = None,
+    desde: Optional[str] = None,
+    hasta: Optional[str] = None,
+):
+    usuario = _user_or_redirect(request)
+    if not usuario:
+        return RedirectResponse("/secretaria/login", status_code=302)
+
+    db = _db()
+    try:
+        query = db.query(DocumentoSecretaria).filter(
+            DocumentoSecretaria.secretaria_id == usuario.id,
+            DocumentoSecretaria.guardado == True,  # noqa: E712
+        )
+        if q:
+            like = f"%{q.strip()}%"
+            query = query.filter(
+                (DocumentoSecretaria.texto_salida.ilike(like))
+                | (DocumentoSecretaria.texto_entrada.ilike(like))
+            )
+        if modo:
+            query = query.filter(DocumentoSecretaria.modo == modo)
+        if tono:
+            query = query.filter(DocumentoSecretaria.tono == tono)
+        if desde:
+            try:
+                from datetime import datetime as _dt
+                d_desde = _dt.fromisoformat(desde)
+                query = query.filter(DocumentoSecretaria.creado_en >= d_desde)
+            except Exception:
+                pass
+        if hasta:
+            try:
+                from datetime import datetime as _dt, timedelta as _td
+                d_hasta = _dt.fromisoformat(hasta) + _td(days=1)
+                query = query.filter(DocumentoSecretaria.creado_en < d_hasta)
+            except Exception:
+                pass
+
+        docs = query.order_by(DocumentoSecretaria.creado_en.desc()).limit(200).all()
+    finally:
+        db.close()
+
+    return templates.TemplateResponse(
+        request,
+        "secretaria/historial.html",
+        _ctx(
+            usuario=usuario,
+            modo_actual="historial",
+            documentos=docs,
+            filtro_q=q or "",
+            filtro_modo=modo or "",
+            filtro_tono=tono or "",
+            filtro_desde=desde or "",
+            filtro_hasta=hasta or "",
+        ),
+    )
+
+
+@router.get("/historial/{doc_id}/reabrir")
+async def historial_reabrir(doc_id: int, request: Request):
+    """Carga un documento del historial en el Redactor para reusarlo."""
     usuario = _user_or_redirect(request)
     if not usuario:
         return RedirectResponse("/secretaria/login", status_code=302)
     db = _db()
     try:
-        docs = (
-            db.query(DocumentoSecretaria)
-            .filter(
-                DocumentoSecretaria.secretaria_id == usuario.id,
-                DocumentoSecretaria.guardado == True,  # noqa: E712
-            )
-            .order_by(DocumentoSecretaria.creado_en.desc())
-            .limit(100)
-            .all()
-        )
+        doc = db.query(DocumentoSecretaria).filter(
+            DocumentoSecretaria.id == doc_id,
+            DocumentoSecretaria.secretaria_id == usuario.id,
+        ).first()
+        if not doc:
+            raise HTTPException(404, "Documento no encontrado")
+        # Marcar como NO guardado para que el flujo del Redactor lo trate como borrador
+        # (la fila guardada original sigue intacta — ésta es una copia conceptual.)
     finally:
         db.close()
-    return templates.TemplateResponse(
-        request,
-        "secretaria/historial.html",
-        _ctx(usuario=usuario, modo_actual="historial", documentos=docs),
+    # En la práctica, devolvemos al Redactor con los datos en query params
+    from urllib.parse import quote
+    texto = (doc.texto_entrada or "")[:500]
+    return RedirectResponse(
+        f"/secretaria/redactor?reabrir={doc_id}&texto={quote(texto)}&tono={doc.tono or 'formal'}",
+        status_code=302,
     )
 
 
@@ -796,3 +1010,243 @@ async def post_redes_view(request: Request):
         "secretaria/post_redes.html",
         _ctx(usuario=usuario, modo_actual="post-redes"),
     )
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Perfiles de remitente
+# ═══════════════════════════════════════════════════════════════════
+@router.get("/remitentes", response_class=HTMLResponse)
+async def remitentes_lista(request: Request):
+    usuario = _user_or_redirect(request)
+    if not usuario:
+        return RedirectResponse("/secretaria/login", status_code=302)
+    db = _db()
+    try:
+        perfiles = (
+            db.query(PerfilRemitente)
+            .filter(PerfilRemitente.secretaria_id == usuario.id)
+            .order_by(PerfilRemitente.es_default.desc(), PerfilRemitente.nombre.asc())
+            .all()
+        )
+    finally:
+        db.close()
+    return templates.TemplateResponse(
+        request,
+        "secretaria/remitentes.html",
+        _ctx(usuario=usuario, modo_actual="remitentes", perfiles=perfiles),
+    )
+
+
+@router.get("/remitentes/nuevo", response_class=HTMLResponse)
+async def remitentes_nuevo_form(request: Request):
+    usuario = _user_or_redirect(request)
+    if not usuario:
+        return RedirectResponse("/secretaria/login", status_code=302)
+    return templates.TemplateResponse(
+        request,
+        "secretaria/remitente_form.html",
+        _ctx(usuario=usuario, modo_actual="remitentes"),
+    )
+
+
+@router.post("/remitentes/nuevo")
+async def remitentes_nuevo_submit(
+    request: Request,
+    nombre: str = Form(...),
+    cargo: Optional[str] = Form(None),
+    tratamiento: Optional[str] = Form(None),
+    institucion: Optional[str] = Form(None),
+    ciudad: Optional[str] = Form(None),
+    es_default: Optional[str] = Form(None),
+):
+    usuario = _require_user(request)
+    db = _db()
+    try:
+        marcar_default = bool(es_default)
+        if marcar_default:
+            # Limpiar default anterior
+            db.query(PerfilRemitente).filter(
+                PerfilRemitente.secretaria_id == usuario.id,
+                PerfilRemitente.es_default == True,  # noqa: E712
+            ).update({"es_default": False})
+
+        p = PerfilRemitente(
+            secretaria_id=usuario.id,
+            colegio_id=usuario.colegio_id,
+            nombre=nombre.strip(),
+            cargo=(cargo or "").strip() or None,
+            tratamiento=(tratamiento or "").strip() or "",
+            institucion=(institucion or "").strip() or None,
+            ciudad=(ciudad or "Iquitos").strip(),
+            es_default=marcar_default,
+        )
+        db.add(p)
+        db.commit()
+    finally:
+        db.close()
+    return RedirectResponse("/secretaria/remitentes", status_code=302)
+
+
+@router.post("/remitentes/{perfil_id}/default")
+async def remitentes_marcar_default(perfil_id: int, request: Request):
+    usuario = _require_user(request)
+    db = _db()
+    try:
+        p = db.query(PerfilRemitente).filter(
+            PerfilRemitente.id == perfil_id,
+            PerfilRemitente.secretaria_id == usuario.id,
+        ).first()
+        if not p:
+            raise HTTPException(404, "Perfil no encontrado")
+        db.query(PerfilRemitente).filter(
+            PerfilRemitente.secretaria_id == usuario.id,
+            PerfilRemitente.es_default == True,  # noqa: E712
+        ).update({"es_default": False})
+        p.es_default = True
+        db.commit()
+        return JSONResponse({"ok": True})
+    finally:
+        db.close()
+
+
+@router.post("/remitentes/{perfil_id}/eliminar")
+async def remitentes_eliminar(perfil_id: int, request: Request):
+    usuario = _require_user(request)
+    db = _db()
+    try:
+        p = db.query(PerfilRemitente).filter(
+            PerfilRemitente.id == perfil_id,
+            PerfilRemitente.secretaria_id == usuario.id,
+        ).first()
+        if not p:
+            raise HTTPException(404, "Perfil no encontrado")
+        db.delete(p)
+        db.commit()
+    finally:
+        db.close()
+    return RedirectResponse("/secretaria/remitentes", status_code=302)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Configuración + preferencias
+# ═══════════════════════════════════════════════════════════════════
+def _get_o_crear_prefs(db, secretaria_id: int) -> PreferenciasSecretaria:
+    p = db.query(PreferenciasSecretaria).filter(
+        PreferenciasSecretaria.secretaria_id == secretaria_id
+    ).first()
+    if not p:
+        p = PreferenciasSecretaria(secretaria_id=secretaria_id)
+        db.add(p)
+        db.commit()
+        db.refresh(p)
+    return p
+
+
+@router.get("/configuracion", response_class=HTMLResponse)
+async def configuracion_view(request: Request):
+    usuario = _user_or_redirect(request)
+    if not usuario:
+        return RedirectResponse("/secretaria/login", status_code=302)
+    db = _db()
+    try:
+        prefs = _get_o_crear_prefs(db, usuario.id)
+        cfg = None
+        if usuario.colegio_id:
+            cfg = db.query(ConfigSecretariaColegio).filter(
+                ConfigSecretariaColegio.colegio_id == usuario.colegio_id
+            ).first()
+    finally:
+        db.close()
+    return templates.TemplateResponse(
+        request,
+        "secretaria/configuracion.html",
+        _ctx(
+            usuario=usuario,
+            modo_actual="configuracion",
+            prefs=prefs,
+            colegio_cfg=cfg,
+        ),
+    )
+
+
+@router.post("/configuracion/apariencia")
+async def configuracion_apariencia(
+    request: Request,
+    tema: str = Form("claro"),
+    fuente_size: str = Form("normal"),
+    tipo_doc_default: str = Form("carta"),
+    tono_default: str = Form("formal"),
+):
+    usuario = _require_user(request)
+    if tema not in ("claro", "oscuro", "pastel", "elegante"):
+        tema = "claro"
+    if fuente_size not in ("pequeno", "normal", "grande", "xl"):
+        fuente_size = "normal"
+    if tipo_doc_default not in TIPOS:
+        tipo_doc_default = "carta"
+    if tono_default not in TONOS:
+        tono_default = "formal"
+    db = _db()
+    try:
+        p = _get_o_crear_prefs(db, usuario.id)
+        p.tema = tema
+        p.fuente_size = fuente_size
+        p.tipo_doc_default = tipo_doc_default
+        p.tono_default = tono_default
+        db.commit()
+        return JSONResponse({"ok": True, "prefs": {
+            "tema": p.tema,
+            "fuente_size": p.fuente_size,
+            "tipo_doc_default": p.tipo_doc_default,
+            "tono_default": p.tono_default,
+        }})
+    finally:
+        db.close()
+
+
+@router.post("/configuracion/colegio")
+async def configuracion_colegio(
+    request: Request,
+    nombre_colegio: Optional[str] = Form(None),
+    nombre_decano: Optional[str] = Form(None),
+    ciudad: Optional[str] = Form("Iquitos"),
+    membrete_url: Optional[str] = Form(None),
+    api_key_openai: Optional[str] = Form(None),
+):
+    usuario = _require_user(request)
+    cid = int(usuario.colegio_id or 0)
+    db = _db()
+    try:
+        cfg = db.query(ConfigSecretariaColegio).filter(
+            ConfigSecretariaColegio.colegio_id == cid
+        ).first()
+        if not cfg:
+            cfg = ConfigSecretariaColegio(colegio_id=cid)
+            db.add(cfg)
+
+        if nombre_colegio is not None:
+            cfg.nombre_colegio = nombre_colegio.strip() or None
+        if nombre_decano is not None:
+            cfg.nombre_decano = nombre_decano.strip() or None
+        if ciudad is not None:
+            cfg.ciudad = ciudad.strip() or "Iquitos"
+        if membrete_url is not None:
+            cfg.membrete_url = membrete_url.strip() or None
+
+        # API key del colegio (encriptación opcional con Fernet si está disponible)
+        if api_key_openai:
+            try:
+                from cryptography.fernet import Fernet
+                fernet_key = os.environ.get("FERNET_KEY")
+                if fernet_key:
+                    f = Fernet(fernet_key.encode() if isinstance(fernet_key, str) else fernet_key)
+                    cfg.api_key_openai_enc = f.encrypt(api_key_openai.encode()).decode()
+                else:
+                    cfg.api_key_openai_enc = api_key_openai  # sin encriptar (dev)
+            except Exception:
+                cfg.api_key_openai_enc = api_key_openai
+
+        db.commit()
+    finally:
+        db.close()
+    return RedirectResponse("/secretaria/configuracion", status_code=302)
