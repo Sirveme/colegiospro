@@ -81,6 +81,39 @@ class DocumentoSecretaria(Base):
     creado_en = Column(DateTime, default=_utcnow, index=True)
 
 
+# ─── perfiles_remitente ───
+# Perfiles de firmante que la secretaria puede elegir al generar un documento.
+# Permite tener varias firmas (Decano, Subdecano, Director Académico, etc.).
+class PerfilRemitente(Base):
+    __tablename__ = "perfiles_remitente"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    secretaria_id = Column(Integer, ForeignKey("usuarios_secretaria.id"), index=True)
+    colegio_id = Column(Integer, nullable=True)
+    nombre = Column(String(150), nullable=False)
+    cargo = Column(String(100))
+    tratamiento = Column(String(30), default="")  # Dr. / Mg. / CPC / Abog.
+    institucion = Column(String(200))
+    ciudad = Column(String(100), default="Iquitos")
+    es_default = Column(Boolean, default=False)
+    creado_en = Column(DateTime, default=_utcnow)
+
+
+# ─── preferencias_secretaria ───
+# Preferencias de UI y defaults del Redactor por usuario.
+class PreferenciasSecretaria(Base):
+    __tablename__ = "preferencias_secretaria"
+
+    secretaria_id = Column(
+        Integer, ForeignKey("usuarios_secretaria.id"), primary_key=True
+    )
+    tema = Column(String(20), default="claro")  # claro/oscuro/pastel/elegante
+    fuente_size = Column(String(10), default="normal")  # pequeno/normal/grande/xl
+    tipo_doc_default = Column(String(20), default="carta")
+    tono_default = Column(String(20), default="formal")
+    actualizado_en = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+
 # ─── directorio_contacto_extendido ───
 # Datos privados de cada colegio sobre sus contactos en el directorio.
 # NO se comparten entre colegios. PK compuesta (colegio_id, institucion_id).
