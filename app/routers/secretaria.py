@@ -46,6 +46,7 @@ from app.services.redactor_service import (
     TONOS,
     TIPOS,
     AJUSTES,
+    NEGATIVOS_OPCIONALES,
     listar_tipos,
     listar_ajustes,
 )
@@ -134,8 +135,12 @@ def _config_remitente(
         "nombre_colegio": "",
         "nombre_decano": "",
         "nombre_firmante": "",
+        "nombre": "",
         "cargo_firmante": "Decano",
+        "cargo": "Decano",
         "tratamiento_firmante": "",
+        "tratamiento": "",
+        "sexo": "M",
         "ciudad": "",
     }
     db = _db()
@@ -150,33 +155,33 @@ def _config_remitente(
                 base["nombre_firmante"] = cfg.nombre_decano or ""
                 base["ciudad"] = cfg.ciudad or ""
 
+        def _apply_perfil(perf):
+            base["nombre_firmante"] = perf.nombre or base["nombre_firmante"]
+            base["nombre"] = perf.nombre or base["nombre"]
+            base["cargo_firmante"] = perf.cargo or "Decano"
+            base["cargo"] = perf.cargo or "Decano"
+            base["tratamiento_firmante"] = perf.tratamiento or ""
+            base["tratamiento"] = perf.tratamiento or ""
+            base["sexo"] = getattr(perf, "sexo", "M") or "M"
+            if perf.institucion:
+                base["nombre_colegio"] = perf.institucion
+            if perf.ciudad:
+                base["ciudad"] = perf.ciudad
+
         if perfil_id and secretaria_id:
             perf = db.query(PerfilRemitente).filter(
                 PerfilRemitente.id == perfil_id,
                 PerfilRemitente.secretaria_id == secretaria_id,
             ).first()
             if perf:
-                base["nombre_firmante"] = perf.nombre or base["nombre_firmante"]
-                base["cargo_firmante"] = perf.cargo or "Decano"
-                base["tratamiento_firmante"] = perf.tratamiento or ""
-                if perf.institucion:
-                    base["nombre_colegio"] = perf.institucion
-                if perf.ciudad:
-                    base["ciudad"] = perf.ciudad
+                _apply_perfil(perf)
         elif secretaria_id:
-            # Si no se pasó perfil explícito, intentar el default del usuario
             perf = db.query(PerfilRemitente).filter(
                 PerfilRemitente.secretaria_id == secretaria_id,
                 PerfilRemitente.es_default == True,  # noqa: E712
             ).first()
             if perf:
-                base["nombre_firmante"] = perf.nombre or base["nombre_firmante"]
-                base["cargo_firmante"] = perf.cargo or "Decano"
-                base["tratamiento_firmante"] = perf.tratamiento or ""
-                if perf.institucion:
-                    base["nombre_colegio"] = perf.institucion
-                if perf.ciudad:
-                    base["ciudad"] = perf.ciudad
+                _apply_perfil(perf)
 
         return base
     finally:
@@ -583,8 +588,32 @@ async def redactor_analizar(
             "remitentes": perfiles,
             "preguntas": resultado.get("preguntas") or [],
             "razon": resultado.get("razon", ""),
+            "tipo_no_habilitado": tipo_sug not in tipos_habilitados,
         },
     )
+
+
+@router.post("/config/habilitar-tipo")
+async def config_habilitar_tipo(request: Request):
+    """Agrega un tipo de documento a los habilitados del usuario."""
+    usuario = _require_user(request)
+    data = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
+    if not data:
+        form = await request.form()
+        data = {"tipo": form.get("tipo", "")}
+    tipo = (data.get("tipo") or "").strip()
+    if tipo and tipo in TIPOS:
+        db = _db()
+        try:
+            cfg = _get_o_crear_config_org(db, usuario.id, usuario.colegio_id)
+            habilitados = cfg.tipos_doc_habilitados or list(TIPOS.keys())
+            if tipo not in habilitados:
+                habilitados.append(tipo)
+                cfg.tipos_doc_habilitados = habilitados
+                db.commit()
+        finally:
+            db.close()
+    return JSONResponse({"ok": True})
 
 
 @router.post("/redactor/generar", response_class=HTMLResponse)
@@ -640,6 +669,7 @@ async def redactor_generar(
     try:
         cfg_org = _get_config_org(db, usuario.id)
         config_org_dict = {}
+        prefs_redaccion = {}
         if cfg_org:
             config_org_dict = {
                 "nombre_organizacion": cfg_org.nombre_organizacion or "",
@@ -648,6 +678,7 @@ async def redactor_generar(
                 "anno_oficial": cfg_org.anno_oficial or ANNO_OFICIAL_DEFAULT,
                 "secretaria_id": usuario.id,
             }
+            prefs_redaccion = cfg_org.preferencias_redaccion or {}
             # Enriquecer remitente con datos de org si faltan
             if not remitente.get("nombre_colegio") and cfg_org.nombre_organizacion:
                 remitente["nombre_colegio"] = cfg_org.nombre_organizacion
@@ -687,7 +718,7 @@ async def redactor_generar(
         except Exception:
             pass
 
-    texto_salida = generar_documento(
+    texto_salida, alertas = generar_documento(
         texto_entrada=texto_entrada.strip(),
         tono=tono_norm,
         destinatario=destinatario,
@@ -698,6 +729,7 @@ async def redactor_generar(
         asunto_confirmado=(asunto_confirmado or "").strip(),
         respuestas_agente=resp_agente,
         num_correlativo=num_correlativo,
+        preferencias_prompt=prefs_redaccion,
     )
 
     # Guardar borrador
@@ -732,6 +764,7 @@ async def redactor_generar(
             "ref_aviso": ref_aviso,
             "ref_usado": bool(ref_texto),
             "ajustes": listar_ajustes(),
+            "alertas": alertas or [],
         },
     )
 
@@ -844,11 +877,13 @@ async def documento_pdf(doc_id: int, request: Request):
     finally:
         db.close()
 
+    tipo_doc = doc.formato_salida or "carta"
     contenido = texto_a_pdf_bytes(
         texto,
         titulo=f"Documento_{doc_id}",
         tono=tono_doc,
         config_colegio=cfg_col,
+        tipo_documento=tipo_doc,
     )
     if pdf_disponible():
         return Response(
@@ -1365,6 +1400,7 @@ async def remitentes_nuevo_submit(
     tratamiento: Optional[str] = Form(None),
     institucion: Optional[str] = Form(None),
     ciudad: Optional[str] = Form(None),
+    sexo: Optional[str] = Form("M"),
     es_default: Optional[str] = Form(None),
 ):
     usuario = _require_user(request)
@@ -1372,7 +1408,6 @@ async def remitentes_nuevo_submit(
     try:
         marcar_default = bool(es_default)
         if marcar_default:
-            # Limpiar default anterior
             db.query(PerfilRemitente).filter(
                 PerfilRemitente.secretaria_id == usuario.id,
                 PerfilRemitente.es_default == True,  # noqa: E712
@@ -1384,6 +1419,7 @@ async def remitentes_nuevo_submit(
             nombre=nombre.strip(),
             cargo=(cargo or "").strip() or None,
             tratamiento=(tratamiento or "").strip() or "",
+            sexo=(sexo or "M").strip()[:1].upper(),
             institucion=(institucion or "").strip() or None,
             ciudad=(ciudad or "Iquitos").strip(),
             es_default=marcar_default,
@@ -1468,6 +1504,7 @@ async def configuracion_view(request: Request):
         db.close()
     anno_actual = datetime.now(timezone.utc).year
     flags = _context_flags(usuario)
+    prefs_redaccion = (config_org.preferencias_redaccion or {}) if config_org else {}
     return templates.TemplateResponse(
         request,
         "secretaria/configuracion.html",
@@ -1478,9 +1515,30 @@ async def configuracion_view(request: Request):
             colegio_cfg=cfg,
             config_org=config_org,
             anno_actual=anno_actual,
+            negativos_opcionales=NEGATIVOS_OPCIONALES,
+            prefs_redaccion=prefs_redaccion,
             **flags,
         ),
     )
+
+
+@router.post("/configuracion/redaccion")
+async def configuracion_redaccion(request: Request):
+    """Guardar preferencias de redacción (prompts negativos opcionales)."""
+    usuario = _require_user(request)
+    form = await request.form()
+    prefs = {}
+    for key in NEGATIVOS_OPCIONALES:
+        prefs[key] = bool(form.get(f"pref_{key}"))
+    db = _db()
+    try:
+        cfg = _get_o_crear_config_org(db, usuario.id, usuario.colegio_id)
+        cfg.preferencias_redaccion = prefs
+        cfg.actualizado_en = datetime.now(timezone.utc)
+        db.commit()
+    finally:
+        db.close()
+    return JSONResponse({"ok": True})
 
 
 @router.post("/configuracion/organizacion")
