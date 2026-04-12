@@ -3,6 +3,7 @@
 # Modo 1: Redactor ultrarrápido — llama a GPT-4o
 # ══════════════════════════════════════════════════════════
 
+import json
 import os
 from datetime import datetime
 from typing import Optional
@@ -364,6 +365,123 @@ REMITENTE / FIRMANTE:
 Responde ÚNICAMENTE con el texto del documento. Sin explicaciones, sin markdown."""
 
 
+# ─── Agente clasificador ──────────────────────────────────────────
+TIPOS_HABILITADOS_DEFAULT = list(TIPOS.keys())
+
+
+def clasificar_instruccion(
+    texto: str,
+    tipos_habilitados: list = None,
+    remitentes: list = None,
+    texto_referencia: str = "",
+) -> dict:
+    """Llama a GPT-4o para clasificar la instrucción y proponer parámetros."""
+    if tipos_habilitados is None:
+        tipos_habilitados = TIPOS_HABILITADOS_DEFAULT
+    if remitentes is None:
+        remitentes = []
+
+    prompt_system = """Eres un asistente administrativo experto en documentos
+oficiales peruanos. Tu tarea es ANALIZAR una instrucción coloquial y proponer
+los parámetros correctos para redactar el documento.
+
+Responde ÚNICAMENTE con un JSON válido con esta estructura:
+{
+  "tipo_sugerido": "circular",
+  "asunto_sugerido": "Obligaciones que generan multa pecuniaria",
+  "tono_sugerido": "formal",
+  "destinatario_tipo": "masivo",
+  "remitente_sugerido": "Decano",
+  "necesita_preguntas": true,
+  "preguntas": [
+    "¿Deseas incluir los montos específicos de cada multa?",
+    "¿El documento debe incluir fecha límite de pago?"
+  ],
+  "razon": "La instrucción solicita informar obligaciones económicas a todos los colegiados — corresponde una Circular formal."
+}
+
+REGLAS:
+- preguntas: máximo 2, solo si la instrucción es ambigua
+- Si la instrucción es clara, necesita_preguntas = false y preguntas = []
+- tipo_sugerido debe ser uno de: """ + str(tipos_habilitados) + """
+- tono_sugerido debe ser: formal, cordial o protocolar
+- Responde SOLO con el JSON, sin explicaciones ni markdown."""
+
+    prompt_user = f"""
+INSTRUCCIÓN: {texto}
+
+{"DOCUMENTO DE REFERENCIA (resumen):" + texto_referencia[:2000] if texto_referencia else ""}
+
+REMITENTES DISPONIBLES: {[r.get("nombre","") + " - " + r.get("cargo","") for r in remitentes]}
+
+Analiza y responde con el JSON.
+"""
+
+    key = os.environ.get("OPENAI_API_KEY")
+    if _openai_available and key:
+        try:
+            client = OpenAI(api_key=key)
+            resp = client.chat.completions.create(
+                model="gpt-4o",
+                temperature=0.1,
+                messages=[
+                    {"role": "system", "content": prompt_system},
+                    {"role": "user", "content": prompt_user},
+                ],
+            )
+            raw = (resp.choices[0].message.content or "").strip()
+            # Limpiar markdown si viene envuelto
+            if raw.startswith("```"):
+                raw = raw.split("\n", 1)[-1]
+                if raw.endswith("```"):
+                    raw = raw[:-3]
+            return json.loads(raw)
+        except Exception:
+            pass
+
+    # Fallback: respuesta básica sin IA
+    return {
+        "tipo_sugerido": "carta",
+        "asunto_sugerido": "",
+        "tono_sugerido": "formal",
+        "destinatario_tipo": "especifico",
+        "remitente_sugerido": "",
+        "necesita_preguntas": False,
+        "preguntas": [],
+        "razon": "Análisis automático no disponible — se usarán los valores por defecto.",
+    }
+
+
+# ─── Numeración correlativa ──────────────────────────────────────
+def obtener_siguiente_correlativo(
+    tipo_documento: str,
+    secretaria_id: int,
+    db,
+) -> int:
+    """Obtiene y incrementa el número correlativo para el tipo de documento y año."""
+    from app.models_secretaria import CorrelatividadDocumento
+
+    anno_actual = datetime.now().year
+    registro = db.query(CorrelatividadDocumento).filter_by(
+        secretaria_id=secretaria_id,
+        tipo_documento=tipo_documento,
+        anno=anno_actual,
+    ).first()
+
+    if not registro:
+        registro = CorrelatividadDocumento(
+            secretaria_id=secretaria_id,
+            tipo_documento=tipo_documento,
+            anno=anno_actual,
+            ultimo_numero=0,
+        )
+        db.add(registro)
+
+    registro.ultimo_numero += 1
+    db.commit()
+    return registro.ultimo_numero
+
+
 def generar_documento(
     texto_entrada: str,
     tono: str = "formal",
@@ -373,6 +491,10 @@ def generar_documento(
     tipo_documento: str = "carta",
     api_key: Optional[str] = None,
     modelo: str = "gpt-4o",
+    config_org: Optional[dict] = None,
+    asunto_confirmado: str = "",
+    respuestas_agente: Optional[dict] = None,
+    num_correlativo: Optional[int] = None,
 ) -> str:
     """
     Devuelve el texto del documento generado por GPT-4o.
@@ -387,7 +509,60 @@ def generar_documento(
     if tipo_norm not in TIPOS:
         tipo_norm = "carta"
 
+    # Enriquecer el system prompt con datos de la organización
+    org = config_org or {}
+    anno_oficial = org.get("anno_oficial", "")
+    siglas = org.get("siglas", "")
+    ciudad_org = org.get("ciudad", "")
+
+    # Si hay remitente, enriquecer con datos de org
+    if remitente and ciudad_org and not remitente.get("ciudad"):
+        remitente["ciudad"] = ciudad_org
+
     system_prompt = _build_system_prompt(tono_norm, tipo_norm)
+
+    # Agregar bloque de datos organizacionales y modo extracción
+    modo_extraccion = bool(documento_referencia and documento_referencia.strip())
+    org_block = ""
+    if anno_oficial or siglas or num_correlativo:
+        tipo_label = TIPOS[tipo_norm]["label"].upper()
+        num_display = ""
+        if num_correlativo:
+            num_display = f"{num_correlativo:03d}-{datetime.now().year}"
+            if siglas:
+                num_display += f"-{siglas}"
+        org_block = f"""
+
+================================================================
+DATOS DE LA ORGANIZACIÓN
+================================================================
+- Año oficial: "{anno_oficial}"
+- Numeración: {tipo_label} N° {num_display if num_display else '[___]'}
+- Organización: {org.get('nombre_organizacion', '')}
+- Siglas: {siglas}
+
+Incluye el año oficial SIEMPRE en la primera línea del documento como encabezado centrado."""
+
+    if modo_extraccion:
+        org_block += """
+
+================================================================
+MODO EXTRACCIÓN ACTIVO
+================================================================
+El usuario subió un documento de referencia.
+Tu tarea principal es EXTRAER información ESPECÍFICA del documento
+y presentarla en el formato solicitado.
+NO inventes datos. USA SOLO lo que está en el documento.
+Si el documento no contiene la información pedida, indícalo claramente."""
+
+    if asunto_confirmado:
+        org_block += f"\n\nASUNTO CONFIRMADO POR EL USUARIO: {asunto_confirmado}"
+
+    if respuestas_agente:
+        org_block += f"\n\nRESPUESTAS ADICIONALES DEL USUARIO: {respuestas_agente}"
+
+    system_prompt += org_block
+
     user_prompt = _build_user_prompt(
         texto_entrada, destinatario, remitente, documento_referencia, tipo_norm
     )
