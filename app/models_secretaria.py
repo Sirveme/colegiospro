@@ -94,6 +94,7 @@ class PerfilRemitente(Base):
     nombre = Column(String(150), nullable=False)
     cargo = Column(String(100))
     tratamiento = Column(String(30), default="")  # Dr. / Mg. / CPC / Abog.
+    sexo = Column(String(1), default="M")  # M / F
     institucion = Column(String(200))
     ciudad = Column(String(100), default="Iquitos")
     es_default = Column(Boolean, default=False)
@@ -183,6 +184,7 @@ class ConfigOrganizacion(Base):
     anno_oficial = Column(String(300))    # "Año del Bicentenario..."
     anno_numero = Column(Integer, default=2026)
     tipos_doc_habilitados = Column(JSON)  # ["carta","oficio","circular"]
+    preferencias_redaccion = Column(JSON)  # {"sin_relleno": true, ...}
     onboarding_completo = Column(Boolean, default=False)
     actualizado_en = Column(DateTime, default=_utcnow)
 
