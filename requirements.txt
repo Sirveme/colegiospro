@@ -10,3 +10,7 @@ openai>=1.30.0
 argon2-cffi
 cryptography
 reportlab
+httpx
+pdfplumber
+pypdf
+python-docx
