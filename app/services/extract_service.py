@@ -17,6 +17,12 @@ except Exception:
     _HAS_PDFPLUMBER = False
 
 try:
+    from pypdf import PdfReader  # type: ignore
+    _HAS_PYPDF = True
+except Exception:
+    _HAS_PYPDF = False
+
+try:
     import docx  # python-docx
     _HAS_DOCX = True
 except Exception:
@@ -94,18 +100,39 @@ def _truncar(texto: str) -> str:
 
 
 def _extraer_pdf(contenido: bytes) -> Tuple[str, Optional[str]]:
-    if not _HAS_PDFPLUMBER:
-        return "", "pdfplumber no instalado en el servidor"
-    partes = []
-    with pdfplumber.open(io.BytesIO(contenido)) as pdf:
-        for page in pdf.pages[:30]:  # máximo 30 páginas
-            t = page.extract_text() or ""
-            if t.strip():
-                partes.append(t)
-    texto = "\n\n".join(partes).strip()
-    if not texto:
-        return "", "El PDF no contiene texto extraíble (¿es escaneado?)"
-    return _truncar(texto), None
+    # Intentar con pdfplumber primero, luego pypdf como fallback
+    if _HAS_PDFPLUMBER:
+        try:
+            partes = []
+            with pdfplumber.open(io.BytesIO(contenido)) as pdf:
+                for page in pdf.pages[:30]:
+                    t = page.extract_text() or ""
+                    if t.strip():
+                        partes.append(t)
+            texto = "\n\n".join(partes).strip()
+            if texto:
+                return _truncar(texto), None
+        except Exception:
+            pass  # caer al fallback
+
+    if _HAS_PYPDF:
+        try:
+            reader = PdfReader(io.BytesIO(contenido))
+            partes = []
+            for page in reader.pages[:30]:
+                t = page.extract_text() or ""
+                if t.strip():
+                    partes.append(t)
+            texto = "\n\n".join(partes).strip()
+            if texto:
+                return _truncar(texto), None
+        except Exception:
+            pass
+
+    if not _HAS_PDFPLUMBER and not _HAS_PYPDF:
+        return "", "Ni pdfplumber ni pypdf están instalados en el servidor"
+
+    return "", "El PDF no contiene texto extraíble (¿es escaneado?)"
 
 
 def _extraer_docx(contenido: bytes) -> Tuple[str, Optional[str]]:
