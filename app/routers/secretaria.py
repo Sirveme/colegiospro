@@ -3,6 +3,7 @@
 # Rutas bajo el prefijo /secretaria
 # ══════════════════════════════════════════════════════════
 
+import os
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -25,6 +26,8 @@ from app.models_secretaria import (
     ConfigSecretariaColegio,
     PerfilRemitente,
     PreferenciasSecretaria,
+    ConfigOrganizacion,
+    CorrelatividadDocumento,
 )
 from app.services.auth_service import (
     hash_password,
@@ -38,6 +41,8 @@ from app.services.auth_service import (
 from app.services.redactor_service import (
     generar_documento,
     ajustar_documento,
+    clasificar_instruccion,
+    obtener_siguiente_correlativo,
     TONOS,
     TIPOS,
     AJUSTES,
@@ -178,16 +183,175 @@ def _config_remitente(
         db.close()
 
 
+ANNO_OFICIAL_DEFAULT = "Año del Bicentenario de la Integración Latinoamericana y Caribeña"
+
+
+def _get_config_org(db, secretaria_id: int) -> Optional[ConfigOrganizacion]:
+    return db.query(ConfigOrganizacion).filter(
+        ConfigOrganizacion.secretaria_id == secretaria_id
+    ).first()
+
+
+def _get_o_crear_config_org(db, secretaria_id: int, colegio_id=None) -> ConfigOrganizacion:
+    cfg = _get_config_org(db, secretaria_id)
+    if not cfg:
+        cfg = ConfigOrganizacion(
+            secretaria_id=secretaria_id,
+            colegio_id=colegio_id,
+            anno_oficial=ANNO_OFICIAL_DEFAULT,
+            anno_numero=datetime.now(timezone.utc).year,
+        )
+        db.add(cfg)
+        db.commit()
+        db.refresh(cfg)
+    return cfg
+
+
+def _check_onboarding(request: Request, usuario):
+    """Devuelve RedirectResponse si el onboarding no está completo, o None."""
+    if not usuario:
+        return None
+    db = _db()
+    try:
+        cfg = _get_config_org(db, usuario.id)
+        if not cfg or not cfg.onboarding_completo:
+            return RedirectResponse("/secretaria/onboarding", status_code=302)
+    finally:
+        db.close()
+    return None
+
+
+def _context_flags(usuario) -> dict:
+    """Flags para ocultar/mostrar secciones vacías en templates."""
+    db = _db()
+    try:
+        tiene_remitentes = db.query(PerfilRemitente).filter(
+            PerfilRemitente.secretaria_id == usuario.id
+        ).count() > 0
+        tiene_historial = db.query(DocumentoSecretaria).filter(
+            DocumentoSecretaria.secretaria_id == usuario.id,
+            DocumentoSecretaria.guardado == True,  # noqa: E712
+        ).count() > 0
+        tiene_directorio = db.query(DirectorioInstitucional).count() > 0
+        cfg = _get_config_org(db, usuario.id)
+        onboarding_completo = cfg.onboarding_completo if cfg else False
+        return {
+            "tiene_remitentes": tiene_remitentes,
+            "tiene_historial": tiene_historial,
+            "tiene_directorio": tiene_directorio,
+            "onboarding_completo": onboarding_completo,
+        }
+    finally:
+        db.close()
+
+
+def _banner_anno(usuario) -> tuple:
+    """Devuelve (mostrar_banner: bool, anno_actual: int)."""
+    anno_actual = datetime.now(timezone.utc).year
+    db = _db()
+    try:
+        cfg = _get_config_org(db, usuario.id)
+        if cfg and cfg.anno_numero and cfg.anno_numero < anno_actual:
+            return True, anno_actual
+        return False, anno_actual
+    finally:
+        db.close()
+
+
+# ─── Onboarding ───
+@router.get("/onboarding", response_class=HTMLResponse)
+async def onboarding_view(request: Request):
+    usuario = _user_or_redirect(request)
+    if not usuario:
+        return RedirectResponse("/secretaria/login", status_code=302)
+    db = _db()
+    try:
+        cfg = _get_o_crear_config_org(db, usuario.id, usuario.colegio_id)
+        tipos_sel = cfg.tipos_doc_habilitados or list(TIPOS.keys())
+    finally:
+        db.close()
+    return templates.TemplateResponse(
+        request,
+        "secretaria/onboarding.html",
+        _ctx(
+            usuario=usuario,
+            modo_actual="onboarding",
+            config=cfg,
+            tipos_sel=tipos_sel,
+            anno_oficial_default=ANNO_OFICIAL_DEFAULT,
+        ),
+    )
+
+
+@router.post("/onboarding/paso/{n}")
+async def onboarding_paso(n: int, request: Request):
+    usuario = _require_user(request)
+    data = await request.json()
+    db = _db()
+    try:
+        cfg = _get_o_crear_config_org(db, usuario.id, usuario.colegio_id)
+        if n == 1:
+            cfg.nombre_organizacion = (data.get("nombre_organizacion") or "").strip()
+            cfg.siglas = (data.get("siglas") or "").strip()
+            cfg.ciudad = (data.get("ciudad") or "Iquitos").strip()
+            cfg.sector = (data.get("sector") or "profesional").strip()
+        elif n == 2:
+            cfg.tipos_doc_habilitados = data.get("tipos_doc") or list(TIPOS.keys())
+        elif n == 3:
+            remitentes = data.get("remitentes") or []
+            for r in remitentes:
+                nombre = (r.get("nombre") or "").strip()
+                if not nombre:
+                    continue
+                p = PerfilRemitente(
+                    secretaria_id=usuario.id,
+                    colegio_id=usuario.colegio_id,
+                    nombre=nombre,
+                    cargo=(r.get("cargo") or "").strip() or None,
+                    tratamiento=(r.get("tratamiento") or "").strip(),
+                    institucion=(r.get("area") or "").strip() or None,
+                    ciudad=cfg.ciudad or "Iquitos",
+                    es_default=(remitentes.index(r) == 0),
+                )
+                db.add(p)
+        elif n == 4:
+            cfg.anno_oficial = (data.get("anno_oficial") or ANNO_OFICIAL_DEFAULT).strip()
+            cfg.anno_numero = datetime.now(timezone.utc).year
+        cfg.actualizado_en = datetime.now(timezone.utc)
+        db.commit()
+    finally:
+        db.close()
+    return JSONResponse({"ok": True, "paso": n})
+
+
+@router.post("/onboarding/completar")
+async def onboarding_completar(request: Request):
+    usuario = _require_user(request)
+    db = _db()
+    try:
+        cfg = _get_o_crear_config_org(db, usuario.id, usuario.colegio_id)
+        cfg.onboarding_completo = True
+        cfg.actualizado_en = datetime.now(timezone.utc)
+        db.commit()
+    finally:
+        db.close()
+    return JSONResponse({"ok": True})
+
+
 # ─── Dashboard ───
 @router.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
     usuario = _user_or_redirect(request)
     if not usuario:
         return RedirectResponse("/secretaria/login", status_code=302)
+    redir = _check_onboarding(request, usuario)
+    if redir:
+        return redir
+    flags = _context_flags(usuario)
     return templates.TemplateResponse(
         request,
         "secretaria/dashboard.html",
-        _ctx(usuario=usuario, modo_actual="dashboard"),
+        _ctx(usuario=usuario, modo_actual="dashboard", **flags),
     )
 
 
@@ -314,6 +478,9 @@ async def redactor_view(request: Request):
     usuario = _user_or_redirect(request)
     if not usuario:
         return RedirectResponse("/secretaria/login", status_code=302)
+    redir = _check_onboarding(request, usuario)
+    if redir:
+        return redir
     db = _db()
     try:
         instituciones = (
@@ -330,6 +497,8 @@ async def redactor_view(request: Request):
         )
     finally:
         db.close()
+    banner, anno_actual = _banner_anno(usuario)
+    flags = _context_flags(usuario)
     return templates.TemplateResponse(
         request,
         "secretaria/redactor.html",
@@ -340,7 +509,81 @@ async def redactor_view(request: Request):
             perfiles=perfiles,
             tipos=listar_tipos(),
             ajustes=listar_ajustes(),
+            banner_anno=banner,
+            anno_actual=anno_actual,
+            **flags,
         ),
+    )
+
+
+@router.post("/redactor/analizar", response_class=HTMLResponse)
+async def redactor_analizar(
+    request: Request,
+    texto_entrada: str = Form(""),
+    tipo_documento: str = Form("carta"),
+    documento_referencia: Optional[UploadFile] = File(None),
+):
+    """Agente clasificador: analiza la instrucción y propone parámetros."""
+    usuario = _user_or_redirect(request)
+    if not usuario:
+        return HTMLResponse("<p class='sp-alert sp-alert-error'>Sesión expirada</p>", 401)
+
+    texto = (texto_entrada or "").strip()
+    if not texto:
+        return HTMLResponse(
+            "<p class='sp-alert sp-alert-error'>Escribe o dicta una instrucción primero.</p>", 400
+        )
+
+    # Extraer texto de referencia si se subió
+    ref_texto = ""
+    if documento_referencia and documento_referencia.filename:
+        if extract_soportado(documento_referencia.filename):
+            contenido = await documento_referencia.read()
+            ref_texto, _ = extraer_texto(documento_referencia.filename, contenido)
+
+    db = _db()
+    try:
+        cfg = _get_config_org(db, usuario.id)
+        tipos_habilitados = (cfg.tipos_doc_habilitados if cfg else None) or list(TIPOS.keys())
+        perfiles = (
+            db.query(PerfilRemitente)
+            .filter(PerfilRemitente.secretaria_id == usuario.id)
+            .order_by(PerfilRemitente.es_default.desc(), PerfilRemitente.nombre.asc())
+            .all()
+        )
+        remitentes_list = [
+            {"nombre": p.nombre, "cargo": p.cargo or "", "id": p.id,
+             "tratamiento": p.tratamiento or "", "es_default": p.es_default}
+            for p in perfiles
+        ]
+    finally:
+        db.close()
+
+    resultado = clasificar_instruccion(
+        texto=texto,
+        tipos_habilitados=tipos_habilitados,
+        remitentes=remitentes_list,
+        texto_referencia=ref_texto or "",
+    )
+
+    tipo_sug = resultado.get("tipo_sugerido", tipo_documento)
+    tipo_cfg = TIPOS.get(tipo_sug, TIPOS.get("carta", {}))
+    tono_sug = resultado.get("tono_sugerido", "formal")
+    tono_cfg = TONOS.get(tono_sug, TONOS.get("formal", {}))
+
+    return templates.TemplateResponse(
+        request,
+        "secretaria/_redactor_propuesta.html",
+        {
+            "tipo_sugerido": tipo_sug,
+            "tipo_label": tipo_cfg.get("label", tipo_sug),
+            "asunto_sugerido": resultado.get("asunto_sugerido", ""),
+            "tono_sugerido": tono_sug,
+            "tono_label": tono_cfg.get("etiqueta", tono_sug),
+            "remitentes": perfiles,
+            "preguntas": resultado.get("preguntas") or [],
+            "razon": resultado.get("razon", ""),
+        },
     )
 
 
@@ -353,6 +596,8 @@ async def redactor_generar(
     institucion_id: Optional[int] = Form(None),
     perfil_remitente_id: Optional[int] = Form(None),
     documento_referencia: Optional[UploadFile] = File(None),
+    asunto_confirmado: Optional[str] = Form(None),
+    respuestas_agente: Optional[str] = Form(None),
 ):
     usuario = _user_or_redirect(request)
     if not usuario:
@@ -390,6 +635,32 @@ async def redactor_generar(
         secretaria_id=usuario.id,
     )
 
+    # Config de organización para año oficial, siglas, etc.
+    db = _db()
+    try:
+        cfg_org = _get_config_org(db, usuario.id)
+        config_org_dict = {}
+        if cfg_org:
+            config_org_dict = {
+                "nombre_organizacion": cfg_org.nombre_organizacion or "",
+                "siglas": cfg_org.siglas or "",
+                "ciudad": cfg_org.ciudad or remitente.get("ciudad", "Lima"),
+                "anno_oficial": cfg_org.anno_oficial or ANNO_OFICIAL_DEFAULT,
+                "secretaria_id": usuario.id,
+            }
+            # Enriquecer remitente con datos de org si faltan
+            if not remitente.get("nombre_colegio") and cfg_org.nombre_organizacion:
+                remitente["nombre_colegio"] = cfg_org.nombre_organizacion
+            if not remitente.get("ciudad") and cfg_org.ciudad:
+                remitente["ciudad"] = cfg_org.ciudad
+
+        # Numeración correlativa
+        num_correlativo = obtener_siguiente_correlativo(
+            tipo_norm, usuario.id, db
+        )
+    finally:
+        db.close()
+
     # Documento de referencia opcional
     ref_texto: Optional[str] = None
     ref_aviso: Optional[str] = None
@@ -407,6 +678,15 @@ async def redactor_generar(
                 ref_aviso = f"No se pudo extraer texto de {documento_referencia.filename}: {err}"
                 ref_texto = None
 
+    # Parsear respuestas del agente
+    resp_agente = {}
+    if respuestas_agente:
+        try:
+            import json
+            resp_agente = json.loads(respuestas_agente)
+        except Exception:
+            pass
+
     texto_salida = generar_documento(
         texto_entrada=texto_entrada.strip(),
         tono=tono_norm,
@@ -414,9 +694,13 @@ async def redactor_generar(
         remitente=remitente,
         documento_referencia=ref_texto,
         tipo_documento=tipo_norm,
+        config_org=config_org_dict,
+        asunto_confirmado=(asunto_confirmado or "").strip(),
+        respuestas_agente=resp_agente,
+        num_correlativo=num_correlativo,
     )
 
-    # Guardar borrador (no marcado como guardado=True hasta que el usuario lo guarde)
+    # Guardar borrador
     db = _db()
     try:
         doc = DocumentoSecretaria(
@@ -1179,8 +1463,11 @@ async def configuracion_view(request: Request):
             cfg = db.query(ConfigSecretariaColegio).filter(
                 ConfigSecretariaColegio.colegio_id == usuario.colegio_id
             ).first()
+        config_org = _get_config_org(db, usuario.id)
     finally:
         db.close()
+    anno_actual = datetime.now(timezone.utc).year
+    flags = _context_flags(usuario)
     return templates.TemplateResponse(
         request,
         "secretaria/configuracion.html",
@@ -1189,8 +1476,39 @@ async def configuracion_view(request: Request):
             modo_actual="configuracion",
             prefs=prefs,
             colegio_cfg=cfg,
+            config_org=config_org,
+            anno_actual=anno_actual,
+            **flags,
         ),
     )
+
+
+@router.post("/configuracion/organizacion")
+async def configuracion_organizacion(
+    request: Request,
+    nombre_organizacion: Optional[str] = Form(None),
+    siglas: Optional[str] = Form(None),
+    anno_oficial: Optional[str] = Form(None),
+    ciudad_org: Optional[str] = Form(None),
+):
+    usuario = _require_user(request)
+    db = _db()
+    try:
+        cfg = _get_o_crear_config_org(db, usuario.id, usuario.colegio_id)
+        if nombre_organizacion is not None:
+            cfg.nombre_organizacion = nombre_organizacion.strip() or None
+        if siglas is not None:
+            cfg.siglas = siglas.strip() or None
+        if anno_oficial is not None:
+            cfg.anno_oficial = anno_oficial.strip() or None
+            cfg.anno_numero = datetime.now(timezone.utc).year
+        if ciudad_org is not None:
+            cfg.ciudad = ciudad_org.strip() or "Iquitos"
+        cfg.actualizado_en = datetime.now(timezone.utc)
+        db.commit()
+    finally:
+        db.close()
+    return RedirectResponse("/secretaria/configuracion", status_code=302)
 
 
 @router.post("/configuracion/apariencia")
