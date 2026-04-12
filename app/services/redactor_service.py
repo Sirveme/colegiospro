@@ -141,6 +141,51 @@ TIPOS = {
         "estructura": "Documento que certifica un hecho, cargo o condición.",
         "partes": "EL DECANO / HACE CONSTAR QUE: / Datos del certificado / A solicitud del interesado / Firma y sello",
     },
+    "memorandum_multiple": {
+        "label": "Memorándum Múltiple",
+        "icono": "📋",
+        "estructura": "Comunicación interna simultánea a varios destinatarios.",
+        "partes": "MEMORÁNDUM MÚLTIPLE N° / PARA: [lista de destinatarios] / DE: / ASUNTO: / FECHA: / Cuerpo / Firma",
+        "persona": "primera_plural",
+        "audiencia": "interno",
+        "permite_lista_destinatarios": True,
+    },
+    "oficio_multiple": {
+        "label": "Oficio Múltiple",
+        "icono": "📨",
+        "estructura": "Comunicación oficial enviada simultáneamente a varias instituciones externas.",
+        "partes": "OFICIO MÚLTIPLE N° / Lugar y fecha / A: [lista de instituciones] / ASUNTO: / Cuerpo / Firma y sello",
+        "persona": "primera_plural",
+        "audiencia": "externo_multiple",
+        "permite_lista_destinatarios": True,
+    },
+    "resolucion": {
+        "label": "Resolución",
+        "icono": "⚖️",
+        "estructura": "Acto administrativo formal con estructura legal obligatoria.",
+        "partes": "RESOLUCIÓN N° / VISTOS: / CONSIDERANDO: / SE RESUELVE: / REGÍSTRESE COMUNÍQUESE Y ARCHÍVESE. / Firma",
+        "persona": "tercera",
+        "audiencia": "formal_legal",
+        "partes_obligatorias": ["VISTOS:", "CONSIDERANDO:", "SE RESUELVE:"],
+    },
+    "orden_pedido": {
+        "label": "Orden de Pedido",
+        "icono": "🛒",
+        "estructura": "Documento comercial para solicitar bienes o servicios a un proveedor.",
+        "partes": "ORDEN DE PEDIDO N° / Fecha / Proveedor / Tabla: ítem-descripción-cantidad-precio unitario-total / Condiciones / Firma",
+        "persona": "institucional",
+        "audiencia": "proveedor",
+        "requiere_tabla": True,
+    },
+    "comunicado_general": {
+        "label": "Comunicado",
+        "icono": "📢",
+        "estructura": "Anuncio institucional sin destinatario específico, para difusión general.",
+        "partes": "COMUNICADO / Cuerpo directo y claro / Firma institucional",
+        "persona": "institucional",
+        "audiencia": "publico_general",
+        "sin_saludo": True,
+    },
 }
 
 
@@ -365,6 +410,46 @@ REMITENTE / FIRMANTE:
 Responde ÚNICAMENTE con el texto del documento. Sin explicaciones, sin markdown."""
 
 
+# ─── Género en remitentes ─────────────────────────────────────────
+TRATAMIENTOS_GENERO = {
+    "Dr.":   {"M": "Dr.",    "F": "Dra."},
+    "Mg.":   {"M": "Mg.",    "F": "Mg."},
+    "CPC.":  {"M": "CPC.",   "F": "CPC."},
+    "CPC":   {"M": "CPC.",   "F": "CPC."},
+    "Abog.": {"M": "Abog.",  "F": "Abog."},
+    "Ing.":  {"M": "Ing.",   "F": "Ing."},
+    "Lic.":  {"M": "Lic.",   "F": "Lic."},
+    "Sr.":   {"M": "Sr.",    "F": "Sra."},
+    "Bach.": {"M": "Bach.",  "F": "Bach."},
+}
+
+CARGOS_GENERO = {
+    "Decano":        {"M": "Decano",        "F": "Decana"},
+    "Director":      {"M": "Director",      "F": "Directora"},
+    "Presidente":    {"M": "Presidente",    "F": "Presidenta"},
+    "Secretario":    {"M": "Secretario",    "F": "Secretaria"},
+    "Tesorero":      {"M": "Tesorero",      "F": "Tesorera"},
+    "Vocal":         {"M": "Vocal",         "F": "Vocal"},
+    "Administrador": {"M": "Administrador", "F": "Administradora"},
+}
+
+
+def resolver_genero(perfil: dict) -> dict:
+    """Aplica género correcto a tratamiento y cargo."""
+    sexo = perfil.get("sexo", "M")
+    trat = perfil.get("tratamiento", "Sr.")
+    cargo = perfil.get("cargo", "")
+
+    perfil["tratamiento_resuelto"] = TRATAMIENTOS_GENERO.get(
+        trat, {"M": trat, "F": trat}
+    ).get(sexo, trat)
+    perfil["cargo_resuelto"] = CARGOS_GENERO.get(
+        cargo, {"M": cargo, "F": cargo}
+    ).get(sexo, cargo)
+    perfil["articulo"] = "El" if sexo == "M" else "La"
+    return perfil
+
+
 # ─── Agente clasificador ──────────────────────────────────────────
 TIPOS_HABILITADOS_DEFAULT = list(TIPOS.keys())
 
@@ -482,6 +567,206 @@ def obtener_siguiente_correlativo(
     return registro.ultimo_numero
 
 
+# ─── Prompts negativos ────────────────────────────────────────────
+NEGATIVOS_BASE = [
+    "NUNCA uses frases de relleno vacías que no aportan contenido",
+    "NUNCA repitas el asunto en el primer párrafo del cuerpo",
+    "NUNCA inventes montos, fechas o nombres que no estén en los datos",
+    "NUNCA copies textualmente la instrucción del usuario",
+]
+
+NEGATIVOS_POR_TONO = {
+    "cordial": [
+        "NUNCA uses 'De mi mayor consideración' (es tono Formal, no Cordial)",
+        "NUNCA uses 'Hago propicia la ocasión'",
+        "NUNCA uses lenguaje ceremonioso excesivo",
+    ],
+    "formal": [
+        "NUNCA uses 'Estimado/a' (no corresponde a documentos formales peruanos)",
+        "NUNCA uses lenguaje coloquial",
+    ],
+    "protocolar": [
+        "NUNCA omitas 'Dios guarde a Usted' en la despedida",
+        "NUNCA uses primera persona singular en el cuerpo (usa tercera persona)",
+    ],
+}
+
+NEGATIVOS_POR_TIPO = {
+    "resolucion": [
+        "NUNCA omitas las secciones VISTOS, CONSIDERANDO y SE RESUELVE",
+        "NUNCA uses formato de carta en una Resolución",
+        "NUNCA olvides 'REGÍSTRESE, COMUNÍQUESE Y ARCHÍVESE'",
+    ],
+    "memorandum": [
+        "NUNCA uses la estructura de carta en un Memorándum",
+        "NUNCA incluyas fórmulas de cortesía extensas",
+    ],
+    "memorandum_multiple": [
+        "NUNCA uses la estructura de carta en un Memorándum",
+        "NUNCA incluyas fórmulas de cortesía extensas",
+    ],
+    "comunicado_general": [
+        "NUNCA incluyas destinatario específico",
+        "NUNCA uses saludo inicial",
+    ],
+    "orden_pedido": [
+        "NUNCA omitas la tabla de ítems con cantidades y precios",
+        "NUNCA uses lenguaje formal ceremonioso en una Orden de Pedido",
+    ],
+}
+
+NEGATIVOS_OPCIONALES = {
+    "sin_relleno": {
+        "label": "Evitar frases de relleno (recomendado)",
+        "regla": "NUNCA uses frases de protocolo vacías que no aporten contenido concreto",
+        "default": True,
+    },
+    "sin_gerundios": {
+        "label": "Evitar gerundios en exceso",
+        "regla": "Minimiza el uso de gerundios. Prefiere construcciones directas.",
+        "default": False,
+    },
+    "sin_repeticion": {
+        "label": "Sin repetición de ideas",
+        "regla": "NUNCA repitas la misma idea en párrafos distintos",
+        "default": True,
+    },
+    "citar_normas": {
+        "label": "Citar referencias normativas cuando existan",
+        "regla": "Cuando menciones obligaciones o derechos, cita el artículo o norma correspondiente",
+        "default": False,
+    },
+    "modo_estricto": {
+        "label": "Modo estricto: no generar si faltan datos críticos",
+        "regla": "Si faltan datos críticos para el documento, NO generes — lista lo que necesitas",
+        "default": False,
+    },
+}
+
+
+def _construir_prompts_negativos(
+    tono: str, tipo: str, preferencias: Optional[dict] = None
+) -> str:
+    prefs = preferencias or {}
+    negativos = list(NEGATIVOS_BASE)
+    negativos.extend(NEGATIVOS_POR_TONO.get(tono, []))
+    negativos.extend(NEGATIVOS_POR_TIPO.get(tipo, []))
+    for key, cfg in NEGATIVOS_OPCIONALES.items():
+        if prefs.get(key, cfg["default"]):
+            negativos.append(cfg["regla"])
+    return "\n".join(f"- {n}" for n in negativos)
+
+
+def _construir_estructura_forzada(tipo_cfg: dict) -> str:
+    """Instrucciones de estructura obligatoria según propiedades del tipo."""
+    partes = []
+    if tipo_cfg.get("partes_obligatorias"):
+        partes.append(
+            "Secciones OBLIGATORIAS que deben aparecer como encabezados: "
+            + ", ".join(tipo_cfg["partes_obligatorias"])
+        )
+    if tipo_cfg.get("requiere_tabla"):
+        partes.append(
+            "Este documento REQUIERE una tabla con columnas: "
+            "ítem | descripción | cantidad | precio unitario | total. "
+            "Usa caracteres │ y ─ para la tabla."
+        )
+    if tipo_cfg.get("sin_saludo"):
+        partes.append("NO incluyas saludo formal ni destinatario específico.")
+    if tipo_cfg.get("permite_lista_destinatarios"):
+        partes.append(
+            "El campo PARA: / A: debe ser una LISTA de destinatarios, no uno solo."
+        )
+    return "\n".join(partes)
+
+
+# ─── Extracción en dos fases ─────────────────────────────────────
+def _llamar_gpt4o(system: str, user: str, temperature: float = 0.3) -> str:
+    """Helper: llama a GPT-4o y devuelve texto o string vacío."""
+    key = os.environ.get("OPENAI_API_KEY")
+    if not _openai_available or not key:
+        return ""
+    try:
+        client = OpenAI(api_key=key)
+        resp = client.chat.completions.create(
+            model="gpt-4o",
+            temperature=temperature,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+        )
+        return (resp.choices[0].message.content or "").strip()
+    except Exception:
+        return ""
+
+
+def extraer_datos_relevantes(
+    texto_instruccion: str,
+    texto_documento: str,
+) -> dict:
+    """
+    Fase 1: GPT-4o extrae datos específicos del documento de referencia
+    relevantes para la instrucción dada.
+    """
+    SYSTEM = """Eres un extractor de información de documentos oficiales.
+Tu tarea es leer un documento y extraer ÚNICAMENTE la información
+relevante para la instrucción dada.
+
+Responde SOLO con JSON válido:
+{
+  "datos_encontrados": [
+    {"concepto": "Multa por inasistencia", "valor": "S/ 150", "referencia": "Art. 45"}
+  ],
+  "datos_faltantes": [
+    "Fecha límite de pago"
+  ],
+  "resumen_contexto": "El Estatuto establece 6 causales de multa..."
+}
+
+Si el documento no contiene información relevante para la instrucción,
+datos_encontrados = [] y explica en datos_faltantes qué se necesitaría."""
+
+    USER = f"INSTRUCCIÓN: {texto_instruccion}\n\nDOCUMENTO:\n{texto_documento[:6000]}"
+
+    raw = _llamar_gpt4o(SYSTEM, USER, temperature=0.1)
+    if not raw:
+        return {"datos_encontrados": [], "datos_faltantes": [], "resumen_contexto": ""}
+    try:
+        if raw.startswith("```"):
+            raw = raw.split("\n", 1)[-1]
+            if raw.endswith("```"):
+                raw = raw[:-3]
+        return json.loads(raw)
+    except Exception:
+        return {"datos_encontrados": [], "datos_faltantes": [], "resumen_contexto": raw[:500]}
+
+
+# ─── Alertas de completitud ──────────────────────────────────────
+import re as _re
+
+
+def _detectar_alertas_completitud(texto: str, tipo_documento: str) -> list:
+    """Detecta marcadores [COMPLETAR: ...] y datos típicamente faltantes."""
+    alertas = []
+
+    marcadores = _re.findall(r'\[COMPLETAR: ([^\]]+)\]', texto)
+    alertas.extend(marcadores)
+
+    patrones_criticos = {
+        "resolucion": ["VISTOS:", "CONSIDERANDO:", "SE RESUELVE:"],
+        "orden_pedido": ["total", "cantidad"],
+    }
+    for patron in patrones_criticos.get(tipo_documento, []):
+        if patron.lower() not in texto.lower():
+            alertas.append(f"Falta sección o dato: '{patron}'")
+
+    if "N° ___" in texto or "N° [" in texto:
+        alertas.append("Número de documento no asignado")
+
+    return alertas
+
+
 def generar_documento(
     texto_entrada: str,
     tono: str = "formal",
@@ -495,9 +780,10 @@ def generar_documento(
     asunto_confirmado: str = "",
     respuestas_agente: Optional[dict] = None,
     num_correlativo: Optional[int] = None,
-) -> str:
+    preferencias_prompt: Optional[dict] = None,
+) -> tuple:
     """
-    Devuelve el texto del documento generado por GPT-4o.
+    Devuelve (texto_documento, lista_alertas).
     Si no hay API key o el SDK no está instalado, devuelve un borrador
     plantilla con los datos disponibles para no romper la UX.
     """
@@ -509,63 +795,90 @@ def generar_documento(
     if tipo_norm not in TIPOS:
         tipo_norm = "carta"
 
-    # Enriquecer el system prompt con datos de la organización
+    tipo_cfg = TIPOS[tipo_norm]
     org = config_org or {}
     anno_oficial = org.get("anno_oficial", "")
     siglas = org.get("siglas", "")
     ciudad_org = org.get("ciudad", "")
+    alertas = []
 
-    # Si hay remitente, enriquecer con datos de org
-    if remitente and ciudad_org and not remitente.get("ciudad"):
-        remitente["ciudad"] = ciudad_org
+    # Resolver género del remitente
+    perfil = resolver_genero(remitente or {})
+    if perfil and ciudad_org and not perfil.get("ciudad"):
+        perfil["ciudad"] = ciudad_org
 
+    # FASE 1: Extracción de datos si hay documento de referencia
+    modo_extraccion = bool(documento_referencia and documento_referencia.strip())
+    datos_extraidos = {}
+    if modo_extraccion:
+        datos_extraidos = extraer_datos_relevantes(texto_entrada, documento_referencia)
+        if datos_extraidos.get("datos_faltantes"):
+            alertas.extend(datos_extraidos["datos_faltantes"])
+
+    # FASE 2: Generar documento
     system_prompt = _build_system_prompt(tono_norm, tipo_norm)
 
-    # Agregar bloque de datos organizacionales y modo extracción
-    modo_extraccion = bool(documento_referencia and documento_referencia.strip())
-    org_block = ""
-    if anno_oficial or siglas or num_correlativo:
-        tipo_label = TIPOS[tipo_norm]["label"].upper()
-        num_display = ""
-        if num_correlativo:
-            num_display = f"{num_correlativo:03d}-{datetime.now().year}"
-            if siglas:
-                num_display += f"-{siglas}"
-        org_block = f"""
+    # Prompts negativos
+    negativos = _construir_prompts_negativos(tono_norm, tipo_norm, preferencias_prompt)
+    estructura_forzada = _construir_estructura_forzada(tipo_cfg)
+
+    # Datos organizacionales
+    num_display = ""
+    if num_correlativo:
+        num_display = f"{num_correlativo:03d}-{datetime.now().year}"
+        if siglas:
+            num_display += f"-{siglas}"
+
+    org_block = f"""
 
 ================================================================
 DATOS DE LA ORGANIZACIÓN
 ================================================================
 - Año oficial: "{anno_oficial}"
-- Numeración: {tipo_label} N° {num_display if num_display else '[___]'}
+- Numeración: {tipo_cfg['label'].upper()} N° {num_display if num_display else '[___]'}
+- {perfil.get('articulo', 'El')} {perfil.get('cargo_resuelto', perfil.get('cargo', 'Decano'))}: {perfil.get('tratamiento_resuelto', perfil.get('tratamiento', ''))} {perfil.get('nombre', perfil.get('nombre_firmante', ''))}
 - Organización: {org.get('nombre_organizacion', '')}
-- Siglas: {siglas}
 
-Incluye el año oficial SIEMPRE en la primera línea del documento como encabezado centrado."""
+Incluye el año oficial SIEMPRE en la primera línea del documento como encabezado centrado.
+{estructura_forzada}
+
+=== INSTRUCCIONES DE FORMATO ===
+- Usa tablas (con │ y ─) cuando el contenido sea una lista de ítems con 2+ atributos
+- Usa viñetas (•) cuando sean 3+ elementos de una lista sin atributos adicionales
+- Marca datos faltantes como [COMPLETAR: descripción del dato]
+- NUNCA uses markdown (**, ##, ---)
+
+=== PROHIBICIONES ===
+{negativos}"""
 
     if modo_extraccion:
         org_block += """
 
-================================================================
-MODO EXTRACCIÓN ACTIVO
-================================================================
-El usuario subió un documento de referencia.
-Tu tarea principal es EXTRAER información ESPECÍFICA del documento
-y presentarla en el formato solicitado.
-NO inventes datos. USA SOLO lo que está en el documento.
-Si el documento no contiene la información pedida, indícalo claramente."""
+=== MODO EXTRACCIÓN ACTIVO ===
+El usuario subió un documento de referencia. Los datos extraídos están abajo.
+USA estos datos reales. NO inventes. Si falta algo, marca [COMPLETAR: ...]."""
 
     if asunto_confirmado:
-        org_block += f"\n\nASUNTO CONFIRMADO POR EL USUARIO: {asunto_confirmado}"
-
+        org_block += f"\n\nASUNTO CONFIRMADO: {asunto_confirmado}"
     if respuestas_agente:
-        org_block += f"\n\nRESPUESTAS ADICIONALES DEL USUARIO: {respuestas_agente}"
+        org_block += f"\n\nRESPUESTAS DEL USUARIO: {respuestas_agente}"
 
     system_prompt += org_block
 
+    # Construir user prompt con datos extraídos
     user_prompt = _build_user_prompt(
-        texto_entrada, destinatario, remitente, documento_referencia, tipo_norm
+        texto_entrada, destinatario, perfil, documento_referencia, tipo_norm
     )
+
+    # Insertar datos extraídos si existen
+    if datos_extraidos.get("datos_encontrados"):
+        datos_str = "\n=== DATOS EXTRAÍDOS DEL DOCUMENTO DE REFERENCIA ===\n"
+        for d in datos_extraidos["datos_encontrados"]:
+            datos_str += f"- {d.get('concepto','')}: {d.get('valor','')} ({d.get('referencia','')})\n"
+        datos_str += f"\nContexto: {datos_extraidos.get('resumen_contexto', '')}\n"
+        user_prompt += datos_str
+
+    user_prompt += "\nGenera el documento completo. Marca con [COMPLETAR: ...] cualquier dato faltante."
 
     key = api_key or os.environ.get("OPENAI_API_KEY")
     if _openai_available and key:
@@ -581,13 +894,14 @@ Si el documento no contiene la información pedida, indícalo claramente."""
             )
             texto = (resp.choices[0].message.content or "").strip()
             if texto:
-                return texto
+                alertas.extend(_detectar_alertas_completitud(texto, tipo_norm))
+                return texto, alertas
         except Exception as e:
             return _fallback_borrador(
-                texto_entrada, tono_norm, destinatario, remitente, error=str(e)
-            )
+                texto_entrada, tono_norm, destinatario, perfil, error=str(e)
+            ), alertas
 
-    return _fallback_borrador(texto_entrada, tono_norm, destinatario, remitente)
+    return _fallback_borrador(texto_entrada, tono_norm, destinatario, perfil), alertas
 
 
 def ajustar_documento(
