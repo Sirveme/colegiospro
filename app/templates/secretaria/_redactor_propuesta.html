@@ -49,7 +49,31 @@
   </div>
   {% endif %}
 
-  <p class="sp-propuesta-razon">{{ razon }}</p>
+  {% if tipo_no_habilitado %}
+  <div class="sp-recomendacion-tipo">
+    <span class="sp-rec-icono">💡</span>
+    <div class="sp-rec-texto">
+      Para este caso lo ideal sería un
+      <strong>{{ tipo_label }}</strong>,
+      pero no lo tienes configurado.
+    </div>
+    <button type="button" class="sp-rec-btn"
+            hx-post="/secretaria/config/habilitar-tipo"
+            hx-vals='{"tipo": "{{ tipo_sugerido }}"}'
+            hx-swap="none"
+            hx-on::after-request="this.textContent='Agregado'; this.disabled=true;">
+      + Agregar {{ tipo_label }}
+    </button>
+  </div>
+  {% endif %}
+
+  <div class="sp-razon-banner">
+    <span class="sp-razon-icono">💡</span>
+    <div class="sp-razon-texto">
+      <strong>¿Por qué este formato?</strong>
+      <p>{{ razon }}</p>
+    </div>
+  </div>
 
   <button type="button" class="sp-btn sp-btn-primary" id="btn-generar-final"
           onclick="spGenerarDesdeAnalisis()">

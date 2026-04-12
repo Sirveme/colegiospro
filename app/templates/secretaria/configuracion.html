@@ -104,7 +104,31 @@
   </form>
 </section>
 
-<!-- 3. Mi colegio (config técnica) -->
+<!-- 3. Preferencias de redacción -->
+<section class="sp-col" style="margin-bottom:1rem;">
+  <h2 style="margin-top:0;">✍ Preferencias de redacción</h2>
+  <p style="color:var(--sp-muted); margin-bottom:1rem;">
+    Estas opciones afectan cómo la IA redacta tus documentos.
+  </p>
+  <form
+    hx-post="/secretaria/configuracion/redaccion"
+    hx-swap="none"
+    hx-on::after-request="this.querySelector('button[type=submit]').textContent='Guardado'"
+  >
+    {% for key, cfg_neg in negativos_opcionales.items() %}
+    <label class="sp-toggle-item">
+      <input type="checkbox" name="pref_{{ key }}" value="1"
+        {% if prefs_redaccion.get(key, cfg_neg.default) %}checked{% endif %}>
+      <div>
+        <strong>{{ cfg_neg.label }}</strong>
+      </div>
+    </label>
+    {% endfor %}
+    <button type="submit" class="sp-btn sp-btn-primary" style="margin-top:.75rem;">Guardar preferencias</button>
+  </form>
+</section>
+
+<!-- 4. Mi colegio (config técnica) -->
 <section class="sp-col" style="margin-bottom:1rem;">
   <h2 style="margin-top:0;">🔧 Configuración técnica</h2>
   <form method="post" action="/secretaria/configuracion/colegio" class="sp-form sp-form-grid">

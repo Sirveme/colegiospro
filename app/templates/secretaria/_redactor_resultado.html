@@ -1,10 +1,27 @@
 {% if ref_aviso %}
 <div class="sp-alert sp-alert-error" style="margin-bottom:.75rem;">
-  ⚠ {{ ref_aviso }}
+  {{ ref_aviso }}
 </div>
 {% elif ref_usado %}
 <div class="sp-alert sp-alert-ok" style="margin-bottom:.75rem;">
-  ✓ Documento de referencia procesado por la IA.
+  Documento de referencia procesado por la IA.
+</div>
+{% endif %}
+
+{% if alertas %}
+<div class="sp-alertas-completitud">
+  <div class="sp-alerta-header">
+    Este documento requiere completar:
+  </div>
+  <ul class="sp-alerta-lista">
+    {% for alerta in alertas %}
+    <li>{{ alerta }}</li>
+    {% endfor %}
+  </ul>
+  <p class="sp-alerta-footer">
+    Los campos marcados con [COMPLETAR: ...] en el documento
+    deben ser llenados antes de firmar y enviar.
+  </p>
 </div>
 {% endif %}
 

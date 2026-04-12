@@ -34,6 +34,14 @@
       <span>Ciudad</span>
       <input type="text" name="ciudad" value="Iquitos">
     </label>
+    <div class="sp-field">
+      <span style="font-weight:600; font-size:.9rem; display:block; margin-bottom:.35rem;">Género</span>
+      <div style="display:flex; gap:.75rem;">
+        <label class="sp-radio"><input type="radio" name="sexo" value="M" checked> <span>Masculino</span></label>
+        <label class="sp-radio"><input type="radio" name="sexo" value="F"> <span>Femenino</span></label>
+      </div>
+      <small style="color:var(--sp-muted);">Se usa para ajustar Dr./Dra., Decano/Decana, etc.</small>
+    </div>
     <label class="sp-col-2" style="display:flex; align-items:center; gap:.5rem;">
       <input type="checkbox" name="es_default" value="1">
       <span style="font-weight:600;">Marcar como remitente por defecto</span>
