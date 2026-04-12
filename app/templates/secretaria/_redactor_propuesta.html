@@ -1,0 +1,134 @@
+<div class="sp-propuesta-card">
+  <div class="sp-propuesta-header">
+    <strong>Entendí lo que necesitas:</strong>
+  </div>
+
+  <div class="sp-propuesta-items">
+    <div class="sp-prop-item">
+      <span class="sp-prop-label">Tipo</span>
+      <span class="sp-prop-valor">{{ tipo_label }}</span>
+      <button type="button" onclick="spCambiarTipo('{{ tipo_sugerido }}')" class="sp-prop-edit">cambiar</button>
+    </div>
+    <div class="sp-prop-item">
+      <span class="sp-prop-label">Asunto</span>
+      <input class="sp-prop-input" name="asunto_confirmado" id="asunto-confirmado"
+             value="{{ asunto_sugerido }}">
+    </div>
+    <div class="sp-prop-item">
+      <span class="sp-prop-label">Tono</span>
+      <span class="sp-prop-valor">{{ tono_label }}</span>
+      <button type="button" onclick="spCambiarTono('{{ tono_sugerido }}')" class="sp-prop-edit">cambiar</button>
+    </div>
+    <div class="sp-prop-item">
+      <span class="sp-prop-label">Firma</span>
+      <select name="perfil_remitente_id" id="perfil-propuesta">
+        {% for r in remitentes %}
+        <option value="{{ r.id }}" {% if r.es_default %}selected{% endif %}>
+          {% if r.tratamiento %}{{ r.tratamiento }} {% endif %}{{ r.nombre }}{% if r.cargo %} — {{ r.cargo }}{% endif %}
+        </option>
+        {% endfor %}
+        {% if not remitentes %}
+        <option value="">— Usar datos del colegio —</option>
+        {% endif %}
+      </select>
+    </div>
+  </div>
+
+  {% if preguntas %}
+  <div class="sp-preguntas">
+    <p class="sp-preguntas-titulo">Antes de generar, necesito saber:</p>
+    {% for p in preguntas %}
+    <div class="sp-pregunta-item">
+      <label>{{ p }}</label>
+      <div class="sp-pregunta-opts">
+        <label class="sp-radio"><input type="radio" name="resp_{{ loop.index }}" value="si"> <span>Sí</span></label>
+        <label class="sp-radio"><input type="radio" name="resp_{{ loop.index }}" value="no" checked> <span>No</span></label>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <p class="sp-propuesta-razon">{{ razon }}</p>
+
+  <button type="button" class="sp-btn sp-btn-primary" id="btn-generar-final"
+          onclick="spGenerarDesdeAnalisis()">
+    Generar documento
+  </button>
+</div>
+
+<script>
+(function(){
+  window.spGenerarDesdeAnalisis = function() {
+    var form = document.getElementById('form-redactor');
+    if (!form) return;
+
+    // Actualizar tipo y tono desde la propuesta
+    var tipoHidden = document.getElementById('tipo-seleccionado');
+    if (tipoHidden) tipoHidden.value = '{{ tipo_sugerido }}';
+
+    var tonoRadio = form.querySelector('input[name=tono][value="{{ tono_sugerido }}"]');
+    if (tonoRadio) tonoRadio.checked = true;
+
+    // Agregar asunto confirmado
+    var asunto = document.getElementById('asunto-confirmado');
+    var asuntoHidden = document.getElementById('asunto-hidden');
+    if (!asuntoHidden) {
+      asuntoHidden = document.createElement('input');
+      asuntoHidden.type = 'hidden';
+      asuntoHidden.name = 'asunto_confirmado';
+      asuntoHidden.id = 'asunto-hidden';
+      form.appendChild(asuntoHidden);
+    }
+    if (asunto) asuntoHidden.value = asunto.value;
+
+    // Agregar perfil remitente de la propuesta
+    var perfilProp = document.getElementById('perfil-propuesta');
+    var perfilOrig = document.getElementById('perfil-remitente');
+    if (perfilProp && perfilOrig) perfilOrig.value = perfilProp.value;
+
+    // Recoger respuestas del agente
+    var respuestas = {};
+    var radios = document.querySelectorAll('.sp-preguntas input[type=radio]:checked');
+    radios.forEach(function(r){ respuestas[r.name] = r.value; });
+    var respHidden = document.getElementById('respuestas-hidden');
+    if (!respHidden) {
+      respHidden = document.createElement('input');
+      respHidden.type = 'hidden';
+      respHidden.name = 'respuestas_agente';
+      respHidden.id = 'respuestas-hidden';
+      form.appendChild(respHidden);
+    }
+    respHidden.value = JSON.stringify(respuestas);
+
+    // Disparar la generación via HTMX
+    var btn = document.getElementById('btn-generar');
+    if (btn) {
+      spStartSpinner();
+      htmx.ajax('POST', '/secretaria/redactor/generar', {
+        source: form,
+        target: '#sp-resultado',
+        swap: 'innerHTML'
+      }).then(function(){ spStopSpinner(); });
+    }
+  };
+
+  window.spCambiarTipo = function(current) {
+    var grid = document.getElementById('tipo-grid');
+    if (grid) {
+      grid.scrollIntoView({behavior:'smooth'});
+      grid.style.outline = '2px solid var(--sp-primary)';
+      setTimeout(function(){ grid.style.outline = ''; }, 2000);
+    }
+  };
+
+  window.spCambiarTono = function(current) {
+    var tonos = document.querySelector('.sp-tonos');
+    if (tonos) {
+      tonos.scrollIntoView({behavior:'smooth'});
+      tonos.style.outline = '2px solid var(--sp-primary)';
+      setTimeout(function(){ tonos.style.outline = ''; }, 2000);
+    }
+  };
+})();
+</script>

@@ -63,9 +63,50 @@
   </form>
 </section>
 
-<!-- 2. Mi colegio -->
+<!-- 2. Mi organización -->
 <section class="sp-col" style="margin-bottom:1rem;">
-  <h2 style="margin-top:0;">🏛 Mi colegio</h2>
+  <h2 style="margin-top:0;">🏛 Mi organización</h2>
+
+  {% if config_org and config_org.anno_numero and config_org.anno_numero < anno_actual %}
+  <div class="sp-alert sp-alert-error" style="margin-bottom:1rem;">
+    El nombre del año oficial no ha sido actualizado para {{ anno_actual }}.
+  </div>
+  {% endif %}
+
+  <form method="post" action="/secretaria/configuracion/organizacion" class="sp-form sp-form-grid">
+    <label>
+      <span>Nombre oficial del año</span>
+      <input type="text" name="anno_oficial"
+             value="{{ config_org.anno_oficial if config_org else '' }}"
+             placeholder="Año del Bicentenario de la Integración Latinoamericana y Caribeña">
+      <small>Aparece automáticamente en todos los documentos oficiales. Actualízalo cada enero.</small>
+    </label>
+    <label>
+      <span>Siglas de tu organización</span>
+      <input type="text" name="siglas"
+             value="{{ config_org.siglas if config_org else '' }}"
+             placeholder="CCPL, UGEL-LOR, MPM...">
+      <small>Se usa en la numeración: OFICIO N° 045-2026-[SIGLAS]</small>
+    </label>
+    <label>
+      <span>Nombre de la organización</span>
+      <input type="text" name="nombre_organizacion"
+             value="{{ config_org.nombre_organizacion if config_org else '' }}"
+             placeholder="Colegio de Contadores Públicos de Loreto">
+    </label>
+    <label>
+      <span>Ciudad</span>
+      <input type="text" name="ciudad_org"
+             value="{{ config_org.ciudad if config_org else 'Iquitos' }}"
+             placeholder="Iquitos">
+    </label>
+    <button type="submit" class="sp-btn sp-btn-primary sp-col-2">Guardar organización</button>
+  </form>
+</section>
+
+<!-- 3. Mi colegio (config técnica) -->
+<section class="sp-col" style="margin-bottom:1rem;">
+  <h2 style="margin-top:0;">🔧 Configuración técnica</h2>
   <form method="post" action="/secretaria/configuracion/colegio" class="sp-form sp-form-grid">
     <label>
       <span>Nombre del colegio</span>

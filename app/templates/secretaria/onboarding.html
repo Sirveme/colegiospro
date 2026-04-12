@@ -1,0 +1,285 @@
+{% extends "secretaria/base.html" %}
+{% block title %}Configuración inicial{% endblock %}
+{% block content %}
+<header class="sp-header">
+  <h1>Bienvenido a SecretariaPro</h1>
+  <p>Configuremos tu espacio de trabajo en 4 pasos rápidos.</p>
+</header>
+
+<div class="sp-onboarding">
+  <!-- Indicador de progreso -->
+  <div class="sp-ob-progress">
+    <div class="sp-ob-step activo" data-paso="1"><span>1</span> Organización</div>
+    <div class="sp-ob-step" data-paso="2"><span>2</span> Documentos</div>
+    <div class="sp-ob-step" data-paso="3"><span>3</span> Remitentes</div>
+    <div class="sp-ob-step" data-paso="4"><span>4</span> Año oficial</div>
+  </div>
+
+  <!-- PASO 1: Organización -->
+  <div class="sp-ob-panel" id="paso-1">
+    <h2>Tu organización</h2>
+    <p class="sp-ob-desc">Estos datos aparecerán en la numeración y encabezado de tus documentos.</p>
+    <form class="sp-form" id="form-paso1">
+      <label>
+        <span>Nombre completo de la organización</span>
+        <input type="text" name="nombre_organizacion" required
+               placeholder="Colegio de Contadores Públicos de Loreto"
+               value="{{ config.nombre_organizacion or '' }}">
+      </label>
+      <label>
+        <span>Siglas</span>
+        <input type="text" name="siglas" required maxlength="20"
+               placeholder="CCPL, UGEL-LOR, MPM"
+               value="{{ config.siglas or '' }}">
+        <small>Se usarán en la numeración: OFICIO N° 001-2026-[SIGLAS]</small>
+      </label>
+      <label>
+        <span>Ciudad</span>
+        <input type="text" name="ciudad"
+               placeholder="Iquitos"
+               value="{{ config.ciudad or 'Iquitos' }}">
+      </label>
+      <div class="sp-field">
+        <span style="font-weight:600; font-size:.9rem; display:block; margin-bottom:.35rem;">Sector</span>
+        <div class="sp-ob-sector-opts">
+          <label class="sp-radio">
+            <input type="radio" name="sector" value="profesional"
+              {% if not config or not config.sector or config.sector == 'profesional' %}checked{% endif %}>
+            <span>Colegio Profesional</span>
+          </label>
+          <label class="sp-radio">
+            <input type="radio" name="sector" value="publico"
+              {% if config and config.sector == 'publico' %}checked{% endif %}>
+            <span>Entidad Pública</span>
+          </label>
+          <label class="sp-radio">
+            <input type="radio" name="sector" value="privado"
+              {% if config and config.sector == 'privado' %}checked{% endif %}>
+            <span>Empresa privada</span>
+          </label>
+        </div>
+      </div>
+      <button type="button" class="sp-btn sp-btn-primary" onclick="spObSiguiente(1)">
+        Siguiente &rarr;
+      </button>
+    </form>
+  </div>
+
+  <!-- PASO 2: Tipos de documento -->
+  <div class="sp-ob-panel" id="paso-2" style="display:none;">
+    <h2>Documentos que emites</h2>
+    <p class="sp-ob-desc">Marca los tipos que redactas habitualmente. Puedes cambiar esto después.</p>
+    <form class="sp-form" id="form-paso2">
+      <div class="sp-ob-checks">
+        {% for val, label in [('carta','Carta'), ('oficio','Oficio'), ('memorandum','Memorándum'),
+                              ('circular','Circular'), ('acta','Acta de reunión'), ('invitacion','Invitación'),
+                              ('certificado','Certificado / Constancia')] %}
+        <label class="sp-ob-check">
+          <input type="checkbox" name="tipos_doc" value="{{ val }}"
+            {% if not tipos_sel or val in tipos_sel %}checked{% endif %}>
+          <span>{{ label }}</span>
+        </label>
+        {% endfor %}
+      </div>
+      <div class="sp-ob-nav">
+        <button type="button" class="sp-btn" onclick="spObAnterior(2)">&larr; Anterior</button>
+        <button type="button" class="sp-btn sp-btn-primary" onclick="spObSiguiente(2)">Siguiente &rarr;</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- PASO 3: Remitentes -->
+  <div class="sp-ob-panel" id="paso-3" style="display:none;">
+    <h2>Remitentes</h2>
+    <p class="sp-ob-desc">¿A nombre de quién redactas documentos? Puedes agregar más después.</p>
+    <form class="sp-form" id="form-paso3">
+      <div id="remitentes-container">
+        <div class="sp-ob-remitente" data-idx="0">
+          <label>
+            <span>Nombre completo</span>
+            <input type="text" name="rem_nombre_0" required placeholder="Juan Pérez García">
+          </label>
+          <label>
+            <span>Cargo</span>
+            <input type="text" name="rem_cargo_0" placeholder="Decano">
+          </label>
+          <label>
+            <span>Área / Institución</span>
+            <input type="text" name="rem_area_0" placeholder="Colegio de Contadores Públicos de Loreto">
+          </label>
+          <div class="sp-field">
+            <span style="font-weight:600; font-size:.9rem; display:block; margin-bottom:.35rem;">Tratamiento</span>
+            <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+              {% for t in ['CPC.','Dr.','Mg.','Abog.','Ing.','Lic.','Sr.'] %}
+              <label class="sp-radio">
+                <input type="radio" name="rem_trat_0" value="{{ t }}">
+                <span>{{ t }}</span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+      <button type="button" class="sp-btn" onclick="spObAgregarRemitente()" style="margin-top:.5rem;">
+        + Agregar otro remitente
+      </button>
+      <div class="sp-ob-nav">
+        <button type="button" class="sp-btn" onclick="spObAnterior(3)">&larr; Anterior</button>
+        <button type="button" class="sp-btn sp-btn-primary" onclick="spObSiguiente(3)">Siguiente &rarr;</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- PASO 4: Año oficial -->
+  <div class="sp-ob-panel" id="paso-4" style="display:none;">
+    <h2>Año oficial</h2>
+    <p class="sp-ob-desc">Este texto aparecerá automáticamente en todos tus documentos oficiales.</p>
+    <form class="sp-form" id="form-paso4">
+      <div class="sp-ob-anno-box">
+        <p style="font-style:italic; font-size:1.05rem; text-align:center; margin:.75rem 0;">
+          "{{ anno_oficial_default }}"
+        </p>
+      </div>
+      <div class="sp-field">
+        <span style="font-weight:600; font-size:.9rem; display:block; margin-bottom:.35rem;">¿Es correcto?</span>
+        <div style="display:flex; gap:.75rem; margin-bottom:.75rem;">
+          <label class="sp-radio">
+            <input type="radio" name="anno_correcto" value="si" checked onchange="document.getElementById('anno-custom').style.display='none'">
+            <span>Sí, es correcto</span>
+          </label>
+          <label class="sp-radio">
+            <input type="radio" name="anno_correcto" value="no" onchange="document.getElementById('anno-custom').style.display='block'">
+            <span>No, quiero cambiarlo</span>
+          </label>
+        </div>
+      </div>
+      <label id="anno-custom" style="display:none;">
+        <span>Nombre oficial del año</span>
+        <input type="text" name="anno_oficial_custom" placeholder="Año del Bicentenario...">
+      </label>
+      <div class="sp-ob-nav">
+        <button type="button" class="sp-btn" onclick="spObAnterior(4)">&larr; Anterior</button>
+        <button type="button" class="sp-btn sp-btn-primary" onclick="spObCompletar()">
+          Completar y empezar &rarr;
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function(){
+  var pasoActual = 1;
+  var totalRemitentes = 1;
+  var annoDefault = "{{ anno_oficial_default }}";
+
+  function mostrarPaso(n) {
+    for (var i = 1; i <= 4; i++) {
+      var panel = document.getElementById('paso-' + i);
+      var step = document.querySelector('.sp-ob-step[data-paso="' + i + '"]');
+      if (panel) panel.style.display = i === n ? 'block' : 'none';
+      if (step) {
+        step.classList.toggle('activo', i === n);
+        step.classList.toggle('completado', i < n);
+      }
+    }
+    pasoActual = n;
+  }
+
+  function recogerPaso(n) {
+    var data = {};
+    if (n === 1) {
+      var f = document.getElementById('form-paso1');
+      data.nombre_organizacion = f.querySelector('[name=nombre_organizacion]').value.trim();
+      data.siglas = f.querySelector('[name=siglas]').value.trim();
+      data.ciudad = f.querySelector('[name=ciudad]').value.trim() || 'Iquitos';
+      var sec = f.querySelector('[name=sector]:checked');
+      data.sector = sec ? sec.value : 'profesional';
+    } else if (n === 2) {
+      var checks = document.querySelectorAll('#form-paso2 input[name=tipos_doc]:checked');
+      data.tipos_doc = [];
+      checks.forEach(function(c){ data.tipos_doc.push(c.value); });
+    } else if (n === 3) {
+      data.remitentes = [];
+      for (var i = 0; i < totalRemitentes; i++) {
+        var nom = document.querySelector('[name=rem_nombre_'+i+']');
+        if (!nom || !nom.value.trim()) continue;
+        var trat = document.querySelector('[name=rem_trat_'+i+']:checked');
+        data.remitentes.push({
+          nombre: nom.value.trim(),
+          cargo: (document.querySelector('[name=rem_cargo_'+i+']') || {}).value || '',
+          area: (document.querySelector('[name=rem_area_'+i+']') || {}).value || '',
+          tratamiento: trat ? trat.value : ''
+        });
+      }
+    } else if (n === 4) {
+      var correcto = document.querySelector('[name=anno_correcto]:checked');
+      if (correcto && correcto.value === 'no') {
+        var custom = document.querySelector('[name=anno_oficial_custom]');
+        data.anno_oficial = custom ? custom.value.trim() : annoDefault;
+      } else {
+        data.anno_oficial = annoDefault;
+      }
+    }
+    return data;
+  }
+
+  function enviarPaso(n, cb) {
+    var data = recogerPaso(n);
+    fetch('/secretaria/onboarding/paso/' + n, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(data)
+    }).then(function(r){ return r.json(); })
+      .then(function(j){ if (cb) cb(j); })
+      .catch(function(e){ console.error(e); });
+  }
+
+  window.spObSiguiente = function(n) {
+    // Validar paso 1
+    if (n === 1) {
+      var f = document.getElementById('form-paso1');
+      if (!f.querySelector('[name=nombre_organizacion]').value.trim() ||
+          !f.querySelector('[name=siglas]').value.trim()) {
+        alert('Completa el nombre y las siglas de tu organización.');
+        return;
+      }
+    }
+    enviarPaso(n, function(){ mostrarPaso(n + 1); });
+  };
+
+  window.spObAnterior = function(n) {
+    mostrarPaso(n - 1);
+  };
+
+  window.spObCompletar = function() {
+    enviarPaso(4, function() {
+      fetch('/secretaria/onboarding/completar', { method: 'POST' })
+        .then(function(){ window.location.href = '/secretaria/redactor'; })
+        .catch(function(e){ console.error(e); window.location.href = '/secretaria/redactor'; });
+    });
+  };
+
+  window.spObAgregarRemitente = function() {
+    var idx = totalRemitentes;
+    totalRemitentes++;
+    var container = document.getElementById('remitentes-container');
+    var div = document.createElement('div');
+    div.className = 'sp-ob-remitente';
+    div.setAttribute('data-idx', idx);
+    div.innerHTML =
+      '<hr style="margin:1rem 0;">' +
+      '<label><span>Nombre completo</span><input type="text" name="rem_nombre_'+idx+'" placeholder="Nombre"></label>' +
+      '<label><span>Cargo</span><input type="text" name="rem_cargo_'+idx+'" placeholder="Cargo"></label>' +
+      '<label><span>Área / Institución</span><input type="text" name="rem_area_'+idx+'" placeholder="Institución"></label>' +
+      '<div class="sp-field"><span style="font-weight:600;font-size:.9rem;display:block;margin-bottom:.35rem;">Tratamiento</span>' +
+      '<div style="display:flex;gap:.5rem;flex-wrap:wrap;">' +
+      ['CPC.','Dr.','Mg.','Abog.','Ing.','Lic.','Sr.'].map(function(t){
+        return '<label class="sp-radio"><input type="radio" name="rem_trat_'+idx+'" value="'+t+'"><span>'+t+'</span></label>';
+      }).join('') +
+      '</div></div>';
+    container.appendChild(div);
+  };
+})();
+</script>
+{% endblock %}

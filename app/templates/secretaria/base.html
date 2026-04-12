@@ -45,12 +45,16 @@
         <span class="ic">📷</span> Post Redes
       </a>
       <hr>
+      {% if tiene_directorio is not defined or tiene_directorio %}
       <a href="/secretaria/directorio" class="{% if modo_actual == 'directorio' %}active{% endif %}">
         <span class="ic">📚</span> Directorio
       </a>
+      {% endif %}
+      {% if tiene_historial is not defined or tiene_historial %}
       <a href="/secretaria/historial" class="{% if modo_actual == 'historial' %}active{% endif %}">
         <span class="ic">🗂</span> Historial
       </a>
+      {% endif %}
       <a href="/secretaria/configuracion" class="{% if modo_actual == 'configuracion' %}active{% endif %}">
         <span class="ic">⚙</span> Configuración
       </a>
