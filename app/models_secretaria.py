@@ -6,7 +6,8 @@
 
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import (
-    Column, Integer, String, DateTime, Text, Boolean, ForeignKey
+    Column, Integer, String, DateTime, Text, Boolean, ForeignKey,
+    UniqueConstraint, JSON
 )
 
 from app.database import Base, engine
@@ -165,6 +166,41 @@ class ConfigSecretariaColegio(Base):
     nombre_colegio = Column(String(200))
     nombre_decano = Column(String(150))
     ciudad = Column(String(100))
+
+
+# ─── config_organizacion ───
+# Configuración de la organización — se llena en onboarding
+class ConfigOrganizacion(Base):
+    __tablename__ = "config_organizacion"
+
+    id = Column(Integer, primary_key=True)
+    secretaria_id = Column(Integer, ForeignKey("usuarios_secretaria.id"))
+    colegio_id = Column(Integer, nullable=True)
+    nombre_organizacion = Column(String(200))
+    siglas = Column(String(20))           # CCPL, UGEL-LOR, MPM
+    ciudad = Column(String(100), default="Iquitos")
+    sector = Column(String(20), default="privado")  # profesional / publico / privado
+    anno_oficial = Column(String(300))    # "Año del Bicentenario..."
+    anno_numero = Column(Integer, default=2026)
+    tipos_doc_habilitados = Column(JSON)  # ["carta","oficio","circular"]
+    onboarding_completo = Column(Boolean, default=False)
+    actualizado_en = Column(DateTime, default=_utcnow)
+
+
+# ─── correlatividad_documento ───
+# Numeración correlativa por tipo de documento y año
+class CorrelatividadDocumento(Base):
+    __tablename__ = "correlatividad_documento"
+
+    id = Column(Integer, primary_key=True)
+    colegio_id = Column(Integer, nullable=True)
+    secretaria_id = Column(Integer, ForeignKey("usuarios_secretaria.id"))
+    tipo_documento = Column(String(30))
+    anno = Column(Integer)
+    ultimo_numero = Column(Integer, default=0)
+    __table_args__ = (
+        UniqueConstraint("secretaria_id", "tipo_documento", "anno"),
+    )
 
 
 # ─── CREATE TABLES ───
