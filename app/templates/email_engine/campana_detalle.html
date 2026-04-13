@@ -44,7 +44,7 @@
   </div>
   {% if c.estado != 'activa' %}
   <button class="ee-btn"
-          onclick="fetch('/admin/emails/campana/{{ c.id }}/activar', {method:'POST'}).then(r=>r.json()).then(d=>{ alert('Envíos creados: '+d.envios_creados+'\nSegmento campaña: '+d.segmento+'\nContactos en ese segmento: '+d.total_en_segmento+'\nTotal contactos en BD: '+d.total_contactos_db); location.reload(); })">
+          onclick="fetch('/admin/emails/campana/{{ c.id }}/activar', {method:'POST'}).then(r=>r.json()).then(d=>{ console.log('ACTIVAR debug:', d); alert('Envíos creados: '+d.envios_creados+'\nSegmento campaña: '+d.segmento+'\nPatrón ilike: '+d.patron+'\nContactos en BD: '+d.total_contactos_db+'\nMatch patrón: '+d.debug.total_patron+'\nActivos+match: '+d.debug.activos_patron+'\nEnvíos ya existentes: '+d.debug.envios_existentes+'\nNulos activo/baja: '+d.debug.nulos_activo+'/'+d.debug.nulos_baja+'\n\nTop segmentos:\n'+d.debug.top_segmentos.map(function(x){return '  '+x.n+' x '+JSON.stringify(x.segmento)}).join('\n')); location.reload(); })">
     Activar campaña
   </button>
   {% else %}
