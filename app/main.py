@@ -147,6 +147,14 @@ async def debug_db():
     }
 
 
+# SECRETARIA PRO: rutas y lógica para el módulo de secretaria (documentos, plantillas, etc.)
+# Se implementa en app/routers/secretaria.py, pero se importa aquí para incluir
+@app.get("/secretariapro", response_class=HTMLResponse) 
+async def secretariapro(request: Request):
+    """Página estática /SecretariaPro — sin autenticación, sin base de datos."""
+    return templates.TemplateResponse(request, "secretariapro.html")
+
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8080))
