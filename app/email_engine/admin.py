@@ -239,10 +239,57 @@ async def activar_campana(campana_id: int, request: Request):
         seg = (c.segmento or "").strip()
         palabra = _palabra_clave_segmento(seg)
         patron = f"%{palabra}%" if palabra else f"%{seg}%"
-        total_contactos_db = db.query(func.count(EmailContacto.id)).scalar() or 0
-        total_segmento = db.query(func.count(EmailContacto.id)).filter(
+
+        # ─── Diagnóstico temporal ───────────────────────────────
+        total = db.query(EmailContacto).count()
+        secretarias = db.query(EmailContacto).filter(
+            EmailContacto.segmento.ilike("%secretaria%")
+        ).count()
+        activos = db.query(EmailContacto).filter(
+            EmailContacto.segmento.ilike("%secretaria%"),
+            EmailContacto.activo == True,  # noqa: E712
+            EmailContacto.baja == False,  # noqa: E712
+        ).count()
+        # Conteos con el patrón real de la campaña
+        total_segmento = db.query(EmailContacto).filter(
             EmailContacto.segmento.ilike(patron),
-        ).scalar() or 0
+        ).count()
+        activos_patron = db.query(EmailContacto).filter(
+            EmailContacto.segmento.ilike(patron),
+            EmailContacto.activo == True,  # noqa: E712
+            EmailContacto.baja == False,  # noqa: E712
+        ).count()
+        # Conteos de NULLs / valores raros para descartar causas
+        nulos_activo = db.query(EmailContacto).filter(
+            EmailContacto.activo.is_(None)
+        ).count()
+        nulos_baja = db.query(EmailContacto).filter(
+            EmailContacto.baja.is_(None)
+        ).count()
+        # Envíos ya existentes para esta campaña (puede explicar creados=0)
+        envios_existentes = db.query(EmailEnvio).filter_by(
+            campana_id=c.id
+        ).count()
+        # Muestra de 5 segmentos distintos para inspección visual
+        muestra_segmentos = [
+            (row[0], row[1]) for row in
+            db.query(EmailContacto.segmento, func.count(EmailContacto.id))
+              .group_by(EmailContacto.segmento)
+              .order_by(func.count(EmailContacto.id).desc())
+              .limit(10).all()
+        ]
+
+        debug_msg = (
+            f"DEBUG activar campana_id={campana_id} seg={seg!r} patron={patron!r} "
+            f"total={total} secretarias={secretarias} activos_secretaria={activos} "
+            f"total_patron={total_segmento} activos_patron={activos_patron} "
+            f"envios_existentes={envios_existentes} "
+            f"nulos_activo={nulos_activo} nulos_baja={nulos_baja} "
+            f"top_segmentos={muestra_segmentos}"
+        )
+        print(debug_msg, flush=True)
+        logger.info(debug_msg)
+        # ────────────────────────────────────────────────────────
 
         creados = crear_envios_para_campana(db, c)
         c.estado = "activa"
@@ -256,8 +303,21 @@ async def activar_campana(campana_id: int, request: Request):
         "envios_creados": creados,
         "segmento": seg,
         "patron": patron,
-        "total_contactos_db": total_contactos_db,
+        "total_contactos_db": total,
         "total_en_segmento": total_segmento,
+        "debug": {
+            "total": total,
+            "secretarias_ilike": secretarias,
+            "activos_secretaria": activos,
+            "total_patron": total_segmento,
+            "activos_patron": activos_patron,
+            "envios_existentes": envios_existentes,
+            "nulos_activo": nulos_activo,
+            "nulos_baja": nulos_baja,
+            "top_segmentos": [
+                {"segmento": s, "n": n} for s, n in muestra_segmentos
+            ],
+        },
     })
 
 
