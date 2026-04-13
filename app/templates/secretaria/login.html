@@ -1,29 +1,88 @@
 {% extends "secretaria/base.html" %}
 {% block title %}Ingresar{% endblock %}
 {% block content %}
-<div class="sp-auth-wrap">
-  <div class="sp-auth-card">
-    <h1>SecretariaPro</h1>
-    <p class="sp-auth-sub">Entra a tu cuenta</p>
+<div class="sp-login-split">
+  <!-- Panel izquierdo: branding oscuro -->
+  <aside class="sp-login-brand">
+    <div class="sp-login-brand-content">
+      <div class="sp-login-logo-big">SP</div>
+      <h1 class="sp-login-titulo">SecretariaPro</h1>
+      <p class="sp-login-tagline">
+        Redacta documentos oficiales peruanos en segundos.
+        Asistente de IA para secretarias y colegios profesionales.
+      </p>
+      <ul class="sp-login-features">
+        <li>Redactor con agente clasificador</li>
+        <li>Numeración correlativa automática</li>
+        <li>PDF profesional con membrete</li>
+        <li>Directorio institucional integrado</li>
+      </ul>
+    </div>
+    <div class="sp-login-brand-foot">
+      colegiospro.org.pe
+    </div>
+  </aside>
 
-    {% if error %}<div class="sp-alert sp-alert-error">{{ error }}</div>{% endif %}
-    {% if ok %}<div class="sp-alert sp-alert-ok">{{ ok }}</div>{% endif %}
+  <!-- Panel derecho: formulario -->
+  <section class="sp-login-form-wrap">
+    <div class="sp-login-form-card">
+      <div class="sp-login-logo-sm">SP</div>
+      <h2 class="sp-login-h2">Entra a tu cuenta</h2>
+      <p class="sp-login-sub">Ingresa tus datos para continuar</p>
 
-    <form method="post" action="/secretaria/login" class="sp-form">
-      <label>
-        <span>Correo</span>
-        <input type="email" name="correo" required autofocus>
-      </label>
-      <label>
-        <span>Contraseña</span>
-        <input type="password" name="password" required>
-      </label>
-      <button type="submit" class="sp-btn sp-btn-primary">Ingresar</button>
-    </form>
+      {% if error %}<div class="sp-alert sp-alert-error">{{ error }}</div>{% endif %}
+      {% if ok %}<div class="sp-alert sp-alert-ok">{{ ok }}</div>{% endif %}
 
-    <p class="sp-auth-foot">
-      ¿No tienes cuenta? <a href="/secretaria/registro">Crear cuenta</a>
-    </p>
-  </div>
+      <form method="post" action="/secretaria/login" class="sp-form sp-login-form">
+        <label>
+          <span>Correo</span>
+          <input type="email" name="correo" required autofocus
+                 placeholder="tu@correo.com">
+        </label>
+        <label>
+          <span>Contraseña</span>
+          <div class="sp-pwd-wrap">
+            <input type="password" name="password" id="sp-pwd-input" required
+                   placeholder="Tu contraseña">
+            <button type="button" class="sp-pwd-toggle"
+                    onclick="spTogglePwd('sp-pwd-input', this)"
+                    aria-label="Mostrar contraseña">
+              <span class="sp-pwd-icon">👁</span>
+            </button>
+          </div>
+        </label>
+
+        <div class="sp-login-extras">
+          <a href="/secretaria/login" class="sp-login-forgot" onclick="alert('Función en desarrollo. Escríbenos si necesitas recuperar tu cuenta.'); return false;">
+            ¿Olvidaste tu contraseña?
+          </a>
+        </div>
+
+        <button type="submit" class="sp-btn sp-btn-primary sp-btn-block">
+          Ingresar
+        </button>
+      </form>
+
+      <p class="sp-auth-foot">
+        ¿No tienes cuenta? <a href="/secretaria/registro">Crear cuenta</a>
+      </p>
+    </div>
+  </section>
 </div>
+
+<script>
+function spTogglePwd(inputId, btn) {
+  var inp = document.getElementById(inputId);
+  if (!inp) return;
+  if (inp.type === "password") {
+    inp.type = "text";
+    btn.querySelector(".sp-pwd-icon").textContent = "🙈";
+    btn.setAttribute("aria-label", "Ocultar contraseña");
+  } else {
+    inp.type = "password";
+    btn.querySelector(".sp-pwd-icon").textContent = "👁";
+    btn.setAttribute("aria-label", "Mostrar contraseña");
+  }
+}
+</script>
 {% endblock %}
