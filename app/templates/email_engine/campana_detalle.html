@@ -35,13 +35,17 @@
   </div>
 </div>
 
-<div class="ee-card" style="display:flex;gap:.5rem;align-items:center;">
-  <div style="flex:1">
+<div class="ee-card" style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+  <div style="flex:1;min-width:200px">
     Estado:
     {% if c.estado == 'activa' %}<span class="ee-badge ee-badge-verde">activa</span>
     {% elif c.estado == 'pausada' %}<span class="ee-badge ee-badge-rojo">pausada</span>
     {% else %}<span class="ee-badge ee-badge-gris">{{ c.estado }}</span>{% endif %}
   </div>
+  <a href="/admin/emails/campana/{{ c.id }}/preview" target="_blank"
+     class="ee-btn ee-btn-sec" rel="noopener">
+    👁 Vista previa
+  </a>
   {% if c.estado != 'activa' %}
   <button class="ee-btn"
           onclick="fetch('/admin/emails/campana/{{ c.id }}/activar', {method:'POST'}).then(r=>r.json()).then(d=>{ console.log('ACTIVAR debug:', d); alert('Envíos creados: '+d.envios_creados+'\nSegmento campaña: '+d.segmento+'\nPatrón ilike: '+d.patron+'\nContactos en BD: '+d.total_contactos_db+'\nMatch patrón: '+d.debug.total_patron+'\nActivos+match: '+d.debug.activos_patron+'\nEnvíos ya existentes: '+d.debug.envios_existentes+'\nNulos activo/baja: '+d.debug.nulos_activo+'/'+d.debug.nulos_baja+'\n\nTop segmentos:\n'+d.debug.top_segmentos.map(function(x){return '  '+x.n+' x '+JSON.stringify(x.segmento)}).join('\n')); location.reload(); })">

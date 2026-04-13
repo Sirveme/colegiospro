@@ -2,39 +2,53 @@
 {% set active = "dashboard" %}
 {% block title %}Dashboard{% endblock %}
 {% block content %}
-<div class="ee-header">
-  <h1 class="ee-h1">Dashboard</h1>
-  <p class="ee-muted">Métricas en tiempo real de todas las campañas.</p>
+<div class="ee-header" style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+  <div style="flex:1;min-width:240px">
+    <h1 class="ee-h1">Dashboard</h1>
+    <p class="ee-muted" style="margin:.25rem 0 0">
+      Métricas en tiempo real de todas las campañas.
+      <span id="ee-last-refresh" style="font-size:.8rem">· última actualización: —</span>
+    </p>
+  </div>
+  <div style="display:flex;gap:.5rem;align-items:center">
+    <button id="ee-btn-procesar" class="ee-btn" type="button">
+      ▶ Procesar cola ahora
+    </button>
+    <button id="ee-btn-refresh" class="ee-btn ee-btn-sec" type="button" title="Refrescar métricas">
+      ↻ Refrescar
+    </button>
+  </div>
 </div>
+<div id="ee-toast" style="display:none;margin-bottom:1rem;padding:.65rem 1rem;border-radius:8px;font-size:.9rem"></div>
 
 <div class="ee-metrics">
   <div class="ee-metric">
-    <div class="ee-metric-num">{{ enviados_hoy }}</div>
+    <div class="ee-metric-num" id="m-enviados-hoy">{{ enviados_hoy }}</div>
     <div class="ee-metric-lbl">Enviados hoy</div>
-    <div class="ee-metric-sub">{{ enviados_semana }} esta semana</div>
+    <div class="ee-metric-sub"><span id="m-enviados-semana">{{ enviados_semana }}</span> esta semana</div>
   </div>
   <div class="ee-metric">
-    <div class="ee-metric-num">{{ total_enviados }}</div>
+    <div class="ee-metric-num" id="m-total-enviados">{{ total_enviados }}</div>
     <div class="ee-metric-lbl">Total enviados</div>
-    <div class="ee-metric-sub">{{ total_envios }} en cola</div>
+    <div class="ee-metric-sub"><span id="m-total-envios">{{ total_envios }}</span> en cola</div>
   </div>
   <div class="ee-metric">
-    <div class="ee-metric-num">{{ tasa_apertura }}%</div>
+    <div class="ee-metric-num"><span id="m-tasa-apertura">{{ tasa_apertura }}</span>%</div>
     <div class="ee-metric-lbl">Tasa de apertura</div>
-    <div class="ee-metric-sub">{{ total_abiertos }} aperturas</div>
+    <div class="ee-metric-sub"><span id="m-total-abiertos">{{ total_abiertos }}</span> aperturas</div>
   </div>
   <div class="ee-metric">
-    <div class="ee-metric-num">{{ tasa_clic }}%</div>
+    <div class="ee-metric-num"><span id="m-tasa-clic">{{ tasa_clic }}</span>%</div>
     <div class="ee-metric-lbl">Tasa de clic</div>
-    <div class="ee-metric-sub">{{ total_clics }} clics</div>
+    <div class="ee-metric-sub"><span id="m-total-clics">{{ total_clics }}</span> clics</div>
   </div>
   <div class="ee-metric">
-    <div class="ee-metric-num">{{ tasa_descarga }}%</div>
+    <div class="ee-metric-num"><span id="m-tasa-descarga">{{ tasa_descarga }}</span>%</div>
     <div class="ee-metric-lbl">Descargas PDF</div>
-    <div class="ee-metric-sub">{{ total_descargas }} descargas</div>
+    <div class="ee-metric-sub"><span id="m-total-descargas">{{ total_descargas }}</span> descargas</div>
   </div>
   <div class="ee-metric">
-    <div class="ee-metric-num">{{ objeciones_total }}</div>
+    <div class="ee-metric-num" id="m-objeciones">{{ objeciones_total }}</div>
     <div class="ee-metric-lbl">Objeciones</div>
   </div>
 </div>
@@ -105,15 +119,101 @@
 {% endblock %}
 {% block scripts %}
 <script>
-// Heartbeat: procesa la cola cada 5 min si esta pestaña está abierta
-setInterval(async () => {
-  try {
-    const r = await fetch('/admin/emails/heartbeat');
-    const d = await r.json();
-    if ((d.enviados || 0) > 0) {
-      location.reload();
+(function () {
+  const $ = (id) => document.getElementById(id);
+
+  function setText(id, val) {
+    const el = $(id);
+    if (el && val !== undefined && val !== null) el.textContent = val;
+  }
+
+  function showToast(msg, kind) {
+    const t = $('ee-toast');
+    if (!t) return;
+    const colors = {
+      ok:    { bg: '#e7f6ec', fg: '#1f7a3a' },
+      warn:  { bg: '#fff7e0', fg: '#8a5a00' },
+      error: { bg: '#fdecec', fg: '#c1272d' },
+      info:  { bg: '#e8f0ff', fg: '#1c428f' },
+    }[kind] || { bg: '#eee', fg: '#333' };
+    t.style.background = colors.bg;
+    t.style.color = colors.fg;
+    t.textContent = msg;
+    t.style.display = 'block';
+    clearTimeout(t._hideTimer);
+    t._hideTimer = setTimeout(() => { t.style.display = 'none'; }, 6000);
+  }
+
+  async function refrescarMetricas() {
+    try {
+      const r = await fetch('/admin/emails/stats.json', { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const d = await r.json();
+      setText('m-enviados-hoy', d.enviados_hoy);
+      setText('m-enviados-semana', d.enviados_semana);
+      setText('m-total-enviados', d.total_enviados);
+      setText('m-total-envios', d.total_envios);
+      setText('m-tasa-apertura', d.tasa_apertura);
+      setText('m-total-abiertos', d.total_abiertos);
+      setText('m-tasa-clic', d.tasa_clic);
+      setText('m-total-clics', d.total_clics);
+      setText('m-tasa-descarga', d.tasa_descarga);
+      setText('m-total-descargas', d.total_descargas);
+      setText('m-objeciones', d.objeciones_total);
+      const ts = new Date();
+      setText('ee-last-refresh',
+        '· última actualización: ' + ts.toLocaleTimeString() +
+        ' · pendientes en cola: ' + d.pendientes);
+      return d;
+    } catch (e) {
+      console.error('refrescarMetricas falló:', e);
+      showToast('Error al refrescar métricas: ' + e.message, 'error');
     }
-  } catch (e) {}
-}, 5 * 60 * 1000);
+  }
+
+  async function procesarCola(manual) {
+    const btn = $('ee-btn-procesar');
+    const originalText = btn ? btn.textContent : null;
+    if (btn && manual) { btn.disabled = true; btn.textContent = 'Procesando…'; }
+    try {
+      const r = await fetch('/admin/emails/heartbeat', { method: 'POST' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const d = await r.json();
+      const enviados = d.enviados || 0;
+      const fallidos = d.fallidos || 0;
+      const omitidos = d.omitidos || 0;
+      if (manual) {
+        const kind = enviados > 0 ? 'ok' : (fallidos > 0 ? 'warn' : 'info');
+        showToast(
+          'Cola procesada: ' + enviados + ' enviados, ' +
+          fallidos + ' fallidos, ' + omitidos + ' omitidos.',
+          kind
+        );
+      } else if (enviados > 0) {
+        showToast('Heartbeat: ' + enviados + ' correos enviados.', 'ok');
+      }
+      await refrescarMetricas();
+    } catch (e) {
+      console.error('procesarCola falló:', e);
+      if (manual) showToast('Error al procesar cola: ' + e.message, 'error');
+    } finally {
+      if (btn && manual) { btn.disabled = false; btn.textContent = originalText; }
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const btnP = $('ee-btn-procesar');
+    if (btnP) btnP.addEventListener('click', () => procesarCola(true));
+    const btnR = $('ee-btn-refresh');
+    if (btnR) btnR.addEventListener('click', refrescarMetricas);
+
+    // Refresco de métricas cada 30s (barato — solo cuenta filas)
+    refrescarMetricas();
+    setInterval(refrescarMetricas, 30 * 1000);
+
+    // Heartbeat automático cada 5 min — procesa hasta 5 correos
+    setInterval(() => procesarCola(false), 5 * 60 * 1000);
+  });
+})();
 </script>
 {% endblock %}

@@ -1,0 +1,75 @@
+{% extends "email_engine/_base.html" %}
+{% set active = "campanas" %}
+{% block title %}Vista previa · {{ campana.nombre }}{% endblock %}
+{% block content %}
+<div class="ee-header">
+  <a href="/admin/emails/campana/{{ campana.id }}" class="ee-muted">← Volver a la campaña</a>
+  <h1 class="ee-h1">Vista previa: {{ campana.nombre }}</h1>
+  <p class="ee-muted">
+    Renderizado con: <strong>{{ origen }}</strong> ·
+    Segmento: <code>{{ campana.segmento }}</code> ·
+    Estado: <code>{{ campana.estado }}</code>
+  </p>
+</div>
+
+{% if tiene_placeholders %}
+<div class="ee-card" style="border-color:#c1272d;background:#fdecec;color:#7a0d12">
+  <strong>⚠ Advertencia:</strong> El asunto o el HTML aún contiene
+  <code>{{ '{{' }} … {{ '}}' }}</code> sin renderizar. Revisa el template — alguna
+  variable no existe o la sintaxis es incorrecta. <strong>Estos correos
+  serán bloqueados al enviar</strong> (salvaguarda activa).
+</div>
+{% endif %}
+
+<div class="ee-card">
+  <h3 style="margin-top:0">Encabezado del correo</h3>
+  <table class="ee-table">
+    <tr>
+      <th style="width:140px">Para</th>
+      <td>
+        <strong>{{ contacto.nombre or '—' }}</strong>
+        &lt;{{ contacto.correo }}&gt;<br>
+        <small class="ee-muted">
+          {{ contacto.municipalidad }}{% if contacto.provincia %} · {{ contacto.provincia }}{% endif %}{% if contacto.departamento %} · {{ contacto.departamento }}{% endif %}
+        </small>
+      </td>
+    </tr>
+    <tr>
+      <th>Asunto</th>
+      <td><strong style="font-size:1.05rem">{{ asunto }}</strong></td>
+    </tr>
+  </table>
+</div>
+
+<div class="ee-card" style="padding:0;overflow:hidden">
+  <div style="padding:.85rem 1.25rem;border-bottom:1px solid #e3e6ef;background:#f0f3fa;display:flex;justify-content:space-between;align-items:center">
+    <strong>Cuerpo HTML renderizado</strong>
+    <small class="ee-muted">
+      Los enlaces y el píxel de tracking apuntan a un token de prueba —
+      no afectan métricas reales.
+    </small>
+  </div>
+  <iframe id="ee-preview-iframe"
+          style="width:100%;height:700px;border:0;background:#fff"
+          sandbox="allow-same-origin"></iframe>
+</div>
+
+<details class="ee-card">
+  <summary style="cursor:pointer;font-weight:600">Ver HTML fuente renderizado</summary>
+  <pre style="overflow:auto;background:#0f172a;color:#e2e8f0;padding:1rem;border-radius:8px;font-size:.78rem;margin-top:.75rem">{{ html }}</pre>
+</details>
+
+<script>
+(function () {
+  // Inyectar el HTML en el iframe sin depender del backend para ello
+  const html = {{ html|tojson }};
+  const iframe = document.getElementById('ee-preview-iframe');
+  if (iframe) {
+    const doc = iframe.contentDocument || iframe.contentWindow.document;
+    doc.open();
+    doc.write(html);
+    doc.close();
+  }
+})();
+</script>
+{% endblock %}
