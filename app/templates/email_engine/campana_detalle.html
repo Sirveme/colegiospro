@@ -44,7 +44,7 @@
   </div>
   {% if c.estado != 'activa' %}
   <button class="ee-btn"
-          onclick="fetch('/admin/emails/campana/{{ c.id }}/activar', {method:'POST'}).then(r=>r.json()).then(d=>{ alert('Envíos creados: '+d.envios_creados); location.reload(); })">
+          onclick="fetch('/admin/emails/campana/{{ c.id }}/activar', {method:'POST'}).then(r=>r.json()).then(d=>{ alert('Envíos creados: '+d.envios_creados+'\nSegmento campaña: '+d.segmento+'\nContactos en ese segmento: '+d.total_en_segmento+'\nTotal contactos en BD: '+d.total_contactos_db); location.reload(); })">
     Activar campaña
   </button>
   {% else %}
