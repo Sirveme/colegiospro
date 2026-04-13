@@ -12,7 +12,7 @@
   <h3 style="margin-top:0">Cuentas configuradas</h3>
   <table class="ee-table">
     <thead>
-      <tr><th>Nombre</th><th>Servidor</th><th>De</th><th>Límite día/hora</th><th>Hoy / Hora</th></tr>
+      <tr><th>Nombre</th><th>Servidor</th><th>De</th><th>Límite día/hora</th><th>Hoy / Hora</th><th>Prueba</th></tr>
     </thead>
     <tbody>
       {% for c in configs %}
@@ -22,11 +22,53 @@
         <td>{{ c.from_name }}<br><small class="ee-muted">{{ c.from_email }}</small></td>
         <td>{{ c.limite_dia }} / {{ c.limite_hora }}</td>
         <td>{{ c.enviados_hoy or 0 }} / {{ c.enviados_hora_actual or 0 }}</td>
+        <td>
+          <button type="button" class="ee-btn ee-btn-test" data-cfg-id="{{ c.id }}" data-destino="{{ c.from_email }}">
+            Enviar correo de prueba
+          </button>
+          <div class="ee-test-result" id="ee-test-result-{{ c.id }}" style="margin-top:.4rem;font-size:.85rem;"></div>
+        </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
+
+<script>
+(function () {
+  document.querySelectorAll('.ee-btn-test').forEach(function (btn) {
+    btn.addEventListener('click', async function () {
+      const cfgId = btn.dataset.cfgId;
+      const destino = btn.dataset.destino;
+      const result = document.getElementById('ee-test-result-' + cfgId);
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Enviando…';
+      result.innerHTML = '<span style="color:#666">Probando conexión SMTP…</span>';
+      try {
+        const resp = await fetch('/admin/emails/config/' + cfgId + '/test', {
+          method: 'POST',
+          headers: { 'Accept': 'application/json' },
+        });
+        const data = await resp.json().catch(function () { return {}; });
+        if (resp.ok && data.ok) {
+          result.innerHTML = '<span style="color:#16a34a">✔ Enviado a ' +
+            (data.destino || destino) + '. Revisa la bandeja de entrada.</span>';
+        } else {
+          const err = (data && data.error) ? data.error : ('HTTP ' + resp.status);
+          result.innerHTML = '<span style="color:#dc2626">✖ Falló: ' +
+            err.replace(/</g, '&lt;') + '</span>';
+        }
+      } catch (e) {
+        result.innerHTML = '<span style="color:#dc2626">✖ Error de red: ' + e.message + '</span>';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    });
+  });
+})();
+</script>
 {% endif %}
 
 <div class="ee-card" style="max-width:680px;">
