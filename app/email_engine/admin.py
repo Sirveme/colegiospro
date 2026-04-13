@@ -6,7 +6,10 @@
 
 import csv
 import io
+import smtplib
 from datetime import datetime, timedelta
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from typing import Optional
 
 from fastapi import APIRouter, Request, Form, UploadFile, File, HTTPException
@@ -19,7 +22,7 @@ from .models import (
     EmailEvento, EmailObjecion,
 )
 from .sender import (
-    cifrar, procesar_cola, crear_envios_para_campana,
+    cifrar, descifrar, procesar_cola, crear_envios_para_campana,
 )
 from .templates_html import PLANTILLAS
 
@@ -413,6 +416,62 @@ async def config_guardar(
     finally:
         db.close()
     return RedirectResponse("/admin/emails/config", status_code=302)
+
+
+@router.post("/config/{config_id}/test")
+async def config_test(config_id: int):
+    """Envía un correo de prueba a la misma dirección del remitente."""
+    db = _db()
+    try:
+        cfg = db.get(EmailConfig, config_id)
+        if not cfg:
+            raise HTTPException(404, "Config no encontrada")
+        destino = cfg.from_email
+        password = descifrar(cfg.smtp_pass_enc)
+        if not password:
+            return JSONResponse(
+                {"ok": False, "error": "No hay contraseña SMTP guardada para esta cuenta."},
+                status_code=400,
+            )
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = f"[Prueba SMTP] {cfg.nombre} — {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}"
+        msg["From"] = f"{cfg.from_name} <{cfg.from_email}>"
+        msg["To"] = destino
+        cuerpo = (
+            f"<p>Este es un correo de prueba enviado desde la configuración SMTP "
+            f"<strong>{cfg.nombre}</strong>.</p>"
+            f"<p>Servidor: {cfg.smtp_host}:{cfg.smtp_port}<br>"
+            f"Usuario: {cfg.smtp_user}<br>"
+            f"Remitente: {cfg.from_email}</p>"
+            f"<p>Si recibes este mensaje, la conexión SMTP funciona correctamente.</p>"
+        )
+        msg.attach(MIMEText(cuerpo, "html", "utf-8"))
+
+        try:
+            with smtplib.SMTP(cfg.smtp_host, cfg.smtp_port, timeout=30) as s:
+                s.ehlo()
+                s.starttls()
+                s.login(cfg.smtp_user, password)
+                s.sendmail(cfg.from_email, [destino], msg.as_string())
+        except smtplib.SMTPAuthenticationError as e:
+            return JSONResponse(
+                {"ok": False, "error": f"Autenticación SMTP fallida: {e.smtp_code} {e.smtp_error.decode(errors='ignore') if isinstance(e.smtp_error, bytes) else e.smtp_error}"},
+                status_code=400,
+            )
+        except smtplib.SMTPException as e:
+            return JSONResponse(
+                {"ok": False, "error": f"Error SMTP: {type(e).__name__}: {e}"},
+                status_code=400,
+            )
+        except Exception as e:
+            return JSONResponse(
+                {"ok": False, "error": f"{type(e).__name__}: {e}"},
+                status_code=400,
+            )
+    finally:
+        db.close()
+
+    return JSONResponse({"ok": True, "destino": destino})
 
 
 # ─── Heartbeat ─────────────────────────────────────────────────
