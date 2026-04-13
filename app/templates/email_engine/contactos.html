@@ -1,0 +1,79 @@
+{% extends "email_engine/_base.html" %}
+{% set active = "contactos" %}
+{% block title %}Contactos{% endblock %}
+{% block content %}
+<div class="ee-header">
+  <h1 class="ee-h1">Contactos</h1>
+  <p class="ee-muted">{{ total }} contacto{{ 's' if total != 1 else '' }}{% if segmento_filtro %} en segmento "{{ segmento_filtro }}"{% endif %}</p>
+</div>
+
+<div class="ee-card">
+  <h3 style="margin-top:0">Importar CSV</h3>
+  <p class="ee-muted" style="font-size:.85rem;">
+    Columnas aceptadas: Correo, Nombre, Municipalidad, Departamento, Provincia, Alcalde, Telefono, Whatsapp, Tipo, Campana
+  </p>
+  <form id="form-csv" onsubmit="importar(event)" style="display:flex;gap:.5rem;align-items:center">
+    <input type="file" name="archivo" accept=".csv" required>
+    <button type="submit" class="ee-btn">Importar</button>
+  </form>
+  <div id="csv-resultado" style="margin-top:.5rem;font-size:.9rem"></div>
+</div>
+
+<div class="ee-card">
+  <h3 style="margin-top:0">Segmentos</h3>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <a href="/admin/emails/contactos" class="ee-badge ee-badge-gris"
+       style="text-decoration:none;padding:.35rem .75rem">
+      Todos ({{ total }})
+    </a>
+    {% for seg, cant in segmentos_data.items() %}
+    <a href="/admin/emails/contactos?segmento={{ seg }}"
+       class="ee-badge {% if segmento_filtro == seg %}ee-badge-verde{% else %}ee-badge-azul{% endif %}"
+       style="text-decoration:none;padding:.35rem .75rem">
+      {{ seg }} ({{ cant }})
+    </a>
+    {% endfor %}
+  </div>
+</div>
+
+{% if contactos %}
+<table class="ee-table">
+  <thead>
+    <tr><th>Correo</th><th>Municipalidad</th><th>Depto/Prov</th><th>Segmento</th><th>Estado</th></tr>
+  </thead>
+  <tbody>
+    {% for c in contactos %}
+    <tr>
+      <td>{{ c.correo }}</td>
+      <td>{{ c.municipalidad }}</td>
+      <td><small class="ee-muted">{{ c.departamento }} / {{ c.provincia }}</small></td>
+      <td><span class="ee-badge ee-badge-azul">{{ c.segmento or '—' }}</span></td>
+      <td>
+        {% if c.baja %}<span class="ee-badge ee-badge-rojo">baja</span>
+        {% elif c.activo %}<span class="ee-badge ee-badge-verde">activo</span>
+        {% else %}<span class="ee-badge ee-badge-gris">inactivo</span>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<script>
+async function importar(e) {
+  e.preventDefault();
+  const form = e.target;
+  const fd = new FormData(form);
+  const res = document.getElementById('csv-resultado');
+  res.textContent = 'Procesando…';
+  try {
+    const r = await fetch('/admin/emails/contactos/importar', {method:'POST', body: fd});
+    const d = await r.json();
+    res.innerHTML = `✓ Insertados: <strong>${d.insertados}</strong> · Duplicados: ${d.duplicados} · Errores: ${d.errores}`;
+    setTimeout(() => location.reload(), 1500);
+  } catch (err) {
+    res.textContent = 'Error: ' + err.message;
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "email_engine/_base.html" %}
+{% set active = "objeciones" %}
+{% block title %}Objeciones{% endblock %}
+{% block content %}
+<div class="ee-header">
+  <h1 class="ee-h1">Objeciones</h1>
+  <p class="ee-muted">Respuestas del formulario post-clic.</p>
+</div>
+
+{% if not items %}
+<div class="ee-card"><p class="ee-muted">Aún no hay objeciones recibidas.</p></div>
+{% else %}
+<table class="ee-table">
+  <thead>
+    <tr><th>Fecha</th><th>Correo</th><th>Objeción</th><th>Qué necesita</th><th>Comentario</th></tr>
+  </thead>
+  <tbody>
+    {% for o in items %}
+    <tr>
+      <td>{{ o.creado_en.strftime('%d/%m %H:%M') if o.creado_en else '—' }}</td>
+      <td><strong>{{ o.correo or '—' }}</strong><br><small class="ee-muted">{{ o.municipalidad }}</small></td>
+      <td><span class="ee-badge ee-badge-rojo">{{ o.objecion or '—' }}</span></td>
+      <td><span class="ee-badge ee-badge-verde">{{ o.que_necesita or '—' }}</span></td>
+      <td style="max-width:300px;">{{ o.comentario or '' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

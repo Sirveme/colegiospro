@@ -1,0 +1,43 @@
+{% extends "email_engine/_base.html" %}
+{% set active = "campanas" %}
+{% block title %}Campañas{% endblock %}
+{% block content %}
+<div class="ee-header" style="display:flex;justify-content:space-between;align-items:center;">
+  <div>
+    <h1 class="ee-h1">Campañas</h1>
+    <p class="ee-muted">Crea y gestiona tus campañas de email masivo.</p>
+  </div>
+  <a href="/admin/emails/campana/nueva" class="ee-btn">+ Nueva campaña</a>
+</div>
+
+{% if not campanas %}
+<div class="ee-card"><p class="ee-muted">No hay campañas aún.</p></div>
+{% else %}
+<table class="ee-table">
+  <thead>
+    <tr>
+      <th>Nombre</th><th>Segmento</th><th>Estado</th>
+      <th>Enviados</th><th>Abiertos</th><th>Clics</th><th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for c in campanas %}
+    <tr>
+      <td><strong>{{ c.nombre }}</strong><br><small class="ee-muted">{{ c.asunto }}</small></td>
+      <td>{{ c.segmento }}</td>
+      <td>
+        {% if c.estado == 'activa' %}<span class="ee-badge ee-badge-verde">activa</span>
+        {% elif c.estado == 'pausada' %}<span class="ee-badge ee-badge-rojo">pausada</span>
+        {% elif c.estado == 'completada' %}<span class="ee-badge ee-badge-azul">completada</span>
+        {% else %}<span class="ee-badge ee-badge-gris">borrador</span>{% endif %}
+      </td>
+      <td>{{ c.total_enviados }} / {{ c.total_contactos }}</td>
+      <td>{{ c.total_abiertos }}</td>
+      <td>{{ c.total_clics }}</td>
+      <td><a href="/admin/emails/campana/{{ c.id }}" class="ee-btn ee-btn-sec">Ver</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

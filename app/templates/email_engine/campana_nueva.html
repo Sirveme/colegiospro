@@ -1,0 +1,57 @@
+{% extends "email_engine/_base.html" %}
+{% set active = "campanas" %}
+{% block title %}Nueva campaña{% endblock %}
+{% block content %}
+<div class="ee-header">
+  <a href="/admin/emails/campanas" class="ee-muted">← Volver a campañas</a>
+  <h1 class="ee-h1">Nueva campaña</h1>
+</div>
+
+<div class="ee-card" style="max-width:720px;">
+  <form method="post" action="/admin/emails/campana/nueva" class="ee-form">
+    <label>
+      <span>Nombre interno</span>
+      <input type="text" name="nombre" required placeholder="Campaña A · Secretarias Loreto">
+    </label>
+    <label>
+      <span>Asunto (puedes usar {{ '{{ municipalidad }}' }})</span>
+      <input type="text" name="asunto_template" required placeholder="Para la secretaria de {{ '{{ municipalidad }}' }}: redacta oficios en 15 seg">
+    </label>
+    <label>
+      <span>Segmento de contactos</span>
+      <select name="segmento" required>
+        <option value="A_secretaria">A — Secretaria</option>
+        <option value="B_alcalde">B — Alcalde / Directivo</option>
+        <option value="seguimiento">Seguimiento</option>
+      </select>
+    </label>
+    <label>
+      <span>Cuenta SMTP</span>
+      <select name="config_id" required>
+        {% for c in configs %}
+        <option value="{{ c.id }}">{{ c.nombre }} ({{ c.from_email }})</option>
+        {% endfor %}
+      </select>
+      {% if not configs %}
+      <small style="color:#c1272d">
+        No hay cuentas SMTP configuradas.
+        <a href="/admin/emails/config">Agregar una</a>.
+      </small>
+      {% endif %}
+    </label>
+    <label>
+      <span>Plantilla base</span>
+      <select name="plantilla">
+        {% for key, p in plantillas.items() %}
+        <option value="{{ key }}">{{ p.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <span>HTML personalizado (opcional, sobrescribe la plantilla)</span>
+      <textarea name="html_custom" placeholder="Deja vacío para usar la plantilla seleccionada"></textarea>
+    </label>
+    <button type="submit" class="ee-btn">Crear campaña</button>
+  </form>
+</div>
+{% endblock %}

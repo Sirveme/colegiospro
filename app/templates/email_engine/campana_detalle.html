@@ -1,0 +1,88 @@
+{% extends "email_engine/_base.html" %}
+{% set active = "campanas" %}
+{% block title %}{{ c.nombre }}{% endblock %}
+{% block content %}
+<div class="ee-header">
+  <a href="/admin/emails/campanas" class="ee-muted">← Volver</a>
+  <h1 class="ee-h1">{{ c.nombre }}</h1>
+  <p class="ee-muted">{{ c.asunto }}</p>
+</div>
+
+<div class="ee-metrics">
+  <div class="ee-metric">
+    <div class="ee-metric-num">{{ c.total_enviados }}</div>
+    <div class="ee-metric-lbl">Enviados / {{ c.total_contactos }}</div>
+  </div>
+  <div class="ee-metric">
+    <div class="ee-metric-num">{{ c.total_abiertos }}</div>
+    <div class="ee-metric-lbl">Aperturas</div>
+  </div>
+  <div class="ee-metric">
+    <div class="ee-metric-num">{{ c.total_clics }}</div>
+    <div class="ee-metric-lbl">Clics</div>
+  </div>
+  <div class="ee-metric">
+    <div class="ee-metric-num">{{ c.total_descargas }}</div>
+    <div class="ee-metric-lbl">Descargas PDF</div>
+  </div>
+  <div class="ee-metric">
+    <div class="ee-metric-num">{{ c.total_rebotes }}</div>
+    <div class="ee-metric-lbl">Rebotes</div>
+  </div>
+  <div class="ee-metric">
+    <div class="ee-metric-num">{{ c.total_bajas }}</div>
+    <div class="ee-metric-lbl">Bajas</div>
+  </div>
+</div>
+
+<div class="ee-card" style="display:flex;gap:.5rem;align-items:center;">
+  <div style="flex:1">
+    Estado:
+    {% if c.estado == 'activa' %}<span class="ee-badge ee-badge-verde">activa</span>
+    {% elif c.estado == 'pausada' %}<span class="ee-badge ee-badge-rojo">pausada</span>
+    {% else %}<span class="ee-badge ee-badge-gris">{{ c.estado }}</span>{% endif %}
+  </div>
+  {% if c.estado != 'activa' %}
+  <button class="ee-btn"
+          onclick="fetch('/admin/emails/campana/{{ c.id }}/activar', {method:'POST'}).then(r=>r.json()).then(d=>{ alert('Envíos creados: '+d.envios_creados); location.reload(); })">
+    Activar campaña
+  </button>
+  {% else %}
+  <button class="ee-btn ee-btn-danger"
+          onclick="fetch('/admin/emails/campana/{{ c.id }}/pausar', {method:'POST'}).then(()=>location.reload())">
+    Pausar
+  </button>
+  {% endif %}
+</div>
+
+<div class="ee-card">
+  <h2 style="margin-top:0">Envíos recientes (máx. 100)</h2>
+  {% if not envios %}
+  <p class="ee-muted">Aún no hay envíos. Activa la campaña para crear envíos para los contactos del segmento.</p>
+  {% else %}
+  <table class="ee-table">
+    <thead><tr><th>Contacto</th><th>Estado</th><th>Enviado</th><th>Abierto</th><th>Clic</th></tr></thead>
+    <tbody>
+      {% for item in envios %}
+      <tr>
+        <td>
+          <strong>{{ item.contacto.correo if item.contacto else '—' }}</strong><br>
+          <small class="ee-muted">{{ item.contacto.municipalidad if item.contacto else '' }}</small>
+        </td>
+        <td>
+          {% set e = item.envio %}
+          {% if e.estado == 'enviado' %}<span class="ee-badge ee-badge-azul">enviado</span>
+          {% elif e.estado == 'abierto' %}<span class="ee-badge ee-badge-verde">abierto</span>
+          {% elif e.estado == 'rebotado' %}<span class="ee-badge ee-badge-rojo">rebotado</span>
+          {% else %}<span class="ee-badge ee-badge-gris">{{ e.estado }}</span>{% endif %}
+        </td>
+        <td>{{ e.enviado_en.strftime('%d/%m %H:%M') if e.enviado_en else '—' }}</td>
+        <td>{{ e.abierto_en.strftime('%d/%m %H:%M') if e.abierto_en else '—' }}</td>
+        <td>{{ e.primer_clic_en.strftime('%d/%m %H:%M') if e.primer_clic_en else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

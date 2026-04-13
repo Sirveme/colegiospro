@@ -1,0 +1,81 @@
+{% extends "email_engine/_base.html" %}
+{% set active = "config" %}
+{% block title %}Configuración SMTP{% endblock %}
+{% block content %}
+<div class="ee-header">
+  <h1 class="ee-h1">Configuración SMTP</h1>
+  <p class="ee-muted">Cuentas desde las que se envían los correos.</p>
+</div>
+
+{% if configs %}
+<div class="ee-card">
+  <h3 style="margin-top:0">Cuentas configuradas</h3>
+  <table class="ee-table">
+    <thead>
+      <tr><th>Nombre</th><th>Servidor</th><th>De</th><th>Límite día/hora</th><th>Hoy / Hora</th></tr>
+    </thead>
+    <tbody>
+      {% for c in configs %}
+      <tr>
+        <td><strong>{{ c.nombre }}</strong></td>
+        <td>{{ c.smtp_host }}:{{ c.smtp_port }}<br><small class="ee-muted">{{ c.smtp_user }}</small></td>
+        <td>{{ c.from_name }}<br><small class="ee-muted">{{ c.from_email }}</small></td>
+        <td>{{ c.limite_dia }} / {{ c.limite_hora }}</td>
+        <td>{{ c.enviados_hoy or 0 }} / {{ c.enviados_hora_actual or 0 }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<div class="ee-card" style="max-width:680px;">
+  <h3 style="margin-top:0">Agregar / actualizar cuenta</h3>
+  <form method="post" action="/admin/emails/config" class="ee-form">
+    <label>
+      <span>Nombre interno *</span>
+      <input type="text" name="nombre" required placeholder="colegiospro">
+    </label>
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:.75rem">
+      <label>
+        <span>Servidor SMTP</span>
+        <input type="text" name="smtp_host" value="smtp.gmail.com">
+      </label>
+      <label>
+        <span>Puerto</span>
+        <input type="number" name="smtp_port" value="587">
+      </label>
+    </div>
+    <label>
+      <span>Usuario SMTP *</span>
+      <input type="text" name="smtp_user" required placeholder="hola@colegiospro.org.pe">
+    </label>
+    <label>
+      <span>Contraseña (dejar vacío para no cambiar)</span>
+      <input type="password" name="smtp_pass" autocomplete="new-password">
+      <small class="ee-muted">Se cifra con Fernet antes de guardar.</small>
+    </label>
+    <div style="display:grid;grid-template-columns:1fr 2fr;gap:.75rem">
+      <label>
+        <span>Nombre remitente *</span>
+        <input type="text" name="from_name" required placeholder="SecretariaPro">
+      </label>
+      <label>
+        <span>Email remitente *</span>
+        <input type="email" name="from_email" required placeholder="hola@colegiospro.org.pe">
+      </label>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+      <label>
+        <span>Límite por día</span>
+        <input type="number" name="limite_dia" value="50">
+      </label>
+      <label>
+        <span>Límite por hora</span>
+        <input type="number" name="limite_hora" value="10">
+      </label>
+    </div>
+    <button type="submit" class="ee-btn">Guardar configuración</button>
+  </form>
+</div>
+{% endblock %}

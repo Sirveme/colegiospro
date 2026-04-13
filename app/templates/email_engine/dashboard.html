@@ -1,0 +1,119 @@
+{% extends "email_engine/_base.html" %}
+{% set active = "dashboard" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="ee-header">
+  <h1 class="ee-h1">Dashboard</h1>
+  <p class="ee-muted">Métricas en tiempo real de todas las campañas.</p>
+</div>
+
+<div class="ee-metrics">
+  <div class="ee-metric">
+    <div class="ee-metric-num">{{ enviados_hoy }}</div>
+    <div class="ee-metric-lbl">Enviados hoy</div>
+    <div class="ee-metric-sub">{{ enviados_semana }} esta semana</div>
+  </div>
+  <div class="ee-metric">
+    <div class="ee-metric-num">{{ total_enviados }}</div>
+    <div class="ee-metric-lbl">Total enviados</div>
+    <div class="ee-metric-sub">{{ total_envios }} en cola</div>
+  </div>
+  <div class="ee-metric">
+    <div class="ee-metric-num">{{ tasa_apertura }}%</div>
+    <div class="ee-metric-lbl">Tasa de apertura</div>
+    <div class="ee-metric-sub">{{ total_abiertos }} aperturas</div>
+  </div>
+  <div class="ee-metric">
+    <div class="ee-metric-num">{{ tasa_clic }}%</div>
+    <div class="ee-metric-lbl">Tasa de clic</div>
+    <div class="ee-metric-sub">{{ total_clics }} clics</div>
+  </div>
+  <div class="ee-metric">
+    <div class="ee-metric-num">{{ tasa_descarga }}%</div>
+    <div class="ee-metric-lbl">Descargas PDF</div>
+    <div class="ee-metric-sub">{{ total_descargas }} descargas</div>
+  </div>
+  <div class="ee-metric">
+    <div class="ee-metric-num">{{ objeciones_total }}</div>
+    <div class="ee-metric-lbl">Objeciones</div>
+  </div>
+</div>
+
+<div class="ee-card">
+  <h2 style="margin-top:0">Quién hizo clic en las últimas 24h</h2>
+  {% if not clics_24h %}
+    <p class="ee-muted">Aún no hay clics en las últimas 24 horas.</p>
+  {% else %}
+  <table class="ee-table">
+    <thead>
+      <tr><th>Cuándo</th><th>Correo</th><th>Municipalidad</th><th>Teléfono</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for c in clics_24h %}
+      <tr>
+        <td>{{ c.cuando.strftime('%d/%m %H:%M') if c.cuando else '—' }}</td>
+        <td>{{ c.correo }}</td>
+        <td>{{ c.municipalidad }}</td>
+        <td>{{ c.telefono or '—' }}</td>
+        <td>
+          {% if c.telefono %}
+          <a href="tel:{{ c.telefono }}" class="ee-btn">Llamar ahora</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+<div class="ee-card">
+  <h2 style="margin-top:0">Últimas 20 aperturas</h2>
+  {% if not ultimas_aperturas %}
+    <p class="ee-muted">Aún no hay aperturas registradas.</p>
+  {% else %}
+  <table class="ee-table">
+    <thead>
+      <tr><th>Cuándo</th><th>Correo</th><th>Municipalidad</th></tr>
+    </thead>
+    <tbody>
+      {% for a in ultimas_aperturas %}
+      <tr>
+        <td>{{ a.fecha.strftime('%d/%m %H:%M') if a.fecha else '—' }}</td>
+        <td>{{ a.correo }}</td>
+        <td>{{ a.municipalidad }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+{% if objeciones_por_tipo %}
+<div class="ee-card">
+  <h2 style="margin-top:0">Objeciones por tipo</h2>
+  {% set max_obj = objeciones_por_tipo.values()|max %}
+  {% for tipo, cant in objeciones_por_tipo.items() %}
+  <div class="ee-obj-bar">
+    <div style="min-width:140px;font-size:.85rem">{{ tipo }}</div>
+    <div class="bar"><div style="width:{{ (cant / max_obj * 100)|round|int }}%"></div></div>
+    <div style="min-width:40px;text-align:right;font-weight:600">{{ cant }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+// Heartbeat: procesa la cola cada 5 min si esta pestaña está abierta
+setInterval(async () => {
+  try {
+    const r = await fetch('/admin/emails/heartbeat');
+    const d = await r.json();
+    if ((d.enviados || 0) > 0) {
+      location.reload();
+    }
+  } catch (e) {}
+}, 5 * 60 * 1000);
+</script>
+{% endblock %}

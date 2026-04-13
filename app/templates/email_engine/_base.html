@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}Email Engine{% endblock %} · Admin</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin:0; font-family:-apple-system, Segoe UI, Roboto, sans-serif;
+      background:#f5f7fa; color:#1c1f2a;
+    }
+    .ee-wrap { display: flex; min-height: 100vh; }
+    .ee-side {
+      width: 220px; background: #0F3460; color: #fff;
+      padding: 1.5rem 1rem; position: sticky; top: 0; height: 100vh;
+    }
+    .ee-side h1 { font-size: 1.1rem; margin: 0 0 1.5rem; }
+    .ee-side a {
+      display: block; color: rgba(255,255,255,.85);
+      padding: .55rem .75rem; border-radius: 8px; margin-bottom: .25rem;
+      text-decoration: none; font-size: .9rem;
+    }
+    .ee-side a:hover { background: rgba(255,255,255,.08); }
+    .ee-side a.activo { background: rgba(201,148,58,.25); color: #fff; font-weight: 600; }
+    .ee-main { flex: 1; padding: 2rem 2.5rem; max-width: 1200px; }
+    .ee-header { margin-bottom: 1.5rem; }
+    .ee-h1 { margin: 0; font-size: 1.5rem; }
+    .ee-muted { color: #6b7280; }
+    .ee-card {
+      background: #fff; border: 1px solid #e3e6ef; border-radius: 10px;
+      padding: 1.25rem; margin-bottom: 1rem;
+      box-shadow: 0 1px 3px rgba(20,30,60,.04);
+    }
+    .ee-metrics { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom: 1.5rem; }
+    .ee-metric {
+      background: #fff; border: 1px solid #e3e6ef; border-radius: 10px;
+      padding: 1.25rem;
+    }
+    .ee-metric-num { font-size: 2rem; font-weight: 700; color: #0F3460; }
+    .ee-metric-lbl { color: #6b7280; font-size: .85rem; margin-top: .25rem; }
+    .ee-metric-sub { color: #0D7A60; font-size: .8rem; margin-top: .5rem; }
+    .ee-table {
+      width: 100%; border-collapse: collapse; background: #fff;
+      border-radius: 10px; overflow: hidden; border: 1px solid #e3e6ef;
+    }
+    .ee-table th, .ee-table td {
+      padding: .65rem .85rem; text-align: left;
+      border-bottom: 1px solid #e3e6ef; font-size: .88rem;
+    }
+    .ee-table th { background: #f0f3fa; font-weight: 600; }
+    .ee-btn {
+      display: inline-flex; align-items: center; gap: .35rem;
+      padding: .55rem 1rem; background: #0F3460; color: #fff;
+      border: none; border-radius: 8px; cursor: pointer; font: inherit;
+      text-decoration: none; font-size: .9rem;
+    }
+    .ee-btn:hover { background: #0D7A60; }
+    .ee-btn-sec { background: #fff; color: #0F3460; border: 1px solid #e3e6ef; }
+    .ee-btn-danger { background: #dc2626; }
+    .ee-form label { display: block; margin: .85rem 0; }
+    .ee-form label span { display: block; font-weight: 600; font-size: .85rem; margin-bottom: .25rem; }
+    .ee-form input, .ee-form select, .ee-form textarea {
+      width: 100%; padding: .55rem .75rem; border: 1px solid #e3e6ef;
+      border-radius: 8px; font: inherit;
+    }
+    .ee-form textarea { min-height: 160px; font-family: monospace; font-size: .85rem; }
+    .ee-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: .75rem; font-weight: 600; }
+    .ee-badge-verde { background: #e7f6ec; color: #1f7a3a; }
+    .ee-badge-gris { background: #eee; color: #555; }
+    .ee-badge-azul { background: #e8f0ff; color: #1c428f; }
+    .ee-badge-rojo { background: #fdecec; color: #c1272d; }
+    .ee-obj-bar {
+      display: flex; align-items: center; gap: .5rem; margin-bottom: .35rem;
+    }
+    .ee-obj-bar .bar {
+      flex: 1; height: 10px; background: #e8f0ff; border-radius: 5px; overflow: hidden;
+    }
+    .ee-obj-bar .bar > div { height: 100%; background: #0F3460; }
+    @media (max-width: 780px) {
+      .ee-wrap { flex-direction: column; }
+      .ee-side { width: 100%; height: auto; position: static; }
+      .ee-main { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="ee-wrap">
+  <aside class="ee-side">
+    <h1>📧 Email Engine</h1>
+    <a href="/admin/emails/" class="{% if active == 'dashboard' %}activo{% endif %}">Dashboard</a>
+    <a href="/admin/emails/campanas" class="{% if active == 'campanas' %}activo{% endif %}">Campañas</a>
+    <a href="/admin/emails/contactos" class="{% if active == 'contactos' %}activo{% endif %}">Contactos</a>
+    <a href="/admin/emails/objeciones" class="{% if active == 'objeciones' %}activo{% endif %}">Objeciones</a>
+    <a href="/admin/emails/config" class="{% if active == 'config' %}activo{% endif %}">Configuración</a>
+    <div style="margin-top:2rem;color:rgba(255,255,255,.5);font-size:.75rem">
+      v1.0 · colegiospro.org.pe
+    </div>
+  </aside>
+  <main class="ee-main">
+    {% block content %}{% endblock %}
+  </main>
+</div>
+{% block scripts %}{% endblock %}
+</body>
+</html>
