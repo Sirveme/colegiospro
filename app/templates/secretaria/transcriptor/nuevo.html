@@ -1,0 +1,122 @@
+{% extends "secretaria/base.html" %}
+{% block title %}Nueva transcripción{% endblock %}
+{% block content %}
+<header class="sp-header">
+  <a href="/secretaria/transcriptor/">← Volver</a>
+  <h1>Nueva transcripción</h1>
+</header>
+
+<!-- AVISO DE PRIVACIDAD -->
+<div class="sp-privacidad-aviso">
+  <div class="sp-priv-header">🔒 Antes de subir tu grabación, lee esto:</div>
+  <ul>
+    <li>
+      <strong>No grabes temas sensibles</strong> — si hay un asunto
+      confidencial, pausa la grabación en ese momento.
+    </li>
+    <li>
+      <strong>Anota el minuto exacto</strong> — si ya grabaste algo sensible,
+      anota en qué minuto empieza y termina. El sistema lo excluirá
+      antes de procesar.
+    </li>
+    <li>
+      <strong>Solo el audio transcribible</strong> llega a OpenAI.
+      Los tramos excluidos nunca salen del servidor sin recortarse.
+    </li>
+  </ul>
+</div>
+
+<div class="sp-col" style="max-width:720px; margin-top:1rem;">
+  <form method="post" action="/secretaria/transcriptor/nuevo"
+        class="sp-form" enctype="multipart/form-data" id="form-transcribir">
+    <label>
+      <span>Título de la reunión *</span>
+      <input type="text" name="titulo" required placeholder="Asamblea General · Abril 2026">
+    </label>
+
+    <label>
+      <span>Evento de agenda relacionado (opcional)</span>
+      <select name="agenda_evento_id">
+        <option value="">— Sin evento relacionado —</option>
+        {% for e in eventos_recientes %}
+        <option value="{{ e.id }}">
+          {{ e.titulo }} · {{ e.fecha_inicio.strftime('%d/%m/%Y %H:%M') }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      <span>Archivo de audio *</span>
+      <input type="file" name="audio" required
+             accept=".mp3,.mp4,.wav,.m4a,.ogg,.webm">
+      <small>Formatos: MP3, MP4, WAV, M4A, OGG, WEBM · Máximo 25 MB</small>
+    </label>
+
+    <!-- TRAMOS A EXCLUIR -->
+    <div class="sp-field">
+      <span style="font-weight:600;font-size:.9rem;display:block;margin-bottom:.35rem;">
+        ¿Hay tramos que NO deben transcribirse?
+      </span>
+      <div id="tramos-lista"></div>
+      <button type="button" class="sp-btn" onclick="spAgregarTramo()">
+        + Agregar tramo a excluir
+      </button>
+      <input type="hidden" name="tramos_json" id="tramos-json" value="[]">
+    </div>
+
+    <button type="submit" class="sp-btn sp-btn-primary"
+            id="btn-transcribir"
+            onclick="this.disabled=true; this.textContent='Procesando audio…'">
+      🎙 Iniciar transcripción
+    </button>
+  </form>
+</div>
+
+<script>
+(function(){
+  var tramos = [];
+
+  function render() {
+    var cont = document.getElementById('tramos-lista');
+    cont.innerHTML = '';
+    tramos.forEach(function(t, idx){
+      var div = document.createElement('div');
+      div.className = 'sp-tramo-item';
+      div.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 2fr auto;gap:.5rem;align-items:center;margin-bottom:.4rem;';
+      div.innerHTML =
+        '<input type="text" placeholder="Desde MM:SS" value="' + (t.inicio||'') + '" oninput="spActTramo(' + idx + ', \'inicio\', this.value)" pattern="[0-9]+:[0-5][0-9]" style="padding:.4rem .6rem;border:1px solid var(--sp-border);border-radius:6px;">' +
+        '<input type="text" placeholder="Hasta MM:SS" value="' + (t.fin||'') + '" oninput="spActTramo(' + idx + ', \'fin\', this.value)" pattern="[0-9]+:[0-5][0-9]" style="padding:.4rem .6rem;border:1px solid var(--sp-border);border-radius:6px;">' +
+        '<input type="text" placeholder="Motivo (opcional)" value="' + (t.motivo||'') + '" oninput="spActTramo(' + idx + ', \'motivo\', this.value)" style="padding:.4rem .6rem;border:1px solid var(--sp-border);border-radius:6px;">' +
+        '<button type="button" onclick="spQuitarTramo(' + idx + ')" class="sp-btn sp-btn-icon">✕</button>';
+      cont.appendChild(div);
+    });
+    actualizarHidden();
+  }
+
+  function actualizarHidden() {
+    var json = tramos.map(function(t){
+      var ini = parseTiempo(t.inicio);
+      var fin = parseTiempo(t.fin);
+      return {inicio_seg: ini, fin_seg: fin, motivo: t.motivo || ''};
+    });
+    document.getElementById('tramos-json').value = JSON.stringify(json);
+  }
+
+  function parseTiempo(s) {
+    if (!s) return 0;
+    var p = s.split(':');
+    if (p.length === 2) return parseInt(p[0]||0)*60 + parseInt(p[1]||0);
+    if (p.length === 3) return parseInt(p[0]||0)*3600 + parseInt(p[1]||0)*60 + parseInt(p[2]||0);
+    return 0;
+  }
+
+  window.spAgregarTramo = function() { tramos.push({inicio:'',fin:'',motivo:''}); render(); };
+  window.spQuitarTramo = function(i) { tramos.splice(i,1); render(); };
+  window.spActTramo = function(i, campo, val) {
+    if (tramos[i]) tramos[i][campo] = val;
+    actualizarHidden();
+  };
+})();
+</script>
+{% endblock %}

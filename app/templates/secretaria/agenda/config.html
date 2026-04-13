@@ -1,0 +1,96 @@
+{% extends "secretaria/base.html" %}
+{% block title %}Configuración de Agenda{% endblock %}
+{% block content %}
+<header class="sp-header">
+  <a href="/secretaria/agenda/">← Volver a la agenda</a>
+  <h1>Configuración de Agenda</h1>
+</header>
+
+<section class="sp-col" style="margin-bottom:1rem; max-width:680px;">
+  <h2 style="margin-top:0;">Horario laboral</h2>
+  <form method="post" action="/secretaria/agenda/config" class="sp-form sp-form-grid">
+    <label>
+      <span>Hora inicio</span>
+      <input type="time" name="hora_inicio" value="{{ cfg.hora_inicio }}">
+    </label>
+    <label>
+      <span>Hora fin</span>
+      <input type="time" name="hora_fin" value="{{ cfg.hora_fin }}">
+    </label>
+    <label>
+      <span>Buffer por defecto entre reuniones (min)</span>
+      <input type="number" name="buffer_default" value="{{ cfg.buffer_default }}" min="0" max="60">
+    </label>
+    <label>
+      <span>Notificar al jefe (min antes)</span>
+      <input type="number" name="notif_minutos_antes" value="{{ cfg.notif_minutos_antes }}" min="5" max="120">
+    </label>
+    <label>
+      <span>Duración bloque enfoque (min)</span>
+      <input type="number" name="duracion_bloque_enfoque" value="{{ cfg.duracion_bloque_enfoque }}" min="30" max="240">
+    </label>
+    <label class="sp-toggle-item sp-col-2" style="display:flex;align-items:center;gap:.5rem;">
+      <input type="checkbox" name="notif_jefe_activa" value="1" {% if cfg.notif_jefe_activa %}checked{% endif %}>
+      <span>Notificaciones al jefe activas</span>
+    </label>
+    <button type="submit" class="sp-btn sp-btn-primary sp-col-2">Guardar configuración</button>
+  </form>
+</section>
+
+<section class="sp-col" style="margin-bottom:1rem; max-width:680px;">
+  <h2 style="margin-top:0;">🔗 Google Calendar</h2>
+  {% if cfg.google_calendar_id %}
+    <div style="display:flex;align-items:center;gap:.75rem;">
+      <span class="sp-badge sp-badge-ok">Conectado</span>
+      <form method="post" action="/secretaria/agenda/google/desconectar">
+        <button type="submit" class="sp-btn">Desconectar</button>
+      </form>
+    </div>
+  {% else %}
+    <p>Conecta tu Google Calendar para sincronizar eventos automáticamente.</p>
+    <button type="button" class="sp-btn"
+            hx-post="/secretaria/agenda/google/conectar"
+            hx-swap="none"
+            hx-on::after-request="alert('Integración con Google Calendar próximamente. Usa la agenda interna por ahora.')">
+      Conectar Google Calendar
+    </button>
+    <p style="color:var(--sp-muted);font-size:.85rem;margin-top:.5rem;">
+      Solo tú controlas qué eventos se sincronizan.
+      SecretariaPro no lee tu calendario — solo agrega eventos.
+    </p>
+  {% endif %}
+</section>
+
+<section class="sp-col" style="margin-bottom:1rem; max-width:680px;">
+  <h2 style="margin-top:0;">Acceso a directivos</h2>
+  <p style="color:var(--sp-muted);">
+    Otorga acceso a tu agenda a otros usuarios (directivo, jefe, decano).
+  </p>
+
+  {% if accesos %}
+  <table class="sp-table" style="margin-bottom:1rem;">
+    <thead><tr><th>Usuario</th><th>Nivel</th></tr></thead>
+    <tbody>
+      {% for a in accesos %}
+      <tr><td>ID #{{ a.autorizado_id }}</td><td>{{ a.nivel }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <form method="post" action="/secretaria/agenda/acceso/nuevo" class="sp-form sp-form-grid">
+    <label>
+      <span>Correo del usuario</span>
+      <input type="email" name="correo_autorizado" required placeholder="directivo@colegio.org">
+    </label>
+    <label>
+      <span>Nivel</span>
+      <select name="nivel">
+        <option value="lectura">Solo lectura</option>
+        <option value="edicion">Edición</option>
+      </select>
+    </label>
+    <button type="submit" class="sp-btn sp-btn-primary sp-col-2">Otorgar acceso</button>
+  </form>
+</section>
+{% endblock %}

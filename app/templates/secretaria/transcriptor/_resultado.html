@@ -1,0 +1,20 @@
+<div class="sp-doc sp-doc--formal" style="margin-top:.5rem;">
+  <div class="sp-resultado-head">
+    <strong>{{ tipo_label }}</strong>
+    <span style="margin-left:auto;font-size:.85rem;color:var(--sp-muted);">Doc #{{ documento_id }}</span>
+  </div>
+  <pre class="sp-doc-texto" style="max-height:400px;overflow-y:auto;">{{ texto_salida }}</pre>
+</div>
+
+<div style="margin-top:.75rem;display:flex;gap:.5rem;flex-wrap:wrap;">
+  <a href="/secretaria/documento/{{ documento_id }}/pdf"
+     class="sp-btn sp-btn-primary" target="_blank" rel="noopener">
+    Descargar PDF
+  </a>
+  <button class="sp-btn"
+          hx-post="/secretaria/documento/{{ documento_id }}/guardar"
+          hx-swap="none"
+          onclick="this.textContent='✓ Guardado en historial'">
+    Guardar en historial
+  </button>
+</div>

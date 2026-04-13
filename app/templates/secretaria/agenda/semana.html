@@ -1,0 +1,66 @@
+{% extends "secretaria/base.html" %}
+{% block title %}Agenda · Semana{% endblock %}
+{% block content %}
+<header class="sp-header">
+  <h1>Agenda</h1>
+  <p>Semana del {{ semana_inicio.strftime('%d') }} al {{ semana_fin.strftime('%d %B %Y') }}</p>
+</header>
+
+<!-- Toolbar -->
+<div class="sp-agenda-toolbar">
+  <div class="sp-toolbar-nav">
+    <a href="/secretaria/agenda/?fecha={{ semana_anterior }}" class="sp-btn sp-btn-icon" title="Semana anterior">←</a>
+    <a href="/secretaria/agenda/?fecha={{ hoy_iso }}" class="sp-btn">Hoy</a>
+    <a href="/secretaria/agenda/?fecha={{ semana_siguiente }}" class="sp-btn sp-btn-icon" title="Semana siguiente">→</a>
+  </div>
+  <div class="sp-toolbar-vistas">
+    <a href="/secretaria/agenda/mes" class="sp-btn">Mes</a>
+    <a href="/secretaria/agenda/" class="sp-btn sp-btn-primary">Semana</a>
+    <a href="/secretaria/agenda/dia/{{ hoy_iso }}" class="sp-btn">Día</a>
+  </div>
+  <div class="sp-toolbar-acciones">
+    <a href="/secretaria/agenda/nuevo" class="sp-btn sp-btn-primary">+ Nuevo evento</a>
+    <a href="/secretaria/agenda/config" class="sp-btn sp-btn-icon" title="Configuración">⚙</a>
+  </div>
+</div>
+
+<!-- Grilla semanal -->
+<section class="sp-agenda-grid">
+  {% for d in dias %}
+  <div class="sp-agenda-dia {% if d.es_hoy %}sp-dia-hoy{% endif %}">
+    <div class="sp-dia-header">
+      <span class="sp-dia-nombre">{{ d.nombre }}</span>
+      <span class="sp-dia-numero">{{ d.numero }}</span>
+    </div>
+    <div class="sp-dia-eventos">
+      {% for e in d.eventos %}
+      <a href="/secretaria/agenda/{{ e.id }}" class="sp-evento-card sp-evento-{{ e.tipo }}">
+        <div class="sp-evento-hora">{{ e.fecha_inicio.strftime('%H:%M') }}</div>
+        <div class="sp-evento-titulo">{{ e.titulo }}</div>
+        {% if e.lugar %}<div class="sp-evento-lugar">{{ e.lugar }}</div>{% endif %}
+      </a>
+      {% endfor %}
+      {% if not d.eventos %}
+      <div class="sp-dia-vacio">—</div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</section>
+
+<!-- Alertas IA -->
+{% if alertas %}
+<section class="sp-alertas-ia">
+  <h3>Alertas del asistente</h3>
+  {% for a in alertas %}
+  <div class="sp-alerta-ia sp-alerta-{{ a.tipo }}">
+    <span class="sp-alerta-icono">{{ a.icono }}</span>
+    <div class="sp-alerta-texto">
+      <strong>{{ a.texto }}</strong>
+      <small>{{ a.accion }}</small>
+    </div>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+{% endblock %}

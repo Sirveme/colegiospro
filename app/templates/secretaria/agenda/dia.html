@@ -1,0 +1,38 @@
+{% extends "secretaria/base.html" %}
+{% block title %}Agenda · Día{% endblock %}
+{% block content %}
+<header class="sp-header">
+  <h1>{{ fecha.strftime('%A %d de %B') }}</h1>
+  <p>{{ eventos|length }} evento{{ 's' if eventos|length != 1 else '' }} programado{{ 's' if eventos|length != 1 else '' }}</p>
+</header>
+
+<div class="sp-agenda-toolbar">
+  <div class="sp-toolbar-vistas">
+    <a href="/secretaria/agenda/" class="sp-btn">Semana</a>
+    <a href="/secretaria/agenda/dia/{{ fecha.date().isoformat() }}" class="sp-btn sp-btn-primary">Día</a>
+  </div>
+  <div class="sp-toolbar-acciones">
+    <a href="/secretaria/agenda/nuevo" class="sp-btn sp-btn-primary">+ Nuevo evento</a>
+  </div>
+</div>
+
+<div class="sp-dia-timeline">
+  {% if not eventos %}
+  <div class="sp-placeholder" style="min-height:200px;">
+    <p>No hay eventos para este día.</p>
+  </div>
+  {% endif %}
+  {% for e in eventos %}
+  <a href="/secretaria/agenda/{{ e.id }}" class="sp-timeline-item sp-evento-{{ e.tipo }}">
+    <div class="sp-timeline-hora">
+      {{ e.fecha_inicio.strftime('%H:%M') }} – {{ e.fecha_fin.strftime('%H:%M') }}
+    </div>
+    <div class="sp-timeline-cuerpo">
+      <strong>{{ e.titulo }}</strong>
+      {% if e.lugar %}<div class="sp-evento-lugar">{{ e.lugar }} · {{ e.modalidad }}</div>{% endif %}
+      {% if e.descripcion %}<p>{{ e.descripcion }}</p>{% endif %}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "secretaria/base.html" %}
+{% block title %}Transcriptor{% endblock %}
+{% block content %}
+<header class="sp-header">
+  <h1>Transcriptor de Reuniones</h1>
+  <p>Convierte audio en actas, resúmenes e informes.</p>
+</header>
+
+<div style="margin-bottom:1rem;">
+  <a href="/secretaria/transcriptor/nuevo" class="sp-btn sp-btn-primary">+ Nueva transcripción</a>
+</div>
+
+{% if not items %}
+<div class="sp-placeholder">
+  <p>No tienes transcripciones aún. Sube el primer audio para empezar.</p>
+</div>
+{% else %}
+<table class="sp-table">
+  <thead>
+    <tr>
+      <th>Título</th>
+      <th>Fecha</th>
+      <th>Duración</th>
+      <th>Estado</th>
+      <th>Documento</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in items %}
+    <tr>
+      <td>{{ t.titulo }}</td>
+      <td>{{ t.creado_en.strftime('%d/%m/%Y %H:%M') if t.creado_en else '—' }}</td>
+      <td>{{ (t.audio_duracion_seg or 0) // 60 }}:{{ '%02d' % ((t.audio_duracion_seg or 0) % 60) }}</td>
+      <td>{{ t.estado }}</td>
+      <td>{{ t.tipo_documento_generado or '—' }}</td>
+      <td><a href="/secretaria/transcriptor/{{ t.id }}" class="sp-btn">Abrir</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

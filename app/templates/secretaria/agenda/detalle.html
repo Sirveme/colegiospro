@@ -1,0 +1,75 @@
+{% extends "secretaria/base.html" %}
+{% block title %}{{ evento.titulo }}{% endblock %}
+{% block content %}
+<header class="sp-header">
+  <a href="/secretaria/agenda/">← Volver a la agenda</a>
+  <h1>{{ evento.titulo }}</h1>
+  <p>
+    {{ evento.fecha_inicio.strftime('%A %d de %B · %H:%M') }} – {{ evento.fecha_fin.strftime('%H:%M') }}
+    {% if evento.estado == 'cancelado' %}<span class="sp-badge sp-badge-error">Cancelado</span>{% endif %}
+  </p>
+</header>
+
+<div class="sp-redactor" style="grid-template-columns: 2fr 1fr;">
+  <div class="sp-col">
+    <h3 style="margin-top:0;">Detalle</h3>
+    <dl class="sp-detalle">
+      <dt>Tipo</dt><dd>{{ evento.tipo }}</dd>
+      <dt>Modalidad</dt><dd>{{ evento.modalidad }}</dd>
+      <dt>Lugar</dt><dd>{{ evento.lugar or '—' }}</dd>
+      <dt>Buffer antes</dt><dd>{{ evento.buffer_antes }} min</dd>
+      <dt>Estado</dt><dd>{{ evento.estado }}</dd>
+    </dl>
+
+    {% if evento.descripcion %}
+    <h3>Notas</h3>
+    <p style="white-space:pre-wrap;">{{ evento.descripcion }}</p>
+    {% endif %}
+
+    {% if evento.participantes %}
+    <h3>Participantes</h3>
+    <ul>
+      {% for p in evento.participantes %}
+      <li>{{ p.nombre }}{% if p.cargo %} — {{ p.cargo }}{% endif %}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if evento.archivo_adjunto_url %}
+    <h3>Adjunto</h3>
+    <p><a href="{{ evento.archivo_adjunto_url }}" target="_blank">{{ evento.archivo_adjunto_nombre or 'Descargar' }}</a></p>
+    {% endif %}
+  </div>
+
+  <div class="sp-col">
+    {% if evento.sugerencia_ia %}
+    <div class="sp-razon-banner">
+      <span class="sp-razon-icono">💡</span>
+      <div class="sp-razon-texto">
+        <strong>Sugerencia IA</strong>
+        <p style="white-space:pre-wrap;">{{ evento.sugerencia_ia }}</p>
+      </div>
+    </div>
+    {% endif %}
+
+    <h3 style="margin-top:0;">Acciones</h3>
+    <div style="display:flex;flex-direction:column;gap:.5rem;">
+      <button class="sp-btn"
+              hx-post="/secretaria/agenda/{{ evento.id }}/notificar"
+              hx-swap="none"
+              onclick="this.textContent='Notificación enviada'">
+        Notificar al jefe ahora
+      </button>
+      {% if evento.estado != 'cancelado' %}
+      <button class="sp-btn"
+              hx-post="/secretaria/agenda/{{ evento.id }}/cancelar"
+              hx-swap="none"
+              hx-confirm="¿Cancelar este evento?"
+              onclick="this.textContent='Cancelado'">
+        Cancelar evento
+      </button>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

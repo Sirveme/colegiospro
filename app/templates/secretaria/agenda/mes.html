@@ -1,0 +1,33 @@
+{% extends "secretaria/base.html" %}
+{% block title %}Agenda · Mes{% endblock %}
+{% block content %}
+<header class="sp-header">
+  <h1>Agenda · Mes</h1>
+  <p>{{ ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][mes-1] }} {{ anio }}</p>
+</header>
+
+<div class="sp-agenda-toolbar">
+  <div class="sp-toolbar-vistas">
+    <a href="/secretaria/agenda/mes" class="sp-btn sp-btn-primary">Mes</a>
+    <a href="/secretaria/agenda/" class="sp-btn">Semana</a>
+  </div>
+  <div class="sp-toolbar-acciones">
+    <a href="/secretaria/agenda/nuevo" class="sp-btn sp-btn-primary">+ Nuevo evento</a>
+  </div>
+</div>
+
+<div class="sp-mes-grid">
+  {% for d in range(1, ultimo_dia + 1) %}
+  <div class="sp-mes-dia">
+    <div class="sp-mes-dia-num">{{ d }}</div>
+    {% if por_dia.get(d) %}
+      {% for e in por_dia[d] %}
+      <a href="/secretaria/agenda/{{ e.id }}" class="sp-mes-evento sp-evento-{{ e.tipo }}">
+        {{ e.fecha_inicio.strftime('%H:%M') }} {{ e.titulo[:30] }}
+      </a>
+      {% endfor %}
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

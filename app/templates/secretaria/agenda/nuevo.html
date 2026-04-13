@@ -1,0 +1,145 @@
+{% extends "secretaria/base.html" %}
+{% block title %}Nuevo evento{% endblock %}
+{% block content %}
+<header class="sp-header">
+  <a href="/secretaria/agenda/">← Volver a la agenda</a>
+  <h1>Nuevo evento</h1>
+</header>
+
+<div class="sp-col" style="max-width:720px;">
+  <form method="post" action="/secretaria/agenda/nuevo" class="sp-form sp-form-grid"
+        enctype="multipart/form-data">
+    <label class="sp-col-2">
+      <span>Título del evento *</span>
+      <input type="text" name="titulo" required placeholder="Reunión con Decano del CIP">
+    </label>
+
+    <label>
+      <span>Fecha *</span>
+      <input type="date" name="fecha" required>
+    </label>
+    <label>
+      <span>Hora de inicio *</span>
+      <input type="time" name="hora_inicio" required value="09:00">
+    </label>
+
+    <div class="sp-field sp-col-2">
+      <span style="font-weight:600;font-size:.9rem;display:block;margin-bottom:.35rem;">Duración</span>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+        {% for v, l in [(30,'30 min'),(60,'1h'),(90,'1.5h'),(120,'2h')] %}
+        <label class="sp-radio">
+          <input type="radio" name="duracion_min" value="{{ v }}" {% if v == 60 %}checked{% endif %}>
+          <span>{{ l }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="sp-field sp-col-2">
+      <span style="font-weight:600;font-size:.9rem;display:block;margin-bottom:.35rem;">Tipo</span>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+        {% for v, l in [('reunion','Reunión'),('bloque_enfoque','Bloque enfoque'),('tarea','Tarea'),('recordatorio','Recordatorio'),('almuerzo','Almuerzo')] %}
+        <label class="sp-radio">
+          <input type="radio" name="tipo" value="{{ v }}" {% if v == 'reunion' %}checked{% endif %}>
+          <span>{{ l }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <label>
+      <span>Lugar</span>
+      <input type="text" name="lugar" placeholder="Sala de reuniones / Zoom / etc.">
+    </label>
+
+    <div class="sp-field">
+      <span style="font-weight:600;font-size:.9rem;display:block;margin-bottom:.35rem;">Modalidad</span>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+        <label class="sp-radio"><input type="radio" name="modalidad" value="presencial" checked> <span>Presencial</span></label>
+        <label class="sp-radio"><input type="radio" name="modalidad" value="virtual"> <span>Virtual</span></label>
+        <label class="sp-radio"><input type="radio" name="modalidad" value="telefono"> <span>Teléfono</span></label>
+      </div>
+    </div>
+
+    <div class="sp-col-2">
+      <label>
+        <span>Participantes</span>
+      </label>
+      <div id="participantes-lista"></div>
+      <button type="button" class="sp-btn" onclick="spAgregarParticipante()">+ Agregar participante</button>
+      <input type="hidden" name="participantes_json" id="participantes-json" value="[]">
+    </div>
+
+    <div class="sp-field sp-col-2">
+      <span style="font-weight:600;font-size:.9rem;display:block;margin-bottom:.35rem;">Buffer antes</span>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+        {% for v, l in [(0,'Sin buffer'),(10,'10 min'),(15,'15 min'),(30,'30 min')] %}
+        <label class="sp-radio">
+          <input type="radio" name="buffer_antes" value="{{ v }}" {% if v == 15 %}checked{% endif %}>
+          <span>{{ l }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <label class="sp-col-2">
+      <span>Adjunto (opcional)</span>
+      <input type="file" name="archivo_adjunto">
+    </label>
+
+    <label class="sp-col-2">
+      <span>Documento relacionado (opcional)</span>
+      <select name="documento_id">
+        <option value="">— Ninguno —</option>
+        {% for d in documentos %}
+        <option value="{{ d.id }}">{{ d.modo }} #{{ d.id }} · {{ d.creado_en.strftime('%d/%m/%Y') if d.creado_en else '' }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label class="sp-col-2">
+      <span>Notas / Agenda de la reunión</span>
+      <textarea name="descripcion" rows="3" placeholder="Puntos a tratar, antecedentes..."></textarea>
+    </label>
+
+    <label class="sp-col-2 sp-toggle-item" style="display:flex;align-items:center;gap:.5rem;">
+      <input type="checkbox" name="notif_jefe" value="1" checked>
+      <span>Notificar al jefe 30 min antes</span>
+    </label>
+
+    <label class="sp-col-2 sp-toggle-item" style="display:flex;align-items:center;gap:.5rem;">
+      <input type="checkbox" name="incluir_sugerencia" value="1" checked>
+      <span>Incluir sugerencia de la IA</span>
+    </label>
+
+    <button type="submit" class="sp-btn sp-btn-primary sp-col-2">Crear evento</button>
+  </form>
+</div>
+
+<script>
+(function(){
+  var participantes = [];
+  function render() {
+    var cont = document.getElementById('participantes-lista');
+    cont.innerHTML = '';
+    participantes.forEach(function(p, idx){
+      var div = document.createElement('div');
+      div.className = 'sp-participante-item';
+      div.style.cssText = 'display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem;';
+      div.innerHTML =
+        '<input type="text" placeholder="Nombre" value="' + (p.nombre||'') + '" oninput="spActParticipante(' + idx + ', \'nombre\', this.value)" style="flex:1;padding:.4rem .6rem;border:1px solid var(--sp-border);border-radius:6px;">' +
+        '<input type="text" placeholder="Cargo" value="' + (p.cargo||'') + '" oninput="spActParticipante(' + idx + ', \'cargo\', this.value)" style="flex:1;padding:.4rem .6rem;border:1px solid var(--sp-border);border-radius:6px;">' +
+        '<button type="button" onclick="spQuitarParticipante(' + idx + ')" class="sp-btn sp-btn-icon">✕</button>';
+      cont.appendChild(div);
+    });
+    document.getElementById('participantes-json').value = JSON.stringify(participantes);
+  }
+  window.spAgregarParticipante = function() { participantes.push({nombre:'',cargo:''}); render(); };
+  window.spQuitarParticipante = function(i) { participantes.splice(i,1); render(); };
+  window.spActParticipante = function(i, campo, val) {
+    if (participantes[i]) participantes[i][campo] = val;
+    document.getElementById('participantes-json').value = JSON.stringify(participantes);
+  };
+})();
+</script>
+{% endblock %}
