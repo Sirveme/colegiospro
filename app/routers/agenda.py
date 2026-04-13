@@ -341,7 +341,10 @@ async def agenda_nuevo_submit(
 
 
 # ─── Detalle / editar / cancelar / notificar ────────────────────
-@router.get("/{evento_id}", response_class=HTMLResponse)
+# Restringimos evento_id a dígitos con regex para que rutas estáticas
+# como /config, /heartbeat, /google/callback NO colisionen con este
+# catch-all (sino FastAPI devolvía 422 al intentar convertir "config" a int).
+@router.get("/{evento_id:int}", response_class=HTMLResponse)
 async def agenda_detalle(evento_id: int, request: Request):
     usuario = _user_or_redirect(request)
     if not usuario:
@@ -365,7 +368,7 @@ async def agenda_detalle(evento_id: int, request: Request):
     )
 
 
-@router.post("/{evento_id}/editar")
+@router.post("/{evento_id:int}/editar")
 async def agenda_editar(
     evento_id: int,
     request: Request,
@@ -395,7 +398,7 @@ async def agenda_editar(
     return RedirectResponse(f"/secretaria/agenda/{evento_id}", status_code=302)
 
 
-@router.post("/{evento_id}/cancelar")
+@router.post("/{evento_id:int}/cancelar")
 async def agenda_cancelar(evento_id: int, request: Request):
     usuario = _require_user(request)
     db = _db()
@@ -414,7 +417,7 @@ async def agenda_cancelar(evento_id: int, request: Request):
     return JSONResponse({"ok": True})
 
 
-@router.post("/{evento_id}/notificar")
+@router.post("/{evento_id:int}/notificar")
 async def agenda_notificar_ahora(evento_id: int, request: Request):
     """Marca el evento como notificado (placeholder de push real)."""
     usuario = _require_user(request)
