@@ -25,7 +25,7 @@ from .models import (
 )
 from .sender import (
     cifrar, descifrar, procesar_cola, crear_envios_para_campana,
-    _palabra_clave_segmento,
+    _palabra_clave_segmento, _render_asunto, construir_html, generar_token,
 )
 from .templates_html import PLANTILLAS
 
@@ -335,6 +335,154 @@ async def pausar_campana(campana_id: int, request: Request):
     return JSONResponse({"ok": True})
 
 
+@router.post("/pausar-todas")
+async def pausar_todas():
+    """EMERGENCIA: pausa todas las campañas activas de inmediato."""
+    db = _db()
+    try:
+        activas = db.query(EmailCampana).filter(
+            EmailCampana.estado == "activa"
+        ).all()
+        nombres = []
+        for c in activas:
+            c.estado = "pausada"
+            nombres.append({"id": c.id, "nombre": c.nombre})
+        db.commit()
+    finally:
+        db.close()
+    return JSONResponse({"ok": True, "pausadas": len(nombres), "campanas": nombres})
+
+
+@router.get("/campana/{campana_id}/preview", response_class=HTMLResponse)
+async def preview_campana(
+    campana_id: int,
+    request: Request,
+    contacto_id: Optional[int] = None,
+):
+    """Vista previa del correo: renderiza asunto + HTML con datos de un
+    contacto real (si contacto_id) o del primer contacto del segmento.
+    Si no hay contactos, usa datos de ejemplo."""
+
+    class _ContactoFake:
+        id = 0
+        correo = "ejemplo@municipalidad.gob.pe"
+        nombre = "Sra. María García"
+        municipalidad = "Municipalidad Distrital de Ejemplo"
+        provincia = "Lima"
+        departamento = "Lima"
+        alcalde = "Sr. Juan Pérez"
+        telefono = "999 888 777"
+        whatsapp = "999 888 777"
+        segmento = "ejemplo"
+
+    db = _db()
+    try:
+        c = db.get(EmailCampana, campana_id)
+        if not c:
+            raise HTTPException(404, "Campaña no encontrada")
+
+        ct = None
+        origen_contacto = "ejemplo"
+        if contacto_id:
+            ct = db.get(EmailContacto, contacto_id)
+            origen_contacto = f"contacto_id={contacto_id}"
+        if not ct:
+            palabra = _palabra_clave_segmento(c.segmento or "")
+            patron = f"%{palabra}%" if palabra else f"%{c.segmento or ''}%"
+            ct = db.query(EmailContacto).filter(
+                EmailContacto.segmento.ilike(patron)
+            ).first()
+            if ct:
+                origen_contacto = f"primer contacto del segmento ({ct.correo})"
+        if not ct:
+            ct = _ContactoFake()
+            origen_contacto = "datos de ejemplo (no hay contactos en el segmento)"
+
+        asunto = _render_asunto(c, ct)
+        token = generar_token()
+        try:
+            html = construir_html(c.html_template or "", ct, token)
+        except Exception as e:
+            html = f"<p style='color:#c1272d'>Error renderizando HTML: {e}</p>"
+
+        campana_info = {
+            "id": c.id,
+            "nombre": c.nombre,
+            "estado": c.estado,
+            "segmento": c.segmento,
+        }
+        contacto_info = {
+            "correo": ct.correo,
+            "nombre": getattr(ct, "nombre", "") or "",
+            "municipalidad": ct.municipalidad,
+            "provincia": getattr(ct, "provincia", "") or "",
+            "departamento": getattr(ct, "departamento", "") or "",
+            "alcalde": getattr(ct, "alcalde", "") or "",
+        }
+    finally:
+        db.close()
+
+    placeholders = ("{{" in asunto) or ("}}" in asunto) or \
+                   ("{{" in html) or ("}}" in html)
+
+    return templates.TemplateResponse(
+        request,
+        "email_engine/campana_preview.html",
+        {
+            "request": request,
+            "campana": campana_info,
+            "contacto": contacto_info,
+            "origen": origen_contacto,
+            "asunto": asunto,
+            "html": html,
+            "tiene_placeholders": placeholders,
+        },
+    )
+
+
+@router.get("/campana/{campana_id}/preview-asunto")
+async def preview_asunto(campana_id: int, contacto_id: Optional[int] = None):
+    """Debug: muestra cómo quedaría el asunto renderizado para un contacto.
+    Si no se pasa contacto_id, usa el primer contacto del segmento."""
+    db = _db()
+    try:
+        c = db.get(EmailCampana, campana_id)
+        if not c:
+            raise HTTPException(404, "Campaña no encontrada")
+        if contacto_id:
+            ct = db.get(EmailContacto, contacto_id)
+        else:
+            palabra = _palabra_clave_segmento(c.segmento or "")
+            patron = f"%{palabra}%" if palabra else f"%{c.segmento or ''}%"
+            ct = db.query(EmailContacto).filter(
+                EmailContacto.segmento.ilike(patron)
+            ).first()
+        if not ct:
+            return JSONResponse({
+                "ok": False,
+                "error": "No se encontró contacto para preview",
+                "asunto_template": c.asunto_template,
+                "asunto": c.asunto,
+            })
+        rendered = _render_asunto(c, ct)
+    finally:
+        db.close()
+    return JSONResponse({
+        "ok": True,
+        "asunto_template_raw": c.asunto_template,
+        "asunto_raw": c.asunto,
+        "contacto": {
+            "id": ct.id, "correo": ct.correo,
+            "municipalidad": ct.municipalidad,
+            "departamento": ct.departamento,
+            "provincia": ct.provincia,
+            "alcalde": ct.alcalde,
+        },
+        "asunto_renderizado": rendered,
+        "tiene_placeholders_sin_renderizar": ("{{" in rendered or "}}" in rendered),
+    })
+
+
 # ─── Contactos ─────────────────────────────────────────────────
 @router.get("/contactos", response_class=HTMLResponse)
 async def lista_contactos(request: Request, segmento: Optional[str] = None):
@@ -618,3 +766,70 @@ async def heartbeat():
     finally:
         db.close()
     return JSONResponse(resultado)
+
+
+@router.post("/heartbeat")
+async def heartbeat_post():
+    """Mismo heartbeat, vía POST — para botón manual 'Procesar cola ahora'."""
+    db = _db()
+    try:
+        resultado = procesar_cola(db, max_envios=5)
+    finally:
+        db.close()
+    return JSONResponse(resultado)
+
+
+# ─── Stats JSON (para refresco en vivo del dashboard) ─────────
+@router.get("/stats.json")
+async def stats_json():
+    db = _db()
+    try:
+        hoy = datetime.utcnow().date()
+        inicio_hoy = datetime.combine(hoy, datetime.min.time())
+        inicio_semana = inicio_hoy - timedelta(days=hoy.weekday())
+
+        total_envios = db.query(EmailEnvio).count()
+        enviados_hoy = db.query(EmailEnvio).filter(
+            EmailEnvio.enviado_en >= inicio_hoy
+        ).count()
+        enviados_semana = db.query(EmailEnvio).filter(
+            EmailEnvio.enviado_en >= inicio_semana
+        ).count()
+        total_enviados = db.query(EmailEnvio).filter(
+            EmailEnvio.estado.in_(["enviado", "abierto"])
+        ).count()
+        total_abiertos = db.query(EmailEnvio).filter(
+            EmailEnvio.estado == "abierto"
+        ).count()
+        total_clics = db.query(EmailEnvio).filter(
+            EmailEnvio.primer_clic_en.isnot(None)
+        ).count()
+        total_descargas = db.query(EmailEvento).filter(
+            EmailEvento.tipo == "pdf_download"
+        ).count()
+        objeciones_total = db.query(EmailObjecion).count()
+        pendientes = db.query(EmailEnvio).filter(
+            EmailEnvio.estado == "pendiente"
+        ).count()
+    finally:
+        db.close()
+
+    tasa_apertura = (total_abiertos / total_enviados * 100) if total_enviados else 0
+    tasa_clic = (total_clics / total_enviados * 100) if total_enviados else 0
+    tasa_descarga = (total_descargas / total_enviados * 100) if total_enviados else 0
+
+    return JSONResponse({
+        "enviados_hoy": enviados_hoy,
+        "enviados_semana": enviados_semana,
+        "total_envios": total_envios,
+        "total_enviados": total_enviados,
+        "total_abiertos": total_abiertos,
+        "total_clics": total_clics,
+        "total_descargas": total_descargas,
+        "objeciones_total": objeciones_total,
+        "pendientes": pendientes,
+        "tasa_apertura": round(tasa_apertura, 1),
+        "tasa_clic": round(tasa_clic, 1),
+        "tasa_descarga": round(tasa_descarga, 1),
+        "ts": datetime.utcnow().isoformat() + "Z",
+    })

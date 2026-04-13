@@ -76,6 +76,33 @@ def puede_enviar(config: EmailConfig) -> bool:
     )
 
 
+def _render_asunto(campana: EmailCampana, contacto: EmailContacto) -> str:
+    """Renderiza el asunto con Jinja usando el contexto del contacto.
+
+    Prefiere asunto_template, cae en asunto si está vacío. Si el render
+    falla, retorna el template literal (será detectado por la salvaguarda
+    en enviar_un_correo y marcado como rebote).
+    """
+    tpl = (campana.asunto_template or campana.asunto or "").strip()
+    if not tpl:
+        return ""
+    try:
+        return Template(tpl).render(
+            municipalidad=contacto.municipalidad or "",
+            departamento=contacto.departamento or "",
+            provincia=contacto.provincia or "",
+            alcalde=contacto.alcalde or "",
+            nombre=contacto.nombre or "",
+            correo=contacto.correo or "",
+        )[:300]
+    except Exception as e:
+        logger.warning(
+            "Error renderizando asunto (campana_id=%s contacto=%s): %s",
+            campana.id, contacto.correo, e,
+        )
+        return tpl[:300]
+
+
 def construir_html(template_html: str, contacto: EmailContacto, token: str) -> str:
     """Aplica variables y agrega pixel + links rastreables."""
     pixel = (
@@ -116,19 +143,40 @@ def enviar_un_correo(
     """Envía un solo correo. Retorna True si tuvo éxito."""
     try:
         html = construir_html(campana.html_template, contacto, envio.token)
-        asunto = Template(campana.asunto_template or campana.asunto or "").render(
-            municipalidad=contacto.municipalidad or "",
-            departamento=contacto.departamento or "",
-            provincia=contacto.provincia or "",
-            alcalde=contacto.alcalde or "",
-            nombre=contacto.nombre or "",
-        )
+        # Render del asunto — siempre vía _render_asunto para garantizar
+        # que Jinja se aplique antes de tocar el MIMEMessage.
+        asunto = _render_asunto(campana, contacto)
+
+        # Salvaguarda: si el asunto contiene literalmente "{{" significa
+        # que el render falló (template malformado, falta variable, etc.).
+        # No enviar — marcar como rebotado para inspección manual.
+        if "{{" in asunto or "}}" in asunto:
+            logger.error(
+                "Asunto sin renderizar para envio_id=%s contacto=%s asunto=%r "
+                "asunto_template=%r asunto_campana=%r — NO se envía.",
+                envio.id, contacto.correo, asunto,
+                campana.asunto_template, campana.asunto,
+            )
+            envio.estado = "rebotado"
+            envio.rebote_mensaje = (
+                "Asunto contiene placeholders sin renderizar: " + asunto[:120]
+            )
+            envio.intentos = (envio.intentos or 0) + 1
+            campana.total_rebotes = (campana.total_rebotes or 0) + 1
+            db.commit()
+            return False
+
         msg = MIMEMultipart("alternative")
         msg["Subject"] = asunto
         msg["From"] = f"{config.from_name} <{config.from_email}>"
         msg["To"] = contacto.correo
         msg["List-Unsubscribe"] = f"<{BASE_URL}/track/baja/{envio.token}>"
         msg.attach(MIMEText(html, "html", "utf-8"))
+
+        logger.info(
+            "Enviando envio_id=%s a %s asunto=%r",
+            envio.id, contacto.correo, asunto,
+        )
 
         password = descifrar(config.smtp_pass_enc)
         with smtplib.SMTP(config.smtp_host, config.smtp_port, timeout=30) as s:
@@ -195,25 +243,6 @@ def procesar_cola(db: Session, max_envios: int = 5) -> dict:
         ok = enviar_un_correo(config, envio, contacto, campana, db)
         resultados["enviados" if ok else "fallidos"] += 1
     return resultados
-
-
-def _render_asunto(campana: EmailCampana, contacto: EmailContacto) -> str:
-    """Renderiza el asunto con Jinja usando el contexto del contacto."""
-    tpl = (campana.asunto_template or campana.asunto or "").strip()
-    if not tpl:
-        return ""
-    try:
-        return Template(tpl).render(
-            municipalidad=contacto.municipalidad or "",
-            departamento=contacto.departamento or "",
-            provincia=contacto.provincia or "",
-            alcalde=contacto.alcalde or "",
-            nombre=contacto.nombre or "",
-            correo=contacto.correo or "",
-        )[:300]
-    except Exception as e:
-        logger.warning("Error renderizando asunto: %s", e)
-        return tpl[:300]
 
 
 def _palabra_clave_segmento(seg: str) -> str:
