@@ -12,10 +12,14 @@ from pydantic import BaseModel
 from typing import Optional
 
 from app.database import SessionLocal, Lead
-from app.routers import verificacion, chat, secretaria
+from app.routers import verificacion, chat, secretaria, agenda, transcriptor
 # Importar models_secretaria garantiza que las tablas del módulo
 # se creen al iniciar la app (Base.metadata.create_all).
 from app import models_secretaria  # noqa: F401
+# Email Engine — módulo autónomo de envío masivo con tracking
+from app.email_engine import models as email_models  # noqa: F401
+from app.email_engine import tracking as email_tracking
+from app.email_engine import admin as email_admin
 
 app = FastAPI(
     title="ColegiosPro",
@@ -43,6 +47,10 @@ templates = Jinja2Templates(directory="app/templates")
 app.include_router(verificacion.router)
 app.include_router(chat.router)       # ← NUEVO: WebSocket + tracking
 app.include_router(secretaria.router) # ← SecretariaPro (módulo /secretaria)
+app.include_router(agenda.router)     # ← Agenda Inteligente
+app.include_router(transcriptor.router) # ← Transcriptor de Reuniones
+app.include_router(email_tracking.router) # ← /track/* — pixel, clics, baja, objeción
+app.include_router(email_admin.router)    # ← /admin/emails/* — dashboard y gestión
 
 
 # -- Schemas --

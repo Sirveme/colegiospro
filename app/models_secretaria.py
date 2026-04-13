@@ -205,6 +205,100 @@ class CorrelatividadDocumento(Base):
     )
 
 
+# ─── agenda_eventos ───
+# Eventos de la agenda inteligente del titular/decano
+class AgendaEvento(Base):
+    __tablename__ = "agenda_eventos"
+
+    id = Column(Integer, primary_key=True)
+    secretaria_id = Column(Integer, ForeignKey("usuarios_secretaria.id"))
+    colegio_id = Column(Integer, nullable=True)
+    titulo = Column(String(200), nullable=False)
+    descripcion = Column(Text, default="")
+    fecha_inicio = Column(DateTime, nullable=False)
+    fecha_fin = Column(DateTime, nullable=False)
+    tipo = Column(String(20), default="reunion")
+    # reunion / bloque_enfoque / tarea / recordatorio / almuerzo
+    lugar = Column(String(200), default="")
+    modalidad = Column(String(15), default="presencial")
+    # presencial / virtual / telefono
+    participantes = Column(JSON, default=list)
+    # [{"nombre": "CPC Santana", "cargo": "Decano", "confirmado": True}]
+    documento_id = Column(
+        Integer, ForeignKey("documentos_secretaria.id"), nullable=True
+    )
+    archivo_adjunto_url = Column(String(500), default="")
+    archivo_adjunto_nombre = Column(String(200), default="")
+    google_event_id = Column(String(200), default="")
+    color = Column(String(10), default="#0D7A60")
+    estado = Column(String(15), default="confirmado")
+    # confirmado / tentativo / cancelado
+    buffer_antes = Column(Integer, default=15)  # minutos
+    alerta_minutos = Column(Integer, default=30)
+    notif_enviada = Column(Boolean, default=False)
+    sugerencia_ia = Column(Text, default="")
+    creado_en = Column(DateTime, default=_utcnow)
+    actualizado_en = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+
+# ─── agenda_accesos ───
+# Control de quién ve la agenda de quién
+class AgendaAcceso(Base):
+    __tablename__ = "agenda_accesos"
+
+    id = Column(Integer, primary_key=True)
+    propietario_id = Column(Integer, ForeignKey("usuarios_secretaria.id"))
+    autorizado_id = Column(Integer, ForeignKey("usuarios_secretaria.id"))
+    nivel = Column(String(10), default="lectura")  # lectura / edicion
+    activo = Column(Boolean, default=True)
+    creado_en = Column(DateTime, default=_utcnow)
+
+
+# ─── agenda_config ───
+class AgendaConfig(Base):
+    __tablename__ = "agenda_config"
+
+    secretaria_id = Column(
+        Integer, ForeignKey("usuarios_secretaria.id"), primary_key=True
+    )
+    google_calendar_id = Column(String(200), default="")
+    google_refresh_token_enc = Column(String(500), default="")
+    hora_inicio = Column(String(5), default="08:00")
+    hora_fin = Column(String(5), default="17:00")
+    duracion_bloque_enfoque = Column(Integer, default=90)
+    dias_laborales = Column(JSON, default=lambda: [1, 2, 3, 4, 5])
+    buffer_default = Column(Integer, default=15)
+    notif_jefe_activa = Column(Boolean, default=True)
+    notif_minutos_antes = Column(Integer, default=30)
+    actualizado_en = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+
+# ─── transcripciones_reunion ───
+class TranscripcionReunion(Base):
+    __tablename__ = "transcripciones_reunion"
+
+    id = Column(Integer, primary_key=True)
+    secretaria_id = Column(Integer, ForeignKey("usuarios_secretaria.id"))
+    colegio_id = Column(Integer, nullable=True)
+    agenda_evento_id = Column(
+        Integer, ForeignKey("agenda_eventos.id"), nullable=True
+    )
+    titulo = Column(String(200), nullable=False)
+    audio_nombre = Column(String(300), default="")
+    audio_duracion_seg = Column(Integer, default=0)
+    tramos_excluidos = Column(JSON, default=list)
+    texto_transcripcion = Column(Text, default="")
+    texto_editado = Column(Text, default="")
+    documento_generado_id = Column(
+        Integer, ForeignKey("documentos_secretaria.id"), nullable=True
+    )
+    tipo_documento_generado = Column(String(20), default="")
+    # acta / resumen / acuerdos / informe
+    estado = Column(String(20), default="pendiente")
+    # pendiente / transcribiendo / listo / error
+    creado_en = Column(DateTime, default=_utcnow)
+
+
 # ─── CREATE TABLES ───
 # create_all es idempotente: solo crea las tablas que faltan.
 # Las tablas existentes (leads, visits, chat_messages) no se tocan.
