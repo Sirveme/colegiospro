@@ -6,7 +6,9 @@
 
 import csv
 import io
+import logging
 import smtplib
+import traceback
 from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -29,6 +31,7 @@ from .templates_html import PLANTILLAS
 
 router = APIRouter(prefix="/admin/emails", tags=["admin-emails"])
 templates = Jinja2Templates(directory="app/templates")
+logger = logging.getLogger("email_engine.admin")
 
 
 def _db():
@@ -285,64 +288,113 @@ async def lista_contactos(request: Request, segmento: Optional[str] = None):
 
 @router.post("/contactos/importar")
 async def importar_contactos(request: Request, archivo: UploadFile = File(...)):
-    """Acepta CSV con columnas: Correo, Municipalidad, Departamento,
-    Provincia, Alcalde, Telefono, Tipo, Campana (segmento)."""
-    if not archivo or not archivo.filename:
-        raise HTTPException(400, "Falta el archivo")
-
-    contenido = await archivo.read()
-    try:
-        texto = contenido.decode("utf-8-sig")
-    except Exception:
-        texto = contenido.decode("latin-1", errors="ignore")
-
-    reader = csv.DictReader(io.StringIO(texto))
+    """Acepta CSV con columnas (case-insensitive, con o sin tildes):
+    Correo, Nombre, Municipalidad, Departamento, Provincia, Alcalde,
+    Telefono, WhatsApp, Tipo, Campana (segmento)."""
     insertados = 0
     duplicados = 0
     errores = 0
 
-    db = _db()
     try:
-        for row in reader:
-            # Mapeo flexible de columnas (lowercase)
-            d = {k.strip().lower(): (v or "").strip() for k, v in row.items() if k}
-            correo = (d.get("correo") or d.get("email") or "").lower()
-            if not correo or "@" not in correo:
-                errores += 1
-                continue
-            existe = db.query(EmailContacto).filter_by(correo=correo).first()
-            if existe:
-                duplicados += 1
-                continue
-            try:
-                c = EmailContacto(
-                    correo=correo,
-                    nombre=d.get("nombre", ""),
-                    municipalidad=d.get("municipalidad", ""),
-                    provincia=d.get("provincia", ""),
-                    departamento=d.get("departamento", ""),
-                    alcalde=d.get("alcalde", ""),
-                    telefono=d.get("telefono") or d.get("teléfono") or "",
-                    whatsapp=d.get("whatsapp", ""),
-                    tipo_correo=d.get("tipo") or d.get("tipo_correo") or "",
-                    segmento=d.get("campana") or d.get("segmento") or "",
-                    activo=True,
-                    baja=False,
-                )
-                db.add(c)
-                insertados += 1
-            except Exception:
-                errores += 1
-        db.commit()
-    finally:
-        db.close()
+        if not archivo or not archivo.filename:
+            return JSONResponse(
+                {"ok": False, "error": "Falta el archivo",
+                 "insertados": 0, "duplicados": 0, "errores": 0},
+                status_code=400,
+            )
 
-    return JSONResponse({
-        "ok": True,
-        "insertados": insertados,
-        "duplicados": duplicados,
-        "errores": errores,
-    })
+        contenido = await archivo.read()
+        try:
+            texto = contenido.decode("utf-8-sig")
+        except Exception:
+            try:
+                texto = contenido.decode("utf-8", errors="ignore")
+            except Exception:
+                texto = contenido.decode("latin-1", errors="ignore")
+
+        # Detectar delimitador (coma, punto y coma, tab)
+        muestra = texto[:4096]
+        try:
+            dialect = csv.Sniffer().sniff(muestra, delimiters=",;\t|")
+        except Exception:
+            dialect = csv.excel
+        reader = csv.DictReader(io.StringIO(texto), dialect=dialect)
+
+        def _norm(k: str) -> str:
+            if not k:
+                return ""
+            s = k.strip().lower()
+            # quitar tildes comunes
+            for a, b in (("á", "a"), ("é", "e"), ("í", "i"),
+                         ("ó", "o"), ("ú", "u"), ("ñ", "n")):
+                s = s.replace(a, b)
+            return s
+
+        vistos_en_csv = set()
+        db = _db()
+        try:
+            for row in reader:
+                try:
+                    d = {_norm(k): (v or "").strip()
+                         for k, v in (row or {}).items() if k}
+                    correo = (d.get("correo") or d.get("email") or "").lower()
+                    if not correo or "@" not in correo:
+                        errores += 1
+                        continue
+                    if correo in vistos_en_csv:
+                        duplicados += 1
+                        continue
+                    vistos_en_csv.add(correo)
+
+                    existe = db.query(EmailContacto).filter_by(correo=correo).first()
+                    if existe:
+                        duplicados += 1
+                        continue
+
+                    c = EmailContacto(
+                        correo=correo,
+                        nombre=d.get("nombre", ""),
+                        municipalidad=d.get("municipalidad", ""),
+                        provincia=d.get("provincia", ""),
+                        departamento=d.get("departamento", ""),
+                        alcalde=d.get("alcalde", ""),
+                        telefono=d.get("telefono", ""),
+                        whatsapp=d.get("whatsapp", ""),
+                        tipo_correo=d.get("tipo") or d.get("tipo_correo") or "",
+                        segmento=d.get("campana") or d.get("segmento") or "",
+                        activo=True,
+                        baja=False,
+                    )
+                    db.add(c)
+                    db.commit()
+                    insertados += 1
+                except Exception as row_err:
+                    db.rollback()
+                    errores += 1
+                    logger.warning("Fila con error en importación CSV: %s", row_err)
+        finally:
+            db.close()
+
+        return JSONResponse({
+            "ok": True,
+            "insertados": insertados,
+            "duplicados": duplicados,
+            "errores": errores,
+        })
+
+    except Exception as e:
+        tb = traceback.format_exc()
+        logger.error("Error global en importar_contactos: %s\n%s", e, tb)
+        return JSONResponse(
+            {
+                "ok": False,
+                "error": f"{type(e).__name__}: {e}",
+                "insertados": insertados,
+                "duplicados": duplicados,
+                "errores": errores,
+            },
+            status_code=500,
+        )
 
 
 # ─── Objeciones ────────────────────────────────────────────────
