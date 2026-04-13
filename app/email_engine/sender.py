@@ -3,12 +3,15 @@
 # Envío SMTP + construcción de HTML con pixel y links rastreables
 # ══════════════════════════════════════════════════════════
 
+import logging
 import os
 import smtplib
 import uuid
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+
+logger = logging.getLogger("email_engine.sender")
 
 try:
     from cryptography.fernet import Fernet
@@ -194,13 +197,77 @@ def procesar_cola(db: Session, max_envios: int = 5) -> dict:
     return resultados
 
 
+def _render_asunto(campana: EmailCampana, contacto: EmailContacto) -> str:
+    """Renderiza el asunto con Jinja usando el contexto del contacto."""
+    tpl = (campana.asunto_template or campana.asunto or "").strip()
+    if not tpl:
+        return ""
+    try:
+        return Template(tpl).render(
+            municipalidad=contacto.municipalidad or "",
+            departamento=contacto.departamento or "",
+            provincia=contacto.provincia or "",
+            alcalde=contacto.alcalde or "",
+            nombre=contacto.nombre or "",
+            correo=contacto.correo or "",
+        )[:300]
+    except Exception as e:
+        logger.warning("Error renderizando asunto: %s", e)
+        return tpl[:300]
+
+
+def _palabra_clave_segmento(seg: str) -> str:
+    """Extrae la palabra clave de un segmento de campaña.
+
+    Ejemplos:
+      "A_secretaria"  -> "secretaria"
+      "B_alcalde"     -> "alcalde"
+      "secretaria"    -> "secretaria"
+      "A — Secretaria"-> "secretaria"
+    """
+    if not seg:
+        return ""
+    s = seg.strip().lower()
+    for sep in ("_", "—", "-", " "):
+        if sep in s:
+            partes = [p for p in s.split(sep) if p.strip()]
+            if partes:
+                s = partes[-1].strip()
+    return s
+
+
 def crear_envios_para_campana(db: Session, campana: EmailCampana) -> int:
-    """Crea un EmailEnvio por cada contacto del segmento de la campaña."""
+    """Crea un EmailEnvio por cada contacto del segmento de la campaña.
+
+    Match flexible: extrae la palabra clave del segmento de la campaña
+    (ej. "A_secretaria" -> "secretaria") y filtra contactos cuyo segmento
+    contenga esa palabra (ilike '%palabra%'). Esto tolera variantes como
+    "A_secretaria", "A — Secretaria", "Secretaria municipal", etc.
+    """
+    from sqlalchemy import func
+
+    seg_camp = (campana.segmento or "").strip()
+    palabra = _palabra_clave_segmento(seg_camp)
+    patron = f"%{palabra}%" if palabra else f"%{seg_camp}%"
+
+    total_contactos_db = db.query(func.count(EmailContacto.id)).scalar() or 0
+    total_segmento = db.query(func.count(EmailContacto.id)).filter(
+        EmailContacto.segmento.ilike(patron),
+    ).scalar() or 0
+
     contactos = db.query(EmailContacto).filter(
-        EmailContacto.segmento == campana.segmento,
+        EmailContacto.segmento.ilike(patron),
         EmailContacto.activo == True,  # noqa: E712
         EmailContacto.baja == False,  # noqa: E712
     ).all()
+
+    logger.info(
+        "crear_envios_para_campana(campana_id=%s, segmento=%r, patron=%r): "
+        "total_contactos_db=%s, total_en_segmento=%s, "
+        "elegibles_activos_no_baja=%s",
+        campana.id, seg_camp, patron, total_contactos_db,
+        total_segmento, len(contactos),
+    )
 
     creados = 0
     for c in contactos:
@@ -214,8 +281,10 @@ def crear_envios_para_campana(db: Session, campana: EmailCampana) -> int:
             contacto_id=c.id,
             token=generar_token(),
             estado="pendiente",
+            asunto_final=_render_asunto(campana, c),
         ))
         creados += 1
     campana.total_contactos = (campana.total_contactos or 0) + creados
     db.commit()
+    logger.info("crear_envios_para_campana: creados=%s", creados)
     return creados

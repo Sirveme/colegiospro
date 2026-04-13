@@ -25,6 +25,7 @@ from .models import (
 )
 from .sender import (
     cifrar, descifrar, procesar_cola, crear_envios_para_campana,
+    _palabra_clave_segmento,
 )
 from .templates_html import PLANTILLAS
 
@@ -227,12 +228,22 @@ async def detalle_campana(campana_id: int, request: Request):
 
 @router.post("/campana/{campana_id}/activar")
 async def activar_campana(campana_id: int, request: Request):
+    from sqlalchemy import func
+
     db = _db()
     try:
         c = db.get(EmailCampana, campana_id)
         if not c:
             raise HTTPException(404, "Campaña no encontrada")
-        # Crear envíos para los contactos del segmento
+
+        seg = (c.segmento or "").strip()
+        palabra = _palabra_clave_segmento(seg)
+        patron = f"%{palabra}%" if palabra else f"%{seg}%"
+        total_contactos_db = db.query(func.count(EmailContacto.id)).scalar() or 0
+        total_segmento = db.query(func.count(EmailContacto.id)).filter(
+            EmailContacto.segmento.ilike(patron),
+        ).scalar() or 0
+
         creados = crear_envios_para_campana(db, c)
         c.estado = "activa"
         if not c.iniciado_en:
@@ -240,7 +251,14 @@ async def activar_campana(campana_id: int, request: Request):
         db.commit()
     finally:
         db.close()
-    return JSONResponse({"ok": True, "envios_creados": creados})
+    return JSONResponse({
+        "ok": True,
+        "envios_creados": creados,
+        "segmento": seg,
+        "patron": patron,
+        "total_contactos_db": total_contactos_db,
+        "total_en_segmento": total_segmento,
+    })
 
 
 @router.post("/campana/{campana_id}/pausar")
@@ -351,6 +369,9 @@ async def importar_contactos(request: Request, archivo: UploadFile = File(...)):
                         duplicados += 1
                         continue
 
+                    segmento_csv = (
+                        d.get("campana") or d.get("segmento") or ""
+                    ).strip()
                     c = EmailContacto(
                         correo=correo,
                         nombre=d.get("nombre", ""),
@@ -361,7 +382,7 @@ async def importar_contactos(request: Request, archivo: UploadFile = File(...)):
                         telefono=d.get("telefono", ""),
                         whatsapp=d.get("whatsapp", ""),
                         tipo_correo=d.get("tipo") or d.get("tipo_correo") or "",
-                        segmento=d.get("campana") or d.get("segmento") or "",
+                        segmento=segmento_csv,
                         activo=True,
                         baja=False,
                     )
