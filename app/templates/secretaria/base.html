@@ -55,6 +55,12 @@
         <span class="ic">🗂</span> Historial
       </a>
       {% endif %}
+      <a href="/secretaria/agenda/" class="{% if modo_actual == 'agenda' %}active{% endif %}">
+        <span class="ic">📅</span> Agenda
+      </a>
+      <a href="/secretaria/transcriptor/" class="{% if modo_actual == 'transcriptor' %}active{% endif %}">
+        <span class="ic">🎙</span> Transcriptor
+      </a>
       <a href="/secretaria/configuracion" class="{% if modo_actual == 'configuracion' %}active{% endif %}">
         <span class="ic">⚙</span> Configuración
       </a>
