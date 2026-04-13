@@ -1,0 +1,4 @@
+# Configuración Nixpacks para Railway
+# pydub requiere ffmpeg para procesar audio (cortar tramos antes de Whisper)
+[phases.setup]
+nixPkgs = ["ffmpeg"]
