@@ -59,17 +59,49 @@ def generar_token() -> str:
     return uuid.uuid4().hex
 
 
-def puede_enviar(config: EmailConfig) -> bool:
-    """Verifica límites de día y hora antes de enviar."""
+def puede_enviar(config: EmailConfig, db: Session = None) -> bool:
+    """Verifica límites de día y hora antes de enviar.
+
+    Si los contadores deben resetearse (cambio de día / pasó 1 hora),
+    aplica el reset Y lo persiste con commit — el bug previo era que
+    el reset quedaba solo en memoria si puede_enviar retornaba False.
+    Acepta db por compatibilidad pero también hace commit en la sesión
+    del propio config si db es None.
+    """
     ahora = datetime.utcnow()
+    cambiado = False
+
     # Reset diario
     if not config.dia_reset or ahora.date() > config.dia_reset.date():
         config.enviados_hoy = 0
         config.dia_reset = ahora
-    # Reset horario
-    if not config.hora_reset or (ahora - config.hora_reset).total_seconds() > 3600:
+        cambiado = True
+
+    # Reset horario — total_seconds (NO .seconds, que trunca a 0-86399)
+    if (not config.hora_reset
+            or (ahora - config.hora_reset).total_seconds() >= 3600):
         config.enviados_hora_actual = 0
         config.hora_reset = ahora
+        cambiado = True
+
+    if cambiado:
+        sesion = db if db is not None else Session.object_session(config)
+        if sesion is not None:
+            try:
+                sesion.add(config)
+                sesion.commit()
+                logger.info(
+                    "Reset de límites aplicado a config_id=%s nombre=%r "
+                    "(enviados_hoy=0, enviados_hora_actual=0)",
+                    config.id, config.nombre,
+                )
+            except Exception as e:
+                logger.warning("No se pudo commitear reset de límites: %s", e)
+                try:
+                    sesion.rollback()
+                except Exception:
+                    pass
+
     return (
         (config.enviados_hoy or 0) < (config.limite_dia or 0)
         and (config.enviados_hora_actual or 0) < (config.limite_hora or 0)
@@ -103,8 +135,32 @@ def _render_asunto(campana: EmailCampana, contacto: EmailContacto) -> str:
         return tpl[:300]
 
 
-def construir_html(template_html: str, contacto: EmailContacto, token: str) -> str:
-    """Aplica variables y agrega pixel + links rastreables."""
+def construir_html(
+    template_or_name: str,
+    contacto: EmailContacto,
+    token: str,
+) -> str:
+    """Aplica variables y agrega pixel + links rastreables.
+
+    Acepta dos formas para `template_or_name`:
+      - Nombre de plantilla en PLANTILLAS (ej. 'muni_sec_A1_base') —
+        resuelve al HTML registrado en el catálogo. Útil para Test A/B.
+      - HTML directo (string que empieza típicamente con '<') — se
+        renderiza tal cual. Es el camino que usan las campañas existentes
+        que guardaron el HTML resuelto en campana.html_template.
+    """
+    # Import diferido para evitar ciclo (templates_html/__init__ no depende
+    # de sender, pero mantenemos el import tardío para tests aislados).
+    try:
+        from .templates_html import PLANTILLAS as _PL
+    except Exception:
+        _PL = {}
+
+    if template_or_name in _PL:
+        template_html = _PL[template_or_name]["html"]
+    else:
+        template_html = template_or_name or ""
+
     pixel = (
         f'<img src="{BASE_URL}/track/open/{token}.gif" '
         f'width="1" height="1" style="display:none" alt="">'
@@ -229,16 +285,34 @@ def procesar_cola(db: Session, max_envios: int = 5) -> dict:
         .all()
     )
 
-    resultados = {"enviados": 0, "fallidos": 0, "omitidos": 0}
+    resultados = {"enviados": 0, "fallidos": 0, "omitidos": 0,
+                  "motivos_omision": {}}
     for envio in pendientes:
         campana = db.get(EmailCampana, envio.campana_id)
         contacto = db.get(EmailContacto, envio.contacto_id)
         config = db.get(EmailConfig, campana.config_id) if campana else None
         if not config or not contacto or not campana:
             resultados["omitidos"] += 1
+            motivo = "datos_faltantes"
+            resultados["motivos_omision"][motivo] = (
+                resultados["motivos_omision"].get(motivo, 0) + 1
+            )
             continue
-        if not puede_enviar(config):
+        if not puede_enviar(config, db):
             resultados["omitidos"] += 1
+            if (config.enviados_hora_actual or 0) >= (config.limite_hora or 0):
+                motivo = f"limite_hora({config.enviados_hora_actual}/{config.limite_hora})"
+            elif (config.enviados_hoy or 0) >= (config.limite_dia or 0):
+                motivo = f"limite_dia({config.enviados_hoy}/{config.limite_dia})"
+            else:
+                motivo = "puede_enviar_false_otro"
+            resultados["motivos_omision"][motivo] = (
+                resultados["motivos_omision"].get(motivo, 0) + 1
+            )
+            logger.info(
+                "Envio_id=%s omitido: %s (config_id=%s nombre=%s)",
+                envio.id, motivo, config.id, config.nombre,
+            )
             continue
         ok = enviar_un_correo(config, envio, contacto, campana, db)
         resultados["enviados" if ok else "fallidos"] += 1

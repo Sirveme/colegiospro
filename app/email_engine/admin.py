@@ -175,7 +175,7 @@ async def nueva_campana_submit(
     asunto_template: str = Form(...),
     segmento: str = Form(...),
     config_id: int = Form(...),
-    plantilla: str = Form("A_secretaria"),
+    plantilla: str = Form("muni_sec_A1_base"),
     html_custom: Optional[str] = Form(None),
 ):
     html = (html_custom or "").strip()
