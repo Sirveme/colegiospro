@@ -921,7 +921,9 @@ async def documento_pdf(doc_id: int, request: Request):
             content=contenido,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": f'attachment; filename="{nombre_archivo}"'
+                "Content-Disposition": f'attachment; filename="{nombre_archivo}"',
+                "Content-Type": "application/pdf",
+                "X-Content-Type-Options": "nosniff",
             },
         )
     # Fallback: HTML imprimible
@@ -997,15 +999,18 @@ async def documento_docx(doc_id: int, request: Request):
     partes.append(fecha_str)
     nombre_archivo = "_".join(partes) + ".docx"
 
+    mime_docx = (
+        "application/vnd.openxmlformats-officedocument."
+        "wordprocessingml.document"
+    )
     if docx_disponible():
         return Response(
             content=contenido,
-            media_type=(
-                "application/vnd.openxmlformats-officedocument."
-                "wordprocessingml.document"
-            ),
+            media_type=mime_docx,
             headers={
-                "Content-Disposition": f'attachment; filename="{nombre_archivo}"'
+                "Content-Disposition": f'attachment; filename="{nombre_archivo}"',
+                "Content-Type": mime_docx,
+                "X-Content-Type-Options": "nosniff",
             },
         )
     # Fallback: texto plano si python-docx no está disponible
@@ -1013,7 +1018,9 @@ async def documento_docx(doc_id: int, request: Request):
         content=contenido,
         media_type="text/plain; charset=utf-8",
         headers={
-            "Content-Disposition": f'attachment; filename="{nombre_archivo}.txt"'
+            "Content-Disposition": f'attachment; filename="{nombre_archivo}.txt"',
+            "Content-Type": "text/plain; charset=utf-8",
+            "X-Content-Type-Options": "nosniff",
         },
     )
 
