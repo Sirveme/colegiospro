@@ -93,6 +93,17 @@ def _static_version() -> str:
 templates.env.globals["static_version"] = _static_version()
 
 
+def _vapid_pub_key():
+    try:
+        from app.services.push_service import vapid_public_key
+        return vapid_public_key() or ""
+    except Exception:
+        return ""
+
+
+templates.env.globals["vapid_public_key"] = _vapid_pub_key()
+
+
 # ─── Helpers ───
 def _db():
     return SessionLocal()
@@ -802,6 +813,46 @@ async def redactor_generar(
             "alertas": alertas or [],
         },
     )
+
+
+# ─── Modo 1: Ajustes post-generación (JSON — no modifica el doc guardado) ───
+@router.post("/redactor/ajustar-json")
+async def redactor_ajustar_json(request: Request):
+    """Variante JSON del ajuste. NO sobrescribe doc.texto_salida.
+    Devuelve {ok, texto} — para versiones WhatsApp/Email que el usuario
+    puede previsualizar y restaurar al original.
+    """
+    usuario = _user_or_redirect(request)
+    if not usuario:
+        return JSONResponse({"ok": False, "error": "No autenticado"}, status_code=401)
+
+    data = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
+    if not data:
+        form = await request.form()
+        data = dict(form)
+    ajuste = (data.get("ajuste") or "").strip()
+    try:
+        doc_id = int(data.get("doc_id") or 0)
+    except (TypeError, ValueError):
+        doc_id = 0
+
+    if ajuste not in AJUSTES:
+        return JSONResponse({"ok": False, "error": f"Ajuste no válido: {ajuste}"}, status_code=400)
+
+    db = _db()
+    try:
+        doc = db.query(DocumentoSecretaria).filter(
+            DocumentoSecretaria.id == doc_id,
+            DocumentoSecretaria.secretaria_id == usuario.id,
+        ).first()
+        if not doc:
+            return JSONResponse({"ok": False, "error": "Documento no encontrado"}, status_code=404)
+        texto_actual = doc.texto_salida or ""
+    finally:
+        db.close()
+
+    nuevo_texto = ajustar_documento(texto_actual, ajuste)
+    return JSONResponse({"ok": True, "texto": nuevo_texto, "ajuste": ajuste})
 
 
 # ─── Modo 1: Ajustes post-generación ───
