@@ -370,7 +370,30 @@ class PushMensaje(Base):
     url_destino = Column(String(500), default="")
     urgente = Column(Boolean, default=False)
     enviado_a = Column(JSON, default=list)
+    # Enriquecimiento visual
+    imagen_url = Column(String(500), default="")
+    gif_url = Column(String(500), default="")
+    audio_url = Column(String(500), default="")
+    categoria = Column(String(30), default="general")
+    color_tema = Column(String(10), default="#0D7A60")
+    emoji_grande = Column(String(10), default="")
     creado_en = Column(DateTime, default=_utcnow, index=True)
+
+
+# ─── push_media_biblioteca ───
+class PushMediaBiblioteca(Base):
+    __tablename__ = "push_media_biblioteca"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    secretaria_id = Column(
+        Integer, ForeignKey("usuarios_secretaria.id"), nullable=True, index=True
+    )
+    categoria = Column(String(30), default="general", index=True)
+    nombre = Column(String(100), default="")
+    tipo = Column(String(10), default="imagen")  # imagen / gif / audio / video
+    url = Column(String(500), default="")
+    es_plantilla = Column(Boolean, default=False)
+    creado_en = Column(DateTime, default=_utcnow)
 
 
 # ─── documento_revisiones ───
@@ -443,5 +466,79 @@ def _migrar_columnas():
                 except Exception:
                     pass
 
+    # Columnas nuevas en push_mensajes (enriquecimiento visual)
+    if insp.has_table("push_mensajes"):
+        cols = {c["name"] for c in insp.get_columns("push_mensajes")}
+        alters_push = [
+            ("imagen_url",   "VARCHAR(500) DEFAULT ''"),
+            ("gif_url",      "VARCHAR(500) DEFAULT ''"),
+            ("audio_url",    "VARCHAR(500) DEFAULT ''"),
+            ("categoria",    "VARCHAR(30) DEFAULT 'general'"),
+            ("color_tema",   "VARCHAR(10) DEFAULT '#0D7A60'"),
+            ("emoji_grande", "VARCHAR(10) DEFAULT ''"),
+        ]
+        for col_name, col_def in alters_push:
+            if col_name not in cols:
+                try:
+                    with engine.begin() as conn:
+                        conn.execute(text(
+                            f"ALTER TABLE push_mensajes ADD COLUMN {col_name} {col_def}"
+                        ))
+                except Exception:
+                    pass
+
 
 _migrar_columnas()
+
+
+# ─── SEED: plantillas del sistema para push_media_biblioteca ──────
+def _seed_push_media():
+    from sqlalchemy import inspect
+    insp = inspect(engine)
+    if not insp.has_table("push_media_biblioteca"):
+        return
+    from app.database import SessionLocal as _SL
+    db = _SL()
+    try:
+        existe = db.query(PushMediaBiblioteca).filter(
+            PushMediaBiblioteca.es_plantilla == True  # noqa: E712
+        ).count()
+        if existe > 0:
+            return
+        seeds = [
+            ("cumpleanos", "Feliz Cumpleaños clásico", "gif",
+             "https://media.giphy.com/media/l0HlNQ03J5JxX6lva/giphy.gif"),
+            ("cumpleanos", "Globos festivos", "gif",
+             "https://media.giphy.com/media/26BRv0ThflsHCqDrG/giphy.gif"),
+            ("cumpleanos", "Torta animada", "gif",
+             "https://media.giphy.com/media/3og0IMJcSI8p6hYQXS/giphy.gif"),
+            ("feriado", "Fiestas Patrias Perú", "imagen",
+             "/static/img/push/fiestas-patrias.jpg"),
+            ("feriado", "Día del Trabajo", "imagen",
+             "/static/img/push/dia-trabajo.jpg"),
+            ("urgente", "Alerta roja", "imagen",
+             "/static/img/push/alerta-urgente.jpg"),
+            ("urgente", "Atención importante", "gif",
+             "https://media.giphy.com/media/3o7TKPfKQVhPY94F9S/giphy.gif"),
+            ("social", "Día de la Secretaria", "imagen",
+             "/static/img/push/dia-secretaria.jpg"),
+            ("social", "Celebración", "gif",
+             "https://media.giphy.com/media/l0ErHEtRrUgw5wYsE/giphy.gif"),
+            ("norma", "Recordatorio normativo", "imagen",
+             "/static/img/push/norma-institutional.jpg"),
+            ("aniversario", "Aniversario institucional", "imagen",
+             "/static/img/push/aniversario.jpg"),
+        ]
+        for cat, nombre, tipo, url in seeds:
+            db.add(PushMediaBiblioteca(
+                secretaria_id=None, categoria=cat, nombre=nombre,
+                tipo=tipo, url=url, es_plantilla=True,
+            ))
+        db.commit()
+    except Exception:
+        pass
+    finally:
+        db.close()
+
+
+_seed_push_media()
