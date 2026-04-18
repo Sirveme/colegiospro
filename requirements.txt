@@ -1,4 +1,5 @@
-fastapi
+fastapi>=0.110
+starlette>=0.29
 uvicorn[standard]
 jinja2
 sqlalchemy
@@ -16,3 +17,5 @@ pypdf
 python-docx
 python-dotenv
 pydub
+# ─── Email Engine — scheduler en background ───
+apscheduler>=3.10,<4
