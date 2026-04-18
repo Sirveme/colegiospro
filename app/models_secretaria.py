@@ -192,6 +192,11 @@ class ConfigOrganizacion(Base):
     marca_agua_opacidad = Column(Float, default=0.08)   # 0.0 - 1.0
     marca_agua_angulo = Column(Integer, default=45)     # grados
     marca_agua_color = Column(String(10), default="gris")  # gris/azul/rojo/verde/negro
+    # Post Redes: API key OpenAI propia + contadores DALL-E
+    imagen_openai_key_enc = Column(String(500), default="")
+    imagenes_generadas_mes = Column(Integer, default=0)
+    imagenes_limite_mes = Column(Integer, default=10)
+    imagenes_reset_fecha = Column(DateTime, nullable=True)
     onboarding_completo = Column(Boolean, default=False)
     actualizado_en = Column(DateTime, default=_utcnow)
 
@@ -306,6 +311,68 @@ class TranscripcionReunion(Base):
     creado_en = Column(DateTime, default=_utcnow)
 
 
+# ─── comunicados ───
+class Comunicado(Base):
+    __tablename__ = "comunicados"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    secretaria_id = Column(Integer, ForeignKey("usuarios_secretaria.id"), index=True)
+    colegio_id = Column(Integer, nullable=True)
+    titulo = Column(String(200), default="")
+    cuerpo = Column(Text, default="")
+    canal = Column(String(30), default="push")
+    destinatarios = Column(String(30), default="mis_secretarias")
+    enviado_count = Column(Integer, default=0)
+    creado_en = Column(DateTime, default=_utcnow, index=True)
+
+
+# ─── post_redes_imagenes ───
+class PostRedesImagen(Base):
+    __tablename__ = "post_redes_imagenes"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    secretaria_id = Column(Integer, ForeignKey("usuarios_secretaria.id"), index=True)
+    prompt = Column(Text, default="")
+    url_resultado = Column(String(800), default="")
+    modelo = Column(String(30), default="dall-e-3")
+    creado_en = Column(DateTime, default=_utcnow)
+
+
+# ─── push_suscriptores ───
+# Dispositivos/navegadores suscritos a Web Push (secretarias o servidores externos).
+class PushSuscriptor(Base):
+    __tablename__ = "push_suscriptores"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    secretaria_id = Column(
+        Integer, ForeignKey("usuarios_secretaria.id"), nullable=True, index=True
+    )
+    nombre = Column(String(150), default="")
+    cargo = Column(String(100), default="")
+    endpoint = Column(Text, nullable=False)
+    p256dh = Column(Text, default="")
+    auth = Column(Text, default="")
+    activo = Column(Boolean, default=True)
+    creado_en = Column(DateTime, default=_utcnow)
+
+
+# ─── push_mensajes ───
+# Historial de mensajes push enviados.
+class PushMensaje(Base):
+    __tablename__ = "push_mensajes"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    de_usuario_id = Column(
+        Integer, ForeignKey("usuarios_secretaria.id"), nullable=True
+    )
+    titulo = Column(String(200), default="")
+    cuerpo = Column(Text, default="")
+    url_destino = Column(String(500), default="")
+    urgente = Column(Boolean, default=False)
+    enviado_a = Column(JSON, default=list)
+    creado_en = Column(DateTime, default=_utcnow, index=True)
+
+
 # ─── documento_revisiones ───
 # Solicitudes de revisión con link público por token.
 class DocumentoRevision(Base):
@@ -351,16 +418,20 @@ def _migrar_columnas():
             except Exception:
                 pass
 
-    # Columnas de marca de agua en config_organizacion
+    # Columnas de marca de agua + Post Redes en config_organizacion
     if insp.has_table("config_organizacion"):
         cols = {c["name"] for c in insp.get_columns("config_organizacion")}
         alters = [
-            ("marca_agua_activa",   "BOOLEAN DEFAULT 1"),
-            ("marca_agua_texto",    "VARCHAR(80) DEFAULT ''"),
-            ("marca_agua_tamano",   "INTEGER DEFAULT 48"),
-            ("marca_agua_opacidad", "REAL DEFAULT 0.08"),
-            ("marca_agua_angulo",   "INTEGER DEFAULT 45"),
-            ("marca_agua_color",    "VARCHAR(10) DEFAULT 'gris'"),
+            ("marca_agua_activa",       "BOOLEAN DEFAULT 1"),
+            ("marca_agua_texto",        "VARCHAR(80) DEFAULT ''"),
+            ("marca_agua_tamano",       "INTEGER DEFAULT 48"),
+            ("marca_agua_opacidad",     "REAL DEFAULT 0.08"),
+            ("marca_agua_angulo",       "INTEGER DEFAULT 45"),
+            ("marca_agua_color",        "VARCHAR(10) DEFAULT 'gris'"),
+            ("imagen_openai_key_enc",   "VARCHAR(500) DEFAULT ''"),
+            ("imagenes_generadas_mes",  "INTEGER DEFAULT 0"),
+            ("imagenes_limite_mes",     "INTEGER DEFAULT 10"),
+            ("imagenes_reset_fecha",    "DATE"),
         ]
         for col_name, col_def in alters:
             if col_name not in cols:
