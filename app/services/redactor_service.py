@@ -244,6 +244,19 @@ AJUSTES = {
             "el mensaje."
         ),
     },
+    "version_email": {
+        "label": "Versión Email",
+        "icono": "📧",
+        "system": (
+            "Convierte este documento en un correo electrónico profesional. "
+            "Sin membrete, sin numeración oficial. Incluye: (1) saludo "
+            "adecuado con el nombre del destinatario si está disponible, "
+            "(2) cuerpo claro y conciso, (3) despedida cordial con firma "
+            "simple de nombre y cargo. Tono amable pero profesional, "
+            "apropiado para correo electrónico institucional. Devuelve "
+            "SOLO el texto del correo."
+        ),
+    },
     "traducir_ingles": {
         "label": "Traducir al inglés",
         "icono": "🌐",
