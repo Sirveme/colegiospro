@@ -339,18 +339,38 @@ def _migrar_columnas():
     from sqlalchemy import inspect, text
 
     insp = inspect(engine)
-    if not insp.has_table("directorio_institucional"):
-        return
 
-    cols_existentes = {c["name"] for c in insp.get_columns("directorio_institucional")}
-    if "ruc" not in cols_existentes:
-        try:
-            with engine.begin() as conn:
-                conn.execute(text(
-                    "ALTER TABLE directorio_institucional ADD COLUMN ruc VARCHAR(20)"
-                ))
-        except Exception:
-            pass  # Otra instancia ya hizo la migración
+    if insp.has_table("directorio_institucional"):
+        cols = {c["name"] for c in insp.get_columns("directorio_institucional")}
+        if "ruc" not in cols:
+            try:
+                with engine.begin() as conn:
+                    conn.execute(text(
+                        "ALTER TABLE directorio_institucional ADD COLUMN ruc VARCHAR(20)"
+                    ))
+            except Exception:
+                pass
+
+    # Columnas de marca de agua en config_organizacion
+    if insp.has_table("config_organizacion"):
+        cols = {c["name"] for c in insp.get_columns("config_organizacion")}
+        alters = [
+            ("marca_agua_activa",   "BOOLEAN DEFAULT 1"),
+            ("marca_agua_texto",    "VARCHAR(80) DEFAULT ''"),
+            ("marca_agua_tamano",   "INTEGER DEFAULT 48"),
+            ("marca_agua_opacidad", "REAL DEFAULT 0.08"),
+            ("marca_agua_angulo",   "INTEGER DEFAULT 45"),
+            ("marca_agua_color",    "VARCHAR(10) DEFAULT 'gris'"),
+        ]
+        for col_name, col_def in alters:
+            if col_name not in cols:
+                try:
+                    with engine.begin() as conn:
+                        conn.execute(text(
+                            f"ALTER TABLE config_organizacion ADD COLUMN {col_name} {col_def}"
+                        ))
+                except Exception:
+                    pass
 
 
 _migrar_columnas()
