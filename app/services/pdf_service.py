@@ -8,6 +8,7 @@
 from io import BytesIO
 from html import escape
 from typing import Optional
+from datetime import datetime
 
 # WeasyPrint (preferido por estilo CSS) — opcional
 try:
@@ -32,9 +33,29 @@ try:
         Table,
         TableStyle,
     )
+    from reportlab.pdfgen.canvas import Canvas  # noqa: F401
     _HAS_REPORTLAB = True
 except Exception:
     _HAS_REPORTLAB = False
+
+
+# ─── Márgenes por tipo de documento ───
+# Oficio y resolución necesitan margen izquierdo mayor para empaste oficial.
+def _estilos_por_tipo():
+    if not _HAS_REPORTLAB:
+        return {}
+    return {
+        "oficio":             {"margen_izq": 3.5 * cm, "margen_der": 2.5 * cm},
+        "oficio_multiple":    {"margen_izq": 3.5 * cm, "margen_der": 2.5 * cm},
+        "carta":              {"margen_izq": 3.0 * cm, "margen_der": 2.5 * cm},
+        "memorandum":         {"margen_izq": 2.5 * cm, "margen_der": 2.5 * cm},
+        "memorandum_multiple":{"margen_izq": 2.5 * cm, "margen_der": 2.5 * cm},
+        "resolucion":         {"margen_izq": 3.0 * cm, "margen_der": 2.5 * cm},
+        "acta":               {"margen_izq": 2.5 * cm, "margen_der": 2.5 * cm},
+        "circular":           {"margen_izq": 3.0 * cm, "margen_der": 2.5 * cm},
+        "comunicado_general": {"margen_izq": 2.5 * cm, "margen_der": 2.5 * cm},
+        "orden_pedido":       {"margen_izq": 2.5 * cm, "margen_der": 2.5 * cm},
+    }
 
 
 # ─── Estilos por tono (solo se usan si reportlab está disponible) ───
@@ -131,10 +152,16 @@ def texto_a_pdf_bytes(
     config_colegio=None,
     tipo_documento: str = "carta",
     alertas: Optional[list] = None,
+    config_organizacion=None,
+    numero_documento: str = "",
 ) -> bytes:
     """
     Genera el PDF del documento. Aplica estilo según el tono y tipo.
     Si hay membrete en la config del colegio, lo coloca arriba.
+
+    config_organizacion: objeto ConfigOrganizacion con nombre_organizacion,
+        siglas, ciudad, anno_oficial. Se usa para pintar el membrete.
+    numero_documento: por ej. "045-2026-SIGLAS" — va en el encabezado.
     """
     tono_norm = (tono or "formal").strip().lower()
     if tono_norm not in ("formal", "cordial", "protocolar"):
@@ -142,7 +169,8 @@ def texto_a_pdf_bytes(
 
     if _HAS_REPORTLAB:
         return _generar_pdf_reportlab(
-            texto, titulo, tono_norm, config_colegio, tipo_documento, alertas
+            texto, titulo, tono_norm, config_colegio, tipo_documento,
+            alertas, config_organizacion, numero_documento,
         )
 
     if _HAS_WEASY:
@@ -187,45 +215,64 @@ def _generar_pdf_reportlab(
     config_colegio=None,
     tipo_documento: str = "carta",
     alertas: Optional[list] = None,
+    config_organizacion=None,
+    numero_documento: str = "",
 ) -> bytes:
     estilos = _estilos_tono()
     estilo = estilos.get(tono, estilos["formal"])
 
-    buffer = BytesIO()
-    tiene_membrete = (
-        config_colegio is not None
-        and getattr(config_colegio, "membrete_url", None)
+    # Márgenes por tipo de documento
+    margenes = _estilos_por_tipo()
+    margen_cfg = margenes.get(
+        (tipo_documento or "carta").lower(),
+        {"margen_izq": 3.0 * cm, "margen_der": 2.5 * cm},
     )
+
+    # Datos de organización para membrete
+    org = config_organizacion
+    org_nombre = (getattr(org, "nombre_organizacion", "") or "").strip() if org else ""
+    org_siglas = (getattr(org, "siglas", "") or "").strip() if org else ""
+    org_ciudad = (getattr(org, "ciudad", "") or "").strip() if org else ""
+    org_anno = (getattr(org, "anno_oficial", "") or "").strip() if org else ""
+
+    logo_url = ""
+    if org and getattr(org, "logo_url", None):
+        logo_url = org.logo_url
+    elif config_colegio and getattr(config_colegio, "membrete_url", None):
+        logo_url = config_colegio.membrete_url
+
+    tiene_datos_membrete = bool(org_nombre or logo_url)
+
+    buffer = BytesIO()
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
-        rightMargin=2.5 * cm,
-        leftMargin=2.5 * cm,
-        topMargin=2 * cm if tiene_membrete else 3 * cm,
-        bottomMargin=2.5 * cm,
+        leftMargin=margen_cfg["margen_izq"],
+        rightMargin=margen_cfg["margen_der"],
+        topMargin=2 * cm if tiene_datos_membrete else 3 * cm,
+        bottomMargin=2.8 * cm,
         title=titulo,
     )
 
     story = []
 
-    # Membrete (si existe URL/ruta accesible)
-    if tiene_membrete:
-        try:
-            img = Image(config_colegio.membrete_url, width=16 * cm, height=2.5 * cm)
-            story.append(img)
-            story.append(Spacer(1, 0.3 * cm))
-        except Exception:
-            pass
-
-    # Línea decorativa superior
-    story.append(
-        HRFlowable(
-            width="100%",
-            thickness=2,
-            color=estilo["border_color"],
-            spaceAfter=0.5 * cm,
+    # Membrete institucional
+    if tiene_datos_membrete:
+        _agregar_membrete(
+            story, estilo, logo_url,
+            org_nombre, org_siglas, org_ciudad, org_anno,
+            tipo_documento, numero_documento,
         )
-    )
+    else:
+        # Línea decorativa superior mínima
+        story.append(
+            HRFlowable(
+                width="100%",
+                thickness=2,
+                color=estilo["border_color"],
+                spaceAfter=0.5 * cm,
+            )
+        )
 
     # Estilos de párrafo
     style_body = ParagraphStyle(
@@ -359,8 +406,199 @@ def _generar_pdf_reportlab(
         )
     )
 
-    doc.build(story)
+    # Callback de pie de página + marca de agua
+    def _on_page(canvas, _doc):
+        _dibujar_pie(canvas, _doc, estilo, org_nombre, org_ciudad, org_siglas)
+        if org_nombre:
+            _dibujar_marca_agua(canvas, _doc, org_nombre)
+
+    doc.build(story, onFirstPage=_on_page, onLaterPages=_on_page)
     return buffer.getvalue()
+
+
+# ─── Membrete / pie / marca de agua ─────────────────────────────
+def _agregar_membrete(
+    story, estilo, logo_url: str,
+    org_nombre: str, org_siglas: str, org_ciudad: str, org_anno: str,
+    tipo_documento: str, numero_documento: str,
+):
+    """Construye el membrete institucional arriba del cuerpo del documento."""
+    # Estilos para el bloque de texto del membrete
+    style_nombre = ParagraphStyle(
+        "org_nombre",
+        fontName=estilo["font_bold"],
+        fontSize=13,
+        leading=15,
+        textColor=estilo["color_header"],
+        alignment=TA_LEFT,
+    )
+    style_sub = ParagraphStyle(
+        "org_sub",
+        fontName=estilo["font"],
+        fontSize=9,
+        leading=11,
+        textColor=estilo["color_text"],
+        alignment=TA_LEFT,
+    )
+    style_anno = ParagraphStyle(
+        "org_anno",
+        fontName=estilo["font"],
+        fontSize=8,
+        leading=10,
+        textColor=estilo["color_header"],
+        alignment=TA_CENTER,
+        spaceAfter=4,
+    )
+    style_numero = ParagraphStyle(
+        "org_numero",
+        fontName=estilo["font_bold"],
+        fontSize=10,
+        leading=12,
+        textColor=estilo["color_text"],
+        alignment=TA_LEFT,
+        spaceBefore=6,
+    )
+
+    # Celda logo: Imagen si hay URL usable, si no franja de color con siglas/nombre
+    celda_logo = _celda_logo(logo_url, org_siglas, org_nombre, estilo)
+
+    # Celda texto institucional
+    nombre_safe = escape(org_nombre) if org_nombre else ""
+    sub_parts = []
+    if org_siglas:
+        sub_parts.append(escape(org_siglas))
+    if org_ciudad:
+        sub_parts.append(escape(org_ciudad))
+    sub_line = " — ".join(sub_parts)
+
+    celda_texto = []
+    if nombre_safe:
+        celda_texto.append(Paragraph(nombre_safe, style_nombre))
+    if sub_line:
+        celda_texto.append(Paragraph(sub_line, style_sub))
+
+    tabla = Table(
+        [[celda_logo, celda_texto]],
+        colWidths=[3.5 * cm, None],
+    )
+    tabla.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
+    story.append(tabla)
+    story.append(Spacer(1, 0.2 * cm))
+
+    # Año oficial centrado
+    if org_anno:
+        story.append(Paragraph(f'"{escape(org_anno)}"', style_anno))
+
+    # Línea separadora entre membrete y cuerpo
+    story.append(
+        HRFlowable(
+            width="100%",
+            thickness=1.5,
+            color=estilo["border_color"],
+            spaceAfter=0.3 * cm,
+        )
+    )
+
+    # Número del documento (ej: OFICIO N° 045-2026-SIGLAS)
+    if numero_documento:
+        tipo_label = (tipo_documento or "documento").replace("_", " ").upper()
+        texto_num = f"{tipo_label} N° {escape(numero_documento)}"
+        story.append(Paragraph(texto_num, style_numero))
+        story.append(Spacer(1, 0.2 * cm))
+
+
+def _celda_logo(logo_url: str, org_siglas: str, org_nombre: str, estilo: dict):
+    """Devuelve una celda con Image si el logo es cargable; si no, una franja de
+    color con siglas o iniciales del nombre en texto blanco."""
+    if logo_url:
+        try:
+            return Image(logo_url, width=3 * cm, height=2.2 * cm)
+        except Exception:
+            pass
+
+    # Placeholder: franja de color con siglas/iniciales en blanco
+    iniciales = (org_siglas or "").strip()
+    if not iniciales and org_nombre:
+        iniciales = "".join(
+            p[0] for p in org_nombre.split() if p and p[0].isalpha()
+        )[:4].upper()
+    if not iniciales:
+        iniciales = "ORG"
+
+    style_placeholder = ParagraphStyle(
+        "ph_logo",
+        fontName=estilo["font_bold"],
+        fontSize=16,
+        leading=18,
+        textColor=colors.white,
+        alignment=TA_CENTER,
+    )
+    tabla = Table(
+        [[Paragraph(escape(iniciales), style_placeholder)]],
+        colWidths=[3 * cm],
+        rowHeights=[2.2 * cm],
+    )
+    tabla.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), estilo["color_header"]),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+    ]))
+    return tabla
+
+
+def _dibujar_pie(canvas, doc, estilo: dict, org_nombre: str, org_ciudad: str, org_siglas: str):
+    """Dibuja el pie de página: nombre org, ciudad y numeración de página."""
+    canvas.saveState()
+    ancho, _ = A4
+
+    # Línea superior del pie
+    canvas.setStrokeColor(estilo["border_color"])
+    canvas.setLineWidth(0.5)
+    canvas.line(2 * cm, 1.8 * cm, ancho - 2 * cm, 1.8 * cm)
+
+    # Texto del pie
+    canvas.setFont(estilo["font"], 8)
+    canvas.setFillColor(estilo["color_text"])
+
+    izq_parts = []
+    if org_nombre:
+        izq_parts.append(org_nombre)
+    if org_ciudad:
+        izq_parts.append(org_ciudad)
+    izq = " — ".join(izq_parts)
+    if izq:
+        canvas.drawString(2 * cm, 1.4 * cm, izq[:90])
+
+    # Página N en la derecha
+    pagina_txt = f"Página {doc.page}"
+    canvas.drawRightString(ancho - 2 * cm, 1.4 * cm, pagina_txt)
+
+    canvas.restoreState()
+
+
+def _dibujar_marca_agua(canvas, _doc, org_nombre: str):
+    """Marca de agua sutil con el nombre de la organización al 10% opacidad."""
+    canvas.saveState()
+    ancho, alto = A4
+    try:
+        canvas.setFillColorRGB(0.15, 0.25, 0.55, alpha=0.08)
+    except TypeError:
+        # ReportLab viejo sin alpha: omitir marca de agua
+        canvas.restoreState()
+        return
+    canvas.setFont("Helvetica-Bold", 60)
+    canvas.translate(ancho / 2, alto / 2)
+    canvas.rotate(30)
+    canvas.drawCentredString(0, 0, org_nombre[:40])
+    canvas.restoreState()
 
 
 def _flush_tabla(tabla_data: list, story: list, estilo: dict):
