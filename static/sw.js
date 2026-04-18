@@ -58,16 +58,17 @@ self.addEventListener('push', (event) => {
   try {
     if (event.data) {
       const payload = event.data.json();
+      // Soportar ambas convenciones: {title,body} y {titulo,cuerpo}
       data = {
-        title: payload.title || data.title,
-        body: payload.body || data.body,
+        title: payload.title || payload.titulo || data.title,
+        body: payload.body || payload.cuerpo || data.body,
         icon: payload.icon || data.icon,
         badge: '/static/img/icon-192.png',
         vibrate: [200, 100, 200],
-        data: { url: payload.url || '/', chatMessage: payload.chatMessage || null },
+        data: { url: payload.url || payload.url_destino || '/', chatMessage: payload.chatMessage || null },
         actions: [
-          { action: 'open', title: 'Abrir' },
-          { action: 'reply', title: 'Responder' }
+          { action: 'abrir', title: '👁 Ver' },
+          { action: 'ok',    title: '✓ OK' }
         ]
       };
     }
@@ -81,6 +82,7 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const url = event.notification.data?.url || '/';
+  if (event.action === 'ok') return; // confirma y cierra
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
       for (const client of windowClients) {
