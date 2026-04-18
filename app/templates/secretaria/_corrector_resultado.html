@@ -15,9 +15,9 @@
   <a class="sp-btn" href="/secretaria/documento/{{ documento_id }}/pdf" target="_blank" rel="noopener">
     📄 Descargar PDF
   </a>
-  <a class="sp-btn" href="/secretaria/documento/{{ documento_id }}/docx" rel="noopener">
+  <button class="sp-btn" type="button" onclick="spDescargarDocx({{ documento_id }})">
     📝 Descargar Word (.docx)
-  </a>
+  </button>
   <button class="sp-btn" type="button" onclick="spImprimir({{ documento_id }})">
     🖨 Imprimir
   </button>
@@ -32,4 +32,18 @@
     onclick="this.textContent='✓ Guardado'"
   >💾 Guardar en historial</button>
 </div>
-<script>spStopCorrSpinner();</script>
+<script>
+window.spDescargarDocx = async function(docId) {
+  const resp = await fetch(`/secretaria/documento/${docId}/docx`);
+  const blob = await resp.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `documento_${docId}.docx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+spStopCorrSpinner();
+</script>

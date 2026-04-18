@@ -58,7 +58,7 @@
       <td class="sp-preview">{{ (d.texto_salida or '')[:120] }}…</td>
       <td>
         <a class="sp-btn" href="/secretaria/documento/{{ d.id }}/pdf" target="_blank">PDF</a>
-        <a class="sp-btn" href="/secretaria/documento/{{ d.id }}/docx">Word</a>
+        <button class="sp-btn" type="button" onclick="spDescargarDocx({{ d.id }})">Word</button>
         <a class="sp-btn" href="/secretaria/historial/{{ d.id }}/reabrir">Reabrir</a>
       </td>
     </tr>
@@ -67,4 +67,18 @@
     {% endfor %}
   </tbody>
 </table>
+<script>
+async function spDescargarDocx(docId) {
+  const resp = await fetch(`/secretaria/documento/${docId}/docx`);
+  const blob = await resp.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `documento_${docId}.docx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+</script>
 {% endblock %}
