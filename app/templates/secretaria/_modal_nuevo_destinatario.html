@@ -1,0 +1,79 @@
+<div class="sp-modal sp-modal--gold" id="sp-modal-destinatario-htmx" style="display:flex;">
+  <div class="sp-modal-backdrop" onclick="document.getElementById('sp-modal-container').innerHTML=''"></div>
+  <div class="sp-modal-card sp-modal-card--gold">
+    <h3 style="margin-top:0;">＋ Agregar destinatario</h3>
+    <form onsubmit="return spEnviarModalDestinatario(event)">
+      <label class="sp-field">
+        <span>Nombre de la institución *</span>
+        <input type="text" name="nombre_institucion" required placeholder="Ej: Municipalidad de Iquitos" autofocus>
+      </label>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:.6rem;">
+        <label class="sp-field">
+          <span>RUC</span>
+          <input type="text" name="ruc" maxlength="11" placeholder="11 dígitos">
+        </label>
+        <label class="sp-field">
+          <span>Ciudad</span>
+          <input type="text" name="ciudad" placeholder="Iquitos">
+        </label>
+      </div>
+      <label class="sp-field">
+        <span>Nombre del titular</span>
+        <input type="text" name="titular_nombre" placeholder="Ej: CPC Juan Pérez">
+      </label>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:.6rem;">
+        <label class="sp-field">
+          <span>Cargo del titular</span>
+          <input type="text" name="titular_cargo" placeholder="Ej: Alcalde, Decano">
+        </label>
+        <label class="sp-field">
+          <span>Tratamiento</span>
+          <input type="text" name="titular_tratamiento" placeholder="Sr. / Dr. / Mg.">
+        </label>
+      </div>
+
+      <div id="sp-modal-dest-htmx-err" class="sp-alert sp-alert-error" style="display:none; margin:.5rem 0;"></div>
+
+      <div style="display:flex; gap:.5rem; justify-content:flex-end; margin-top:.75rem;">
+        <button type="button" class="sp-btn"
+                onclick="document.getElementById('sp-modal-container').innerHTML=''">Cancelar</button>
+        <button type="submit" class="sp-btn sp-btn-primary">Agregar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+window.spEnviarModalDestinatario = async function(ev) {
+  ev.preventDefault();
+  var form = ev.target;
+  var err = document.getElementById('sp-modal-dest-htmx-err');
+  var body = {
+    nombre_institucion: form.nombre_institucion.value,
+    ruc: form.ruc.value,
+    ciudad: form.ciudad.value,
+    titular_nombre: form.titular_nombre.value,
+    titular_cargo: form.titular_cargo.value,
+    titular_tratamiento: form.titular_tratamiento.value,
+  };
+  try {
+    var r = await fetch('/secretaria/api/destinatarios/crear', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body),
+    });
+    var data = await r.json();
+    if (!data.ok) {
+      err.style.display = 'block';
+      err.textContent = data.error || 'Error al agregar';
+      return false;
+    }
+    if (window.spAgregarDestinatarioLocal) window.spAgregarDestinatarioLocal(data.institucion);
+    document.getElementById('sp-modal-container').innerHTML = '';
+  } catch (e) {
+    err.style.display = 'block';
+    err.textContent = 'Error de red';
+  }
+  return false;
+};
+</script>

@@ -1,0 +1,76 @@
+<div class="sp-modal sp-modal--gold" id="sp-modal-remitente-htmx" style="display:flex;">
+  <div class="sp-modal-backdrop" onclick="document.getElementById('sp-modal-container').innerHTML=''"></div>
+  <div class="sp-modal-card sp-modal-card--gold">
+    <h3 style="margin-top:0;">＋ Agregar remitente</h3>
+    <form onsubmit="return spEnviarModalRemitente(event)">
+      <label class="sp-field">
+        <span>Nombre completo *</span>
+        <input type="text" name="nombre" required placeholder="Ej: Carmen García López" autofocus>
+      </label>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:.6rem;">
+        <label class="sp-field">
+          <span>Tratamiento</span>
+          <input type="text" name="tratamiento" placeholder="Dr. / Mg. / CPC">
+        </label>
+        <label class="sp-field">
+          <span>Sexo</span>
+          <select name="sexo">
+            <option value="M">Masculino</option>
+            <option value="F">Femenino</option>
+          </select>
+        </label>
+      </div>
+      <label class="sp-field">
+        <span>Cargo</span>
+        <input type="text" name="cargo" placeholder="Ej: Decano, Secretaria, Director">
+      </label>
+      <label class="sp-field">
+        <span>Área / Institución</span>
+        <input type="text" name="institucion" placeholder="Opcional">
+      </label>
+
+      <div id="sp-modal-rem-htmx-err" class="sp-alert sp-alert-error" style="display:none; margin:.5rem 0;"></div>
+
+      <div style="display:flex; gap:.5rem; justify-content:flex-end; margin-top:.75rem;">
+        <button type="button" class="sp-btn"
+                onclick="document.getElementById('sp-modal-container').innerHTML=''">Cancelar</button>
+        <button type="submit" class="sp-btn sp-btn-primary">Agregar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+window.spEnviarModalRemitente = async function(ev) {
+  ev.preventDefault();
+  var form = ev.target;
+  var err = document.getElementById('sp-modal-rem-htmx-err');
+  var body = {
+    nombre: form.nombre.value,
+    tratamiento: form.tratamiento.value,
+    sexo: form.sexo.value,
+    cargo: form.cargo.value,
+    institucion: form.institucion.value,
+  };
+  try {
+    var r = await fetch('/secretaria/api/remitentes/crear', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body),
+    });
+    var data = await r.json();
+    if (!data.ok) {
+      err.style.display = 'block';
+      err.textContent = data.error || 'Error al agregar';
+      return false;
+    }
+    // Agregar al dataset del wrap y refrescar panel
+    if (window.spAgregarRemitenteLocal) window.spAgregarRemitenteLocal(data.perfil);
+    document.getElementById('sp-modal-container').innerHTML = '';
+  } catch (e) {
+    err.style.display = 'block';
+    err.textContent = 'Error de red';
+  }
+  return false;
+};
+</script>

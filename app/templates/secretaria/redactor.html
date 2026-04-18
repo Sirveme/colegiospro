@@ -1,37 +1,29 @@
 {% extends "secretaria/base.html" %}
 {% block title %}Redactor{% endblock %}
 {% block content %}
-<header class="sp-header">
-  <h1>Redactor</h1>
-  <p>Escribe o dicta lo que necesitas comunicar. Lo convertimos en un documento formal.</p>
-</header>
 
 {% if banner_anno %}
-<div class="sp-alert sp-alert-error" style="margin-bottom:1rem;">
+<div class="sp-alert sp-alert-error" style="margin:1rem auto; max-width:720px;">
   El nombre del año oficial no ha sido actualizado para {{ anno_actual }}.
   <a href="/secretaria/configuracion">Actualizar ahora</a>
 </div>
 {% endif %}
 
-{% set tipo_iconos = {
-  'carta': '✉',
-  'oficio': '📄',
-  'memorandum': '📋',
-  'circular': '📢',
-  'acta': '📝',
-  'invitacion': '💌',
-  'certificado': '🏅',
-  'memorandum_multiple': '📋',
-  'oficio_multiple': '📄',
-  'resolucion': '⚖',
-  'orden_pedido': '🧾',
-  'comunicado_general': '📣',
-} %}
+<!-- ═══════ WRAP PRINCIPAL REDACTOR (glass + gold) ═══════ -->
+<div class="sp-redactor-wrap"
+     id="sp-redactor-wrap"
+     data-remitentes='{{ remitentes_json|safe }}'
+     data-destinatarios='{{ destinatarios_json|safe }}'>
 
-<section class="sp-redactor">
+  <header class="sp-redactor-head">
+    <h1>Redactor</h1>
+    <p>Dicta o escribe lo que necesitas comunicar — lo convertiremos en un documento profesional.</p>
+  </header>
+
+  <!-- FORM: todo el redactor (HTMX) -->
   <form
-    class="sp-col sp-col-input"
     id="form-redactor"
+    class="sp-redactor-form"
     enctype="multipart/form-data"
     hx-post="/secretaria/redactor/generar"
     hx-target="#sp-resultado"
@@ -40,487 +32,135 @@
     hx-on::before-request="spStartSpinner()"
     hx-on::after-request="spStopSpinner()"
   >
-    <!-- MICRÓFONO PROTAGONISTA -->
-    <div class="sp-voz-hero">
-      <button type="button" id="btn-voz" onclick="spToggleVoz()"
-              class="sp-mic-grande" title="Dictar instrucción">
-        🎤
+
+    <!-- 1. DOCUMENTO DE REFERENCIA -->
+    <div class="sp-ref-zona" id="zona-referencia"
+         onclick="document.getElementById('archivo-ref').click()">
+      <div class="sp-ref-icono">📎</div>
+      <div class="sp-ref-texto">
+        <span class="sp-ref-titulo">Documento de referencia</span>
+        <span class="sp-ref-sub">Sube un documento para que la IA extraiga datos automáticamente</span>
+      </div>
+      <label class="sp-ref-btn" for="archivo-ref" onclick="event.stopPropagation()">
+        ＋ Adjuntar
+      </label>
+      <input type="file" name="documento_referencia" id="archivo-ref" hidden
+             accept=".pdf,.doc,.docx,.txt,.md,.png,.jpg,.jpeg,.webp">
+    </div>
+
+    <!-- Estado: archivo adjunto -->
+    <div class="sp-ref-adjunto" id="ref-adjunto" style="display:none;">
+      <span class="sp-ref-adj-icono">📄</span>
+      <span class="sp-ref-adj-nombre" id="ref-nombre"></span>
+      <button type="button" onclick="spQuitarReferencia()" class="sp-ref-quitar" title="Quitar">✕</button>
+    </div>
+
+    <!-- 2. ÁREA DE DICTADO / TEXTO -->
+    <div class="sp-dictado-wrap">
+      <button type="button" class="sp-mic-btn" id="btn-voz" onclick="spToggleVoz()" title="Dictar">
+        <div class="sp-mic-icon">🎤</div>
+        <div class="sp-mic-pulse" id="mic-pulse"></div>
       </button>
-      <p class="sp-voz-hint">Toca para dictar — o escribe abajo</p>
-      <div id="voz-estado" style="display:none; font-size:12px; color:var(--sp-error);">
-        🎙 Escuchando... habla ahora
-      </div>
+      <textarea class="sp-textarea"
+                id="instruccion"
+                name="texto_entrada"
+                rows="4"
+                required
+                placeholder="¿Qué necesitas comunicar? Escríbelo como te lo dijeron..."></textarea>
     </div>
 
-    <!-- TEXTAREA -->
-    <div class="sp-field">
-      <textarea
-        name="texto_entrada"
-        id="instruccion"
-        rows="4"
-        required
-        placeholder="¿Qué necesitas comunicar? Escríbelo como te lo dijeron..."
-      ></textarea>
+    <!-- 3. RESUMEN DINÁMICO -->
+    <div class="sp-resumen-linea" id="resumen-linea">
+      <span class="sp-resumen-texto" id="resumen-dinamico">
+        Selecciona tipo, remitente y destinatario para ver el resumen
+      </span>
     </div>
 
-    <!-- DOCUMENTO DE REFERENCIA — toggle -->
-    <div class="sp-ref-doc">
-      <label class="sp-ref-toggle" style="cursor:pointer; font-size:.9rem; font-weight:600;">
-        📎 ¿Tienes un documento de referencia?
-        <input type="checkbox" id="toggle-ref" onchange="document.getElementById('ref-panel').style.display=this.checked?'block':'none'" style="margin-left:.5rem;">
-      </label>
-      <div id="ref-panel" style="display:none; margin-top:.5rem;">
-        <input type="file" name="documento_referencia" id="doc-referencia"
-               accept=".pdf,.docx,.doc,.txt,.md,.png,.jpg,.jpeg,.webp">
-        <small style="color:var(--sp-muted);">PDF, Word, imagen o texto. Máx 10 MB.</small>
-        <div id="doc-estado" style="display:none; margin-top:6px; font-size:12px;"></div>
-      </div>
+    <!-- 4. TABS HORIZONTALES -->
+    <div class="sp-tabs-barra">
+      <button type="button" class="sp-tab" id="tab-tipo" onclick="spAbrirTab('tipo')">
+        <span class="sp-tab-icono">📄</span>
+        <span class="sp-tab-label">Tipo</span>
+        <span class="sp-tab-valor" id="val-tipo">Sin seleccionar</span>
+      </button>
+      <button type="button" class="sp-tab" id="tab-remitente" onclick="spAbrirTab('remitente')">
+        <span class="sp-tab-icono">👤</span>
+        <span class="sp-tab-label">De</span>
+        <span class="sp-tab-valor" id="val-remitente">Sin seleccionar</span>
+      </button>
+      <button type="button" class="sp-tab" id="tab-destinatario" onclick="spAbrirTab('destinatario')">
+        <span class="sp-tab-icono">📬</span>
+        <span class="sp-tab-label">Para</span>
+        <span class="sp-tab-valor" id="val-destinatario">Opcional</span>
+      </button>
+      <button type="button" class="sp-tab" id="tab-tono" onclick="spAbrirTab('tono')">
+        <span class="sp-tab-icono">🎨</span>
+        <span class="sp-tab-label">Tono</span>
+        <span class="sp-tab-valor" id="val-tono">Formal</span>
+      </button>
     </div>
 
-    <!-- ═══════ SECCIÓN: TIPO DE DOCUMENTO (colapsada) ═══════ -->
-    <div class="sp-seccion">
-      <div class="sp-seccion-hdr" onclick="spToggle('tipo-doc')">
-        <span>📄 Tipo de documento</span>
-        <span class="sp-chevron" id="chv-tipo-doc">▶</span>
-      </div>
-      <div class="sp-seccion-body" id="tipo-doc" style="display:none;">
-        <div class="sp-tipos-grid">
-          {% for t in tipos %}
-          <button
-            type="button"
-            class="sp-tipo-card"
-            data-tipo="{{ t.id }}"
-            data-label="{{ t.label }}"
-            data-icono="{{ t.icono or tipo_iconos.get(t.id, '📄') }}"
-            onclick="spSeleccionarTipo('{{ t.id }}', this)"
-          >
-            <span class="sp-tipo-icono">{{ t.icono or tipo_iconos.get(t.id, '📄') }}</span>
-            <span class="sp-tipo-label">{{ t.label }}</span>
-          </button>
-          {% endfor %}
-        </div>
-      </div>
-      <div class="sp-seccion-resumen" id="res-tipo-doc">Sin seleccionar</div>
-      <input type="hidden" name="tipo_documento" id="tipo-seleccionado" value="">
+    <!-- 6. CAMPOS HIDDEN (nombres compatibles con endpoint /generar) -->
+    <input type="hidden" name="tipo_documento" id="campo-tipo" value="">
+    <input type="hidden" name="perfil_remitente_id" id="campo-remitente" value="">
+    <input type="hidden" name="institucion_id" id="campo-destinatario" value="">
+    <input type="hidden" name="tono" id="campo-tono" value="formal">
+
+    <!-- 7. BOTONES FINALES -->
+    <div class="sp-botones-finales">
+      <button type="button"
+              id="btn-analizar"
+              class="sp-btn-analizar"
+              hx-post="/secretaria/redactor/analizar"
+              hx-target="#sp-propuesta"
+              hx-swap="innerHTML"
+              hx-include="#form-redactor"
+              hx-encoding="multipart/form-data"
+              hx-on::before-request="this.disabled=true; this.textContent='Analizando…'"
+              hx-on::after-request="this.disabled=false; this.textContent='Analizar y proponer →'; document.getElementById('sp-propuesta').style.display='block'">
+        Analizar y proponer →
+      </button>
+      <button type="submit" id="btn-generar" class="sp-btn-generar">
+        ✨ Generar documento
+      </button>
     </div>
-
-    <!-- ═══════ SECCIÓN: REMITENTE (colapsada) ═══════ -->
-    <div class="sp-seccion">
-      <div class="sp-seccion-hdr" onclick="spToggle('remitente')">
-        <span>👤 Remitente / Firmante</span>
-        <div class="sp-seccion-actions">
-          <button type="button" class="sp-btn-agregar"
-                  onclick="event.stopPropagation(); spAbrirModalRemitente()"
-                  title="Agregar remitente">＋</button>
-          <span class="sp-chevron" id="chv-remitente">▶</span>
-        </div>
-      </div>
-      <div class="sp-seccion-body" id="remitente" style="display:none;">
-        <div class="sp-personas-grid" id="grid-remitentes">
-          {% for p in perfiles %}
-          <div class="sp-card-persona {% if p.es_default %}sp-card-persona--activa{% endif %}"
-               data-id="{{ p.id }}"
-               data-nombre="{{ p.nombre }}"
-               data-cargo="{{ p.cargo or '' }}"
-               data-tratamiento="{{ p.tratamiento or '' }}"
-               onclick="spSeleccionarPersona('remitente', {{ p.id }}, this)">
-            <div class="sp-avatar" data-letra="{{ (p.nombre or '?')[0]|upper }}"
-                 style="background:{{ ['#0F3460','#0D7A60','#C9943A','#6B4C9A','#C0392B','#2980B9'][ (p.nombre[0]|int(default=0) * 7 + loop.index0) % 6 ] }}">{{ (p.nombre or '?')[0]|upper }}</div>
-            <div class="sp-card-info">
-              <div class="sp-card-nombre">
-                {% if p.tratamiento %}{{ p.tratamiento }} {% endif %}{{ p.nombre }}
-              </div>
-              <div class="sp-card-cargo">{{ p.cargo or '' }}</div>
-            </div>
-            <div class="sp-card-check">✓</div>
-          </div>
-          {% else %}
-          <div class="sp-empty-mini">
-            Todavía no hay remitentes. Toca ＋ para agregar uno.
-          </div>
-          {% endfor %}
-        </div>
-        <small style="display:block; margin-top:.5rem;">
-          <a href="/secretaria/remitentes">Gestionar todos los remitentes →</a>
-        </small>
-      </div>
-      <div class="sp-seccion-resumen" id="res-remitente">Sin seleccionar</div>
-      <input type="hidden" name="perfil_remitente_id" id="perfil-remitente-hidden" value="">
-    </div>
-
-    <!-- ═══════ SECCIÓN: DESTINATARIO (colapsada) ═══════ -->
-    <div class="sp-seccion">
-      <div class="sp-seccion-hdr" onclick="spToggle('destinatario')">
-        <span>📬 Destinatario <small style="font-weight:400; color:var(--sp-muted);">(opcional)</small></span>
-        <div class="sp-seccion-actions">
-          <button type="button" class="sp-btn-agregar"
-                  onclick="event.stopPropagation(); spAbrirModalDestinatario()"
-                  title="Agregar destinatario">＋</button>
-          <span class="sp-chevron" id="chv-destinatario">▶</span>
-        </div>
-      </div>
-      <div class="sp-seccion-body" id="destinatario" style="display:none;">
-        <div class="sp-personas-grid" id="grid-destinatarios">
-          {% for inst in instituciones %}
-          <div class="sp-card-persona"
-               data-id="{{ inst.id }}"
-               data-nombre="{{ inst.nombre_institucion }}"
-               data-cargo="{{ inst.titular_nombre or '' }}"
-               onclick="spSeleccionarPersona('destinatario', {{ inst.id }}, this)">
-            <div class="sp-avatar"
-                 style="background:{{ ['#0F3460','#0D7A60','#C9943A','#6B4C9A','#C0392B','#2980B9'][ loop.index0 % 6 ] }}">{{ (inst.nombre_institucion or '?')[0]|upper }}</div>
-            <div class="sp-card-info">
-              <div class="sp-card-nombre">{{ inst.nombre_institucion }}</div>
-              <div class="sp-card-cargo">{{ inst.titular_nombre or '' }}{% if inst.titular_cargo %} · {{ inst.titular_cargo }}{% endif %}</div>
-            </div>
-            <div class="sp-card-check">✓</div>
-          </div>
-          {% else %}
-          <div class="sp-empty-mini">
-            Todavía no hay destinatarios. Toca ＋ para agregar uno.
-          </div>
-          {% endfor %}
-        </div>
-        <div style="display:flex; gap:.5rem; justify-content:space-between; align-items:center; margin-top:.5rem;">
-          <small><a href="/secretaria/directorio">Ver directorio completo →</a></small>
-          <button type="button" class="sp-btn sp-btn-icon" title="Ver ficha del destinatario seleccionado" onclick="spAbrirFicha()">👤</button>
-        </div>
-      </div>
-      <div class="sp-seccion-resumen" id="res-destinatario">Opcional</div>
-      <input type="hidden" name="institucion_id" id="sp-institucion-select" value="">
-    </div>
-
-    <!-- ═══════ TONO (3 pills siempre visibles) ═══════ -->
-    <fieldset class="sp-field sp-tono-grupo">
-      <label class="sp-tono-pill">
-        <input type="radio" name="tono" value="formal" checked hidden>
-        <span>🎩 Formal</span>
-      </label>
-      <label class="sp-tono-pill">
-        <input type="radio" name="tono" value="cordial" hidden>
-        <span>💛 Cordial</span>
-      </label>
-      <label class="sp-tono-pill">
-        <input type="radio" name="tono" value="protocolar" hidden>
-        <span>📜 Protocolar</span>
-      </label>
-    </fieldset>
-
-    <!-- BOTÓN ANALIZAR -->
-    <button type="button" id="btn-analizar" class="sp-btn sp-btn-secondary"
-            hx-post="/secretaria/redactor/analizar"
-            hx-target="#sp-propuesta"
-            hx-swap="innerHTML"
-            hx-include="#form-redactor"
-            hx-encoding="multipart/form-data"
-            hx-on::before-request="this.disabled=true; this.innerHTML='Analizando...'"
-            hx-on::after-request="this.disabled=false; this.innerHTML='Analizar y proponer →'; document.getElementById('sp-propuesta').style.display='block'">
-      Analizar y proponer &rarr;
-    </button>
-
-    <!-- Panel de propuesta (oculto hasta que el agente responde) -->
-    <div id="sp-propuesta" style="display:none; margin-top:1rem;"></div>
-
-    <!-- BOTÓN GENERAR DIRECTO -->
-    <button type="submit" id="btn-generar" class="sp-btn sp-btn-primary" style="margin-top:.5rem;">
-      Generar documento
-    </button>
   </form>
 
-  <div class="sp-col sp-col-output">
-    <div id="sp-resultado" class="sp-resultado">
-      <div class="sp-placeholder">
-        <p>El documento generado aparecerá aquí.</p>
-      </div>
+  <!-- Panel de propuesta (HTMX target) -->
+  <div id="sp-propuesta" class="sp-propuesta-box" style="display:none; margin-top:1rem;"></div>
+
+  <!-- Resultado del documento -->
+  <div id="sp-resultado" class="sp-resultado" style="margin-top:1rem;">
+    <div class="sp-placeholder">
+      <p>El documento generado aparecerá aquí.</p>
     </div>
   </div>
-</section>
 
-<!-- ═══════ MODAL: Agregar Remitente ═══════ -->
-<div id="sp-modal-remitente" class="sp-modal" style="display:none;">
-  <div class="sp-modal-backdrop" onclick="spCerrarModalRemitente()"></div>
-  <div class="sp-modal-card">
-    <h3 style="margin-top:0;">＋ Agregar remitente</h3>
-    <form onsubmit="return spEnviarRemitente(event)">
-      <label class="sp-field">
-        <span>Nombre completo *</span>
-        <input type="text" name="nombre" required placeholder="Ej: Carmen García López">
-      </label>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:.6rem;">
-        <label class="sp-field">
-          <span>Tratamiento</span>
-          <input type="text" name="tratamiento" placeholder="Dr. / Mg. / CPC">
-        </label>
-        <label class="sp-field">
-          <span>Sexo</span>
-          <select name="sexo">
-            <option value="M">Masculino</option>
-            <option value="F">Femenino</option>
-          </select>
-        </label>
+  <!-- 5. PANEL FLOTANTE (overlay) -->
+  <div class="sp-panel-overlay" id="panel-overlay" onclick="spCerrarPanelBG(event)">
+    <div class="sp-panel-glass" id="panel-glass" onclick="event.stopPropagation()">
+      <div class="sp-panel-header">
+        <span class="sp-panel-titulo" id="panel-titulo"></span>
+        <button type="button" class="sp-panel-cerrar" onclick="spCerrarTodo()" aria-label="Cerrar">✕</button>
       </div>
-      <label class="sp-field">
-        <span>Cargo</span>
-        <input type="text" name="cargo" placeholder="Ej: Decano, Secretaria, Director">
-      </label>
-      <label class="sp-field">
-        <span>Área / Institución</span>
-        <input type="text" name="institucion" placeholder="Opcional">
-      </label>
-
-      <div id="sp-modal-rem-err" class="sp-alert sp-alert-error" style="display:none; margin:.5rem 0;"></div>
-
-      <div style="display:flex; gap:.5rem; justify-content:flex-end;">
-        <button type="button" class="sp-btn" onclick="spCerrarModalRemitente()">Cancelar</button>
-        <button type="submit" class="sp-btn sp-btn-primary">Agregar</button>
-      </div>
-    </form>
+      <div class="sp-panel-body" id="panel-body"></div>
+    </div>
   </div>
+
 </div>
 
-<!-- ═══════ MODAL: Agregar Destinatario ═══════ -->
-<div id="sp-modal-destinatario" class="sp-modal" style="display:none;">
-  <div class="sp-modal-backdrop" onclick="spCerrarModalDestinatario()"></div>
-  <div class="sp-modal-card">
-    <h3 style="margin-top:0;">＋ Agregar destinatario</h3>
-    <form onsubmit="return spEnviarDestinatario(event)">
-      <label class="sp-field">
-        <span>Nombre de la institución *</span>
-        <input type="text" name="nombre_institucion" required placeholder="Ej: Municipalidad de Iquitos">
-      </label>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:.6rem;">
-        <label class="sp-field">
-          <span>RUC</span>
-          <input type="text" name="ruc" maxlength="11" placeholder="11 dígitos">
-        </label>
-        <label class="sp-field">
-          <span>Ciudad</span>
-          <input type="text" name="ciudad" placeholder="Iquitos">
-        </label>
-      </div>
-      <label class="sp-field">
-        <span>Nombre del titular</span>
-        <input type="text" name="titular_nombre" placeholder="Ej: CPC Juan Pérez">
-      </label>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:.6rem;">
-        <label class="sp-field">
-          <span>Cargo del titular</span>
-          <input type="text" name="titular_cargo" placeholder="Ej: Alcalde, Decano">
-        </label>
-        <label class="sp-field">
-          <span>Tratamiento</span>
-          <input type="text" name="titular_tratamiento" placeholder="Sr. / Dr. / Mg.">
-        </label>
-      </div>
-
-      <div id="sp-modal-dest-err" class="sp-alert sp-alert-error" style="display:none; margin:.5rem 0;"></div>
-
-      <div style="display:flex; gap:.5rem; justify-content:flex-end;">
-        <button type="button" class="sp-btn" onclick="spCerrarModalDestinatario()">Cancelar</button>
-        <button type="submit" class="sp-btn sp-btn-primary">Agregar</button>
-      </div>
-    </form>
+<!-- 8. NOTIFICACIÓN DE AUDIO -->
+<div class="sp-notif-banner" id="sp-notif-banner" style="display:none;">
+  <div class="sp-notif-icono">🔔</div>
+  <div class="sp-notif-contenido">
+    <div class="sp-notif-titulo" id="sp-notif-titulo"></div>
+    <div class="sp-notif-msg" id="sp-notif-msg"></div>
   </div>
+  <button type="button" onclick="spCerrarNotif()" class="sp-notif-cerrar">✕</button>
 </div>
 
-<script>
-// ─── Toggle unificado ───
-window.spToggle = function(id) {
-  var body = document.getElementById(id);
-  var chv = document.getElementById('chv-' + id);
-  if (!body) return;
-  var abierto = body.style.display !== 'none';
-  body.style.display = abierto ? 'none' : 'block';
-  if (chv) {
-    chv.style.transition = 'transform 0.2s';
-    chv.style.transform = abierto ? '' : 'rotate(90deg)';
-  }
-};
-
-// ─── Tipo de documento ───
-window.spSeleccionarTipo = function(tipo, btn) {
-  var hidden = document.getElementById('tipo-seleccionado');
-  if (hidden) hidden.value = tipo;
-  document.querySelectorAll('.sp-tipo-card').forEach(function(b) {
-    b.classList.toggle('sp-tipo-card--activa', b.dataset.tipo === tipo);
-  });
-  var label = btn ? (btn.dataset.label || tipo) : tipo;
-  var icono = btn ? (btn.dataset.icono || '📄') : '📄';
-  var res = document.getElementById('res-tipo-doc');
-  if (res) res.innerHTML = '<strong>' + icono + ' ' + label + '</strong> · seleccionado';
-};
-
-// ─── Selección de persona (remitente o destinatario) ───
-window.spSeleccionarPersona = function(tipo, id, card) {
-  var hiddenId = tipo === 'remitente' ? 'perfil-remitente-hidden' : 'sp-institucion-select';
-  var hidden = document.getElementById(hiddenId);
-  if (hidden) hidden.value = id;
-
-  var grid = tipo === 'remitente'
-    ? document.getElementById('grid-remitentes')
-    : document.getElementById('grid-destinatarios');
-  if (grid) {
-    grid.querySelectorAll('.sp-card-persona').forEach(function(c) {
-      c.classList.remove('sp-card-persona--activa');
-    });
-  }
-  if (card) card.classList.add('sp-card-persona--activa');
-
-  var nombre = card ? (card.dataset.nombre || '') : '';
-  var cargo = card ? (card.dataset.cargo || '') : '';
-  var tratamiento = card ? (card.dataset.tratamiento || '') : '';
-  var res = document.getElementById('res-' + tipo);
-  if (res) {
-    var icono = tipo === 'remitente' ? '👤' : '📬';
-    var linea = icono + ' ' + (tratamiento ? tratamiento + ' ' : '') + nombre;
-    if (cargo) linea += ' · ' + cargo;
-    res.innerHTML = '<strong>' + linea + '</strong>';
-  }
-};
-
-// ─── Modal Remitente ───
-window.spAbrirModalRemitente = function() {
-  var m = document.getElementById('sp-modal-remitente');
-  if (m) m.style.display = 'flex';
-};
-window.spCerrarModalRemitente = function() {
-  var m = document.getElementById('sp-modal-remitente');
-  if (m) m.style.display = 'none';
-  var err = document.getElementById('sp-modal-rem-err');
-  if (err) { err.style.display = 'none'; err.textContent = ''; }
-};
-window.spEnviarRemitente = async function(ev) {
-  ev.preventDefault();
-  var form = ev.target;
-  var err = document.getElementById('sp-modal-rem-err');
-  var body = {
-    nombre: form.nombre.value,
-    tratamiento: form.tratamiento.value,
-    sexo: form.sexo.value,
-    cargo: form.cargo.value,
-    institucion: form.institucion.value,
-  };
-  try {
-    var r = await fetch('/secretaria/api/remitentes/crear', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(body),
-    });
-    var data = await r.json();
-    if (!data.ok) {
-      err.style.display = 'block';
-      err.textContent = data.error || 'Error al agregar';
-      return false;
-    }
-    // Agregar la card al grid y seleccionarla
-    var grid = document.getElementById('grid-remitentes');
-    var empty = grid.querySelector('.sp-empty-mini');
-    if (empty) empty.remove();
-    var colores = ['#0F3460','#0D7A60','#C9943A','#6B4C9A','#C0392B','#2980B9'];
-    var letra = (data.perfil.nombre || '?').charAt(0).toUpperCase();
-    var color = colores[letra.charCodeAt(0) % colores.length];
-    var card = document.createElement('div');
-    card.className = 'sp-card-persona';
-    card.dataset.id = data.perfil.id;
-    card.dataset.nombre = data.perfil.nombre;
-    card.dataset.cargo = data.perfil.cargo || '';
-    card.dataset.tratamiento = data.perfil.tratamiento || '';
-    card.innerHTML =
-      '<div class="sp-avatar" style="background:' + color + '">' + letra + '</div>' +
-      '<div class="sp-card-info">' +
-        '<div class="sp-card-nombre">' +
-          (data.perfil.tratamiento ? data.perfil.tratamiento + ' ' : '') + data.perfil.nombre +
-        '</div>' +
-        '<div class="sp-card-cargo">' + (data.perfil.cargo || '') + '</div>' +
-      '</div>' +
-      '<div class="sp-card-check">✓</div>';
-    card.onclick = function() { spSeleccionarPersona('remitente', data.perfil.id, card); };
-    grid.appendChild(card);
-    spSeleccionarPersona('remitente', data.perfil.id, card);
-    spCerrarModalRemitente();
-    form.reset();
-  } catch (e) {
-    err.style.display = 'block';
-    err.textContent = 'Error de red';
-  }
-  return false;
-};
-
-// ─── Modal Destinatario ───
-window.spAbrirModalDestinatario = function() {
-  var m = document.getElementById('sp-modal-destinatario');
-  if (m) m.style.display = 'flex';
-};
-window.spCerrarModalDestinatario = function() {
-  var m = document.getElementById('sp-modal-destinatario');
-  if (m) m.style.display = 'none';
-  var err = document.getElementById('sp-modal-dest-err');
-  if (err) { err.style.display = 'none'; err.textContent = ''; }
-};
-window.spEnviarDestinatario = async function(ev) {
-  ev.preventDefault();
-  var form = ev.target;
-  var err = document.getElementById('sp-modal-dest-err');
-  var body = {
-    nombre_institucion: form.nombre_institucion.value,
-    ruc: form.ruc.value,
-    ciudad: form.ciudad.value,
-    titular_nombre: form.titular_nombre.value,
-    titular_cargo: form.titular_cargo.value,
-    titular_tratamiento: form.titular_tratamiento.value,
-  };
-  try {
-    var r = await fetch('/secretaria/api/destinatarios/crear', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(body),
-    });
-    var data = await r.json();
-    if (!data.ok) {
-      err.style.display = 'block';
-      err.textContent = data.error || 'Error al agregar';
-      return false;
-    }
-    var grid = document.getElementById('grid-destinatarios');
-    var empty = grid.querySelector('.sp-empty-mini');
-    if (empty) empty.remove();
-    var colores = ['#0F3460','#0D7A60','#C9943A','#6B4C9A','#C0392B','#2980B9'];
-    var letra = (data.institucion.nombre_institucion || '?').charAt(0).toUpperCase();
-    var color = colores[letra.charCodeAt(0) % colores.length];
-    var card = document.createElement('div');
-    card.className = 'sp-card-persona';
-    card.dataset.id = data.institucion.id;
-    card.dataset.nombre = data.institucion.nombre_institucion;
-    card.dataset.cargo = data.institucion.titular_nombre || '';
-    card.innerHTML =
-      '<div class="sp-avatar" style="background:' + color + '">' + letra + '</div>' +
-      '<div class="sp-card-info">' +
-        '<div class="sp-card-nombre">' + data.institucion.nombre_institucion + '</div>' +
-        '<div class="sp-card-cargo">' + (data.institucion.titular_nombre || '') +
-          (data.institucion.titular_cargo ? ' · ' + data.institucion.titular_cargo : '') + '</div>' +
-      '</div>' +
-      '<div class="sp-card-check">✓</div>';
-    card.onclick = function() { spSeleccionarPersona('destinatario', data.institucion.id, card); };
-    grid.appendChild(card);
-    spSeleccionarPersona('destinatario', data.institucion.id, card);
-    spCerrarModalDestinatario();
-    form.reset();
-  } catch (e) {
-    err.style.display = 'block';
-    err.textContent = 'Error de red';
-  }
-  return false;
-};
-
-// ─── Inicialización: si hay un remitente default, pre-seleccionarlo ───
-(function() {
-  var def = document.querySelector('#grid-remitentes .sp-card-persona--activa');
-  if (def) spSeleccionarPersona('remitente', parseInt(def.dataset.id), def);
-  // Tipo por defecto: carta
-  var tipoDefault = document.querySelector('.sp-tipo-card[data-tipo="carta"]');
-  if (tipoDefault) spSeleccionarTipo('carta', tipoDefault);
-})();
-</script>
+<!-- Contenedor para modales HTMX (agregar remitente/destinatario) -->
+<div id="sp-modal-container"></div>
 
 <!-- Panel lateral ficha -->
 <aside id="sp-ficha-panel" class="sp-ficha-panel" aria-hidden="true">
@@ -535,4 +175,314 @@ window.spEnviarDestinatario = async function(ev) {
     </div>
   </div>
 </aside>
+
+<script>
+// ═══════ Redactor Pro: tabs + panel flotante ═══════
+(function(){
+  var wrap = document.getElementById('sp-redactor-wrap');
+  var remitentes = [];
+  var destinatarios = [];
+  try { remitentes = JSON.parse(wrap.dataset.remitentes || '[]'); } catch (e) {}
+  try { destinatarios = JSON.parse(wrap.dataset.destinatarios || '[]'); } catch (e) {}
+
+  var SP_COLORES = ['#0F3460','#0D7A60','#C9943A','#6B4C9A','#C0392B','#2980B9','#16A085'];
+  function colorAvatar(nombre){
+    var n = (nombre || 'A').charCodeAt(0);
+    return SP_COLORES[n % SP_COLORES.length];
+  }
+  function inicial(nombre){
+    return (nombre || '?').charAt(0).toUpperCase();
+  }
+  function escapeAttr(s){
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  var estado = {
+    tipo: null, tipoLabel: null,
+    remitenteId: null, remitenteLabel: null,
+    destinatarioId: null, destinatarioLabel: null,
+    tono: 'formal', tonoLabel: 'Formal',
+    tabActivo: null,
+  };
+
+  // ── Tipos disponibles (desde el servidor) ──
+  var SP_TIPOS = [
+    {% for t in tipos %}
+    {val:{{ t.id|tojson }}, label:{{ t.label|tojson }}, icono:{{ (t.icono or '📄')|tojson }}}{{ "," if not loop.last else "" }}
+    {% endfor %}
+  ];
+
+  var SP_TONOS = [
+    {val:'formal',     label:'Formal',     emoji:'🎩', desc:'Instituciones, autoridades, trámites oficiales'},
+    {val:'cordial',    label:'Cordial',    emoji:'💛', desc:'Colegas, colaboradores, comunicación interna'},
+    {val:'protocolar', label:'Protocolar', emoji:'📜', desc:'Ceremonias, actos oficiales, máxima formalidad'},
+  ];
+
+  // ── Abrir/Cerrar ──
+  window.spAbrirTab = function(tab){
+    if (estado.tabActivo === tab){ spCerrarTodo(); return; }
+    estado.tabActivo = tab;
+    document.querySelectorAll('.sp-tab').forEach(function(t){ t.classList.remove('activo'); });
+    var tabEl = document.getElementById('tab-' + tab);
+    if (tabEl) tabEl.classList.add('activo');
+    var titulos = {
+      tipo: 'Tipo de documento',
+      remitente: 'Remitente / Firmante',
+      destinatario: 'Destinatario',
+      tono: 'Tono del documento',
+    };
+    document.getElementById('panel-titulo').textContent = titulos[tab] || '';
+    cargarPanel(tab);
+    document.getElementById('panel-overlay').classList.add('visible');
+  };
+
+  window.spCerrarPanelBG = function(ev){
+    if (ev.target === document.getElementById('panel-overlay')) spCerrarTodo();
+  };
+
+  window.spCerrarTodo = function(){
+    var ov = document.getElementById('panel-overlay');
+    if (ov) ov.classList.remove('visible');
+    document.querySelectorAll('.sp-tab').forEach(function(t){ t.classList.remove('activo'); });
+    estado.tabActivo = null;
+  };
+
+  function cargarPanel(tab){
+    var body = document.getElementById('panel-body');
+    if (tab === 'tipo') body.innerHTML = renderTipos();
+    else if (tab === 'remitente') body.innerHTML = renderRemitentes();
+    else if (tab === 'destinatario') body.innerHTML = renderDestinatarios();
+    else if (tab === 'tono') body.innerHTML = renderTonos();
+  }
+
+  // ── Render: TIPOS ──
+  function renderTipos(){
+    return '<div class="sp-tipos-grid">' +
+      SP_TIPOS.map(function(t){
+        var sel = estado.tipo === t.val ? 'seleccionado' : '';
+        return '<button type="button" class="sp-tipo-btn ' + sel + '"' +
+          ' onclick="spSelTipo(\'' + escapeAttr(t.val) + '\',\'' + escapeAttr(t.label) + '\',\'' + escapeAttr(t.icono) + '\')">' +
+          '<span class="sp-tipo-icono">' + t.icono + '</span>' +
+          '<span class="sp-tipo-label">' + t.label + '</span>' +
+          '</button>';
+      }).join('') +
+      '</div>';
+  }
+  window.spSelTipo = function(val, label, icono){
+    estado.tipo = val;
+    estado.tipoLabel = label;
+    document.getElementById('campo-tipo').value = val;
+    document.getElementById('val-tipo').textContent = label;
+    document.getElementById('tab-tipo').classList.add('completo');
+    actualizarResumen();
+    spCerrarTodo();
+  };
+
+  // ── Render: REMITENTES ──
+  function renderRemitentes(){
+    var html = '<div class="sp-personas-grid">';
+    if (remitentes.length === 0){
+      html += '<p style="color:var(--sp-muted);font-size:13px;text-align:center;padding:20px 0">' +
+              'Todavía no hay remitentes guardados.</p>';
+    } else {
+      html += remitentes.map(function(r){
+        var sel = estado.remitenteId == r.id ? 'seleccionado' : '';
+        return '<div class="sp-card-persona ' + sel + '"' +
+          ' onclick="spSelRemitente(' + r.id + ',\'' + escapeAttr(r.nombre) + '\',\'' + escapeAttr(r.cargo) + '\')">' +
+          '<div class="sp-avatar" style="background:' + colorAvatar(r.nombre) + '">' +
+            inicial(r.nombre) +
+          '</div>' +
+          '<div>' +
+            '<div class="sp-card-nombre">' + r.nombre + '</div>' +
+            '<div class="sp-card-cargo">' + (r.cargo || '') + '</div>' +
+          '</div>' +
+          '<div class="sp-card-check">✓</div>' +
+        '</div>';
+      }).join('');
+    }
+    html += '</div>';
+    html += '<button type="button" class="sp-btn-panel-agregar" onclick="spAbrirModalRemitenteHtmx()">' +
+            '＋ Agregar nuevo remitente</button>';
+    html += '<button type="button" class="sp-btn-panel-link" onclick="spCerrarTodo(); window.open(\'/secretaria/remitentes\',\'_blank\')">' +
+            'Gestionar todos los remitentes ↗</button>';
+    return html;
+  }
+  window.spSelRemitente = function(id, nombre, cargo){
+    estado.remitenteId = id;
+    estado.remitenteLabel = nombre;
+    document.getElementById('campo-remitente').value = id;
+    document.getElementById('val-remitente').textContent = (nombre || '').split(' ')[0] || '—';
+    document.getElementById('tab-remitente').classList.add('completo');
+    actualizarResumen();
+    spCerrarTodo();
+  };
+  window.spAbrirModalRemitenteHtmx = function(){
+    spCerrarTodo();
+    if (window.htmx){
+      window.htmx.ajax('GET','/secretaria/remitentes/modal-nuevo',{target:'#sp-modal-container', swap:'innerHTML'});
+    }
+  };
+  // Callback que los modales invocan tras crear:
+  window.spAgregarRemitenteLocal = function(nuevo){
+    remitentes.push({
+      id: nuevo.id, nombre: nuevo.nombre, cargo: nuevo.cargo || '',
+      tratamiento: nuevo.tratamiento || '', foto_url: '',
+    });
+    wrap.dataset.remitentes = JSON.stringify(remitentes);
+    spSelRemitente(nuevo.id, nuevo.nombre, nuevo.cargo || '');
+  };
+
+  // ── Render: DESTINATARIOS ──
+  function renderDestinatarios(){
+    var html = '<div class="sp-personas-grid">';
+    if (destinatarios.length === 0){
+      html += '<p style="color:var(--sp-muted);font-size:13px;text-align:center;padding:20px 0">' +
+              'No hay destinatarios guardados aún.</p>';
+    } else {
+      html += destinatarios.map(function(d){
+        var sel = estado.destinatarioId == d.id ? 'seleccionado' : '';
+        return '<div class="sp-card-persona ' + sel + '"' +
+          ' onclick="spSelDestinatario(' + d.id + ',\'' + escapeAttr(d.nombre) + '\')">' +
+          '<div class="sp-avatar" style="background:' + colorAvatar(d.nombre) + '">' +
+            inicial(d.nombre) +
+          '</div>' +
+          '<div>' +
+            '<div class="sp-card-nombre">' + d.nombre + '</div>' +
+            '<div class="sp-card-cargo">' + (d.cargo || d.institucion || '') + '</div>' +
+          '</div>' +
+          '<div class="sp-card-check">✓</div>' +
+        '</div>';
+      }).join('');
+    }
+    html += '</div>';
+    html += '<button type="button" class="sp-btn-panel-agregar" onclick="spAbrirModalDestinatarioHtmx()">' +
+            '＋ Agregar nuevo destinatario</button>';
+    html += '<button type="button" class="sp-btn-panel-link" onclick="spCerrarTodo(); window.open(\'/secretaria/directorio\',\'_blank\')">' +
+            'Ver directorio completo ↗</button>';
+    return html;
+  }
+  window.spSelDestinatario = function(id, nombre){
+    estado.destinatarioId = id;
+    estado.destinatarioLabel = nombre;
+    document.getElementById('campo-destinatario').value = id;
+    document.getElementById('val-destinatario').textContent = (nombre || '').split(' ').slice(0,2).join(' ') || '—';
+    document.getElementById('tab-destinatario').classList.add('completo');
+    actualizarResumen();
+    spCerrarTodo();
+  };
+  window.spAbrirModalDestinatarioHtmx = function(){
+    spCerrarTodo();
+    if (window.htmx){
+      window.htmx.ajax('GET','/secretaria/destinatarios/modal-nuevo',{target:'#sp-modal-container', swap:'innerHTML'});
+    }
+  };
+  window.spAgregarDestinatarioLocal = function(nuevo){
+    destinatarios.push({
+      id: nuevo.id,
+      nombre: nuevo.nombre_institucion,
+      cargo: nuevo.titular_nombre || '',
+      titular_cargo: nuevo.titular_cargo || '',
+      institucion: nuevo.nombre_institucion,
+    });
+    wrap.dataset.destinatarios = JSON.stringify(destinatarios);
+    spSelDestinatario(nuevo.id, nuevo.nombre_institucion);
+  };
+
+  // ── Render: TONOS ──
+  function renderTonos(){
+    return '<div class="sp-tonos-grid">' +
+      SP_TONOS.map(function(t){
+        var sel = estado.tono === t.val ? 'seleccionado' : '';
+        return '<div class="sp-tono-card ' + sel + '"' +
+          ' onclick="spSelTono(\'' + t.val + '\',\'' + t.label + '\')">' +
+          '<span class="sp-tono-emoji">' + t.emoji + '</span>' +
+          '<span class="sp-tono-nombre">' + t.label + '</span>' +
+          '<span class="sp-tono-desc">' + t.desc + '</span>' +
+        '</div>';
+      }).join('') +
+      '</div>';
+  }
+  window.spSelTono = function(val, label){
+    estado.tono = val;
+    estado.tonoLabel = label;
+    document.getElementById('campo-tono').value = val;
+    document.getElementById('val-tono').textContent = label;
+    document.getElementById('tab-tono').classList.add('completo');
+    actualizarResumen();
+    spCerrarTodo();
+  };
+
+  // ── Resumen dinámico ──
+  function actualizarResumen(){
+    var tipo = estado.tipoLabel || '...';
+    var de   = estado.remitenteLabel ? estado.remitenteLabel.split(' ')[0] : '...';
+    var para = estado.destinatarioLabel || 'destinatario por definir';
+    var tono = estado.tonoLabel || 'Formal';
+    document.getElementById('resumen-dinamico').textContent =
+      tipo + ' de ' + de + ' · Para ' + para + ' · Tono ' + tono;
+  }
+
+  // ── Notificación de audio ──
+  window.spNotificarAudio = function(titulo, mensaje, hablar){
+    if (hablar === undefined) hablar = true;
+    document.getElementById('sp-notif-titulo').textContent = titulo;
+    document.getElementById('sp-notif-msg').textContent = mensaje;
+    document.getElementById('sp-notif-banner').style.display = 'flex';
+    if (hablar && 'speechSynthesis' in window){
+      var u = new SpeechSynthesisUtterance(titulo + '. ' + mensaje);
+      u.lang = 'es-PE'; u.rate = 0.9;
+      window.speechSynthesis.speak(u);
+    }
+    setTimeout(window.spCerrarNotif, 7000);
+  };
+  window.spCerrarNotif = function(){
+    document.getElementById('sp-notif-banner').style.display = 'none';
+  };
+
+  // ── Archivo de referencia ──
+  var inputArchivo = document.getElementById('archivo-ref');
+  if (inputArchivo){
+    inputArchivo.addEventListener('change', function(){
+      if (this.files && this.files[0]){
+        document.getElementById('zona-referencia').style.display = 'none';
+        document.getElementById('ref-nombre').textContent = this.files[0].name;
+        document.getElementById('ref-adjunto').style.display = 'flex';
+      }
+    });
+  }
+  window.spQuitarReferencia = function(){
+    var inp = document.getElementById('archivo-ref');
+    if (inp) inp.value = '';
+    document.getElementById('zona-referencia').style.display = 'flex';
+    document.getElementById('ref-adjunto').style.display = 'none';
+  };
+
+  // ── Pre-seleccionar remitente default si hay ──
+  (function initDefaults(){
+    var def = remitentes.find(function(r){ return r.es_default; });
+    if (def){
+      estado.remitenteId = def.id;
+      estado.remitenteLabel = def.nombre;
+      document.getElementById('campo-remitente').value = def.id;
+      document.getElementById('val-remitente').textContent = (def.nombre || '').split(' ')[0];
+      document.getElementById('tab-remitente').classList.add('completo');
+    }
+    // Tipo: carta por defecto
+    var carta = SP_TIPOS.find(function(t){ return t.val === 'carta'; });
+    if (carta){
+      estado.tipo = carta.val;
+      estado.tipoLabel = carta.label;
+      document.getElementById('campo-tipo').value = carta.val;
+      document.getElementById('val-tipo').textContent = carta.label;
+      document.getElementById('tab-tipo').classList.add('completo');
+    }
+    // Tono: formal (ya es el valor inicial)
+    document.getElementById('tab-tono').classList.add('completo');
+    actualizarResumen();
+  })();
+})();
+</script>
+
 {% endblock %}
