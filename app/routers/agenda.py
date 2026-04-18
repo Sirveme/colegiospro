@@ -4,6 +4,8 @@
 # ══════════════════════════════════════════════════════════
 
 import os
+import logging
+import traceback
 from datetime import datetime, timedelta, date as date_cls
 from typing import Optional, List
 
@@ -12,6 +14,8 @@ from fastapi import (
 )
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
+
+logger = logging.getLogger("colegiospro.agenda")
 
 from app.database import SessionLocal
 from app.models_secretaria import (
@@ -340,6 +344,47 @@ async def agenda_nuevo_submit(
     return RedirectResponse("/secretaria/agenda/", status_code=302)
 
 
+# ─── Configuración (GET) ────────────────────────────────────────
+# IMPORTANTE: este endpoint debe registrarse ANTES del catch-all
+# /{evento_id:int} para garantizar que /secretaria/agenda/config
+# nunca colisione con la ruta de detalle, aun si algún proxy/cliente
+# altera el path. Blindado con try/except para loggear la causa real
+# si FastAPI terminara devolviendo 422/500.
+@router.get("/config", response_class=HTMLResponse)
+async def agenda_config_view(request: Request):
+    try:
+        usuario = _user_or_redirect(request)
+        if not usuario:
+            return RedirectResponse("/secretaria/login", status_code=302)
+
+        db = _db()
+        try:
+            cfg = _get_o_crear_config(db, usuario.id)
+            accesos = db.query(AgendaAcceso).filter(
+                AgendaAcceso.propietario_id == usuario.id,
+                AgendaAcceso.activo == True,  # noqa: E712
+            ).all()
+        finally:
+            db.close()
+
+        return templates.TemplateResponse(
+            request,
+            "secretaria/agenda/config.html",
+            _ctx(usuario, cfg=cfg, accesos=accesos),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "agenda_config_view falló: %s\n%s",
+            e, traceback.format_exc(),
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al cargar config de agenda: {type(e).__name__}: {e}",
+        )
+
+
 # ─── Detalle / editar / cancelar / notificar ────────────────────
 # Restringimos evento_id a dígitos con regex para que rutas estáticas
 # como /config, /heartbeat, /google/callback NO colisionen con este
@@ -436,28 +481,8 @@ async def agenda_notificar_ahora(evento_id: int, request: Request):
     return JSONResponse({"ok": True, "mensaje": "Notificación enviada"})
 
 
-# ─── Configuración ─────────────────────────────────────────────
-@router.get("/config", response_class=HTMLResponse)
-async def agenda_config_view(request: Request):
-    usuario = _user_or_redirect(request)
-    if not usuario:
-        return RedirectResponse("/secretaria/login", status_code=302)
-    db = _db()
-    try:
-        cfg = _get_o_crear_config(db, usuario.id)
-        accesos = db.query(AgendaAcceso).filter(
-            AgendaAcceso.propietario_id == usuario.id,
-            AgendaAcceso.activo == True,  # noqa: E712
-        ).all()
-    finally:
-        db.close()
-    return templates.TemplateResponse(
-        request,
-        "secretaria/agenda/config.html",
-        _ctx(usuario, cfg=cfg, accesos=accesos),
-    )
-
-
+# ─── Configuración (POST) ──────────────────────────────────────
+# El GET /config está arriba, antes del catch-all /{evento_id:int}.
 @router.post("/config")
 async def agenda_config_guardar(
     request: Request,
