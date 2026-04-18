@@ -1,0 +1,155 @@
+{% extends "secretaria/base.html" %}
+{% block title %}Panel Jefe{% endblock %}
+{% block content %}
+<header class="sp-header">
+  <h1>Panel del Jefe / Funcionario</h1>
+  <p>Solicita documentos, pide correcciones o envía comunicados a tu(s) secretaria(s).</p>
+</header>
+
+<div class="sp-alert {% if not push_habilitado %}sp-alert-error{% else %}sp-alert-ok{% endif %}" style="margin-bottom:1rem;">
+  {% if push_habilitado %}
+    ✓ Push habilitado · {{ suscriptores_count }} dispositivo(s) registrado(s) en tu organización
+  {% else %}
+    ⚠ Push deshabilitado — falta configurar VAPID_PUBLIC_KEY y VAPID_PRIVATE_KEY en el servidor.
+    Las solicitudes se registrarán pero no llegarán como notificación al dispositivo.
+  {% endif %}
+</div>
+
+<div class="sp-jefe-grid">
+
+  <!-- 📝 Solicitar documento nuevo -->
+  <section class="sp-col" style="margin-bottom:1rem;">
+    <h2 style="margin-top:0;">📝 Solicitar documento nuevo</h2>
+    <form class="sp-form" onsubmit="return spEnviarSolicitud(event, 'solicitar_nuevo')">
+      <label class="sp-field">
+        <span>Tipo de documento</span>
+        <select name="tipo_doc">
+          <option value="carta">Carta</option>
+          <option value="oficio">Oficio</option>
+          <option value="memorandum">Memorándum</option>
+          <option value="circular">Circular</option>
+          <option value="acta">Acta</option>
+          <option value="invitacion">Invitación</option>
+          <option value="resolucion">Resolución</option>
+        </select>
+      </label>
+      <label class="sp-field">
+        <span>Instrucción (qué comunicar)</span>
+        <textarea name="instruccion" rows="3" required placeholder="Ej: Redactar una carta al alcalde agradeciendo el apoyo..."></textarea>
+      </label>
+      <label class="sp-toggle-item">
+        <input type="checkbox" name="urgente" value="1">
+        <span><strong>Urgente</strong></span>
+      </label>
+      <div class="sp-solicitud-estado" style="display:none;"></div>
+      <button type="submit" class="sp-btn sp-btn-primary">Enviar solicitud</button>
+    </form>
+  </section>
+
+  <!-- ✏️ Corregir documento -->
+  <section class="sp-col" style="margin-bottom:1rem;">
+    <h2 style="margin-top:0;">✏️ Corregir documento</h2>
+    <form class="sp-form" onsubmit="return spEnviarSolicitud(event, 'corregir')">
+      <label class="sp-field">
+        <span>Documento</span>
+        <select name="doc_id" required>
+          <option value="">— Elegir —</option>
+          {% for d in docs_recientes %}
+          <option value="{{ d.id }}">
+            #{{ d.id }} · {{ d.modo }} · {{ d.creado_en.strftime('%d/%m %H:%M') if d.creado_en else '' }}
+          </option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="sp-field">
+        <span>Nota / corrección</span>
+        <textarea name="nota" rows="3" required placeholder="Describe qué corregir..."></textarea>
+      </label>
+      <label class="sp-toggle-item">
+        <input type="checkbox" name="urgente" value="1">
+        <span><strong>Urgente</strong></span>
+      </label>
+      <div class="sp-solicitud-estado" style="display:none;"></div>
+      <button type="submit" class="sp-btn sp-btn-primary">Enviar</button>
+    </form>
+  </section>
+
+  <!-- 📢 Comunicado masivo -->
+  <section class="sp-col" style="margin-bottom:1rem;">
+    <h2 style="margin-top:0;">📢 Comunicado masivo</h2>
+    <form class="sp-form" onsubmit="return spEnviarSolicitud(event, 'comunicado')">
+      <label class="sp-field">
+        <span>Mensaje</span>
+        <textarea name="mensaje" rows="3" required maxlength="200" placeholder="Texto del comunicado..."></textarea>
+      </label>
+      <label class="sp-field">
+        <span>A quién</span>
+        <select name="destinatarios">
+          <option value="mis_secretarias">Mis secretarias</option>
+          <option value="todos">Todos los suscriptores activos</option>
+        </select>
+      </label>
+      <label class="sp-toggle-item">
+        <input type="checkbox" name="urgente" value="1">
+        <span><strong>Urgente</strong></span>
+      </label>
+      <div class="sp-solicitud-estado" style="display:none;"></div>
+      <button type="submit" class="sp-btn sp-btn-primary">Enviar</button>
+    </form>
+  </section>
+
+</div>
+
+<!-- Historial -->
+<section class="sp-col" style="margin-top:1rem;">
+  <h2 style="margin-top:0;">Historial de mensajes push</h2>
+  <table class="sp-table">
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Título</th>
+        <th>Cuerpo</th>
+        <th>Enviados</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in historial %}
+      <tr>
+        <td>{{ m.creado_en.strftime('%d/%m %H:%M') if m.creado_en else '—' }}</td>
+        <td>{{ m.titulo }}</td>
+        <td>{{ (m.cuerpo or '')[:80] }}</td>
+        <td>{{ (m.enviado_a or []) | length }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="sp-empty">Sin mensajes aún.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<script>
+async function spEnviarSolicitud(ev, accion) {
+  ev.preventDefault();
+  var form = ev.target;
+  var fd = new FormData(form);
+  fd.append('accion', accion);
+  var estado = form.querySelector('.sp-solicitud-estado');
+  estado.style.display = 'block';
+  estado.className = 'sp-solicitud-estado sp-alert';
+  estado.textContent = 'Enviando…';
+  try {
+    var r = await fetch('/secretaria/jefe/solicitud', { method:'POST', body: fd });
+    var data = await r.json();
+    if (!data.ok) throw new Error(data.error || 'Error');
+    estado.className = 'sp-solicitud-estado sp-alert sp-alert-ok';
+    var res = data.resultado || {};
+    estado.textContent = '✓ Enviado a ' + (data.total || 0) + ' dispositivo(s). Push OK: ' + (res.enviados || 0);
+    form.reset();
+  } catch (e) {
+    estado.className = 'sp-solicitud-estado sp-alert sp-alert-error';
+    estado.textContent = '⚠ ' + e.message;
+  }
+  return false;
+}
+</script>
+{% endblock %}

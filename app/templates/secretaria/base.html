@@ -61,6 +61,9 @@
       <a href="/secretaria/revisiones" class="{% if modo_actual == 'revisiones' %}active{% endif %}">
         <span class="ic">👁</span> Revisiones
       </a>
+      <a href="/secretaria/jefe" class="{% if modo_actual == 'jefe' %}active{% endif %}">
+        <span class="ic">🔔</span> Panel jefe
+      </a>
       <a href="/secretaria/agenda/" class="{% if modo_actual == 'agenda' %}active{% endif %}">
         <span class="ic">📅</span> Agenda
       </a>
@@ -185,5 +188,69 @@
        implementaciones completas: spinner animado, dictado por voz real,
        fetch HTMX de la ficha, etc.) -->
   <script src="/static/secretaria/secretaria.js?v={{ static_version }}"></script>
+
+  {% if usuario and vapid_public_key %}
+  <script>
+  // ─── Auto-registro de Push (best-effort) ───
+  (function() {
+    var VAPID_PUB = {{ vapid_public_key|tojson }};
+    function b64urlToUint8Array(base64) {
+      if (!base64) return new Uint8Array();
+      var padding = '='.repeat((4 - base64.length % 4) % 4);
+      var s = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/');
+      var raw = atob(s);
+      var out = new Uint8Array(raw.length);
+      for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+      return out;
+    }
+    async function registrarPush() {
+      try {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+        // Evitar molestar si el usuario ya negó
+        if (Notification.permission === 'denied') return;
+        var reg = await navigator.serviceWorker.register('/static/sw.js');
+        var existing = await reg.pushManager.getSubscription();
+        if (existing) {
+          // Revalidar con el servidor (idempotente)
+          var sj = existing.toJSON();
+          fetch('/push/suscribir', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({endpoint: sj.endpoint, keys: sj.keys || {}}),
+          }).catch(function(){});
+          return;
+        }
+        // Solo pedir permiso si el usuario interactúa — usamos un listener único
+        var unaVez = false;
+        function pedir() {
+          if (unaVez) return; unaVez = true;
+          Notification.requestPermission().then(async function(perm) {
+            if (perm !== 'granted') return;
+            try {
+              var sub = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: b64urlToUint8Array(VAPID_PUB),
+              });
+              var sj = sub.toJSON();
+              await fetch('/push/suscribir', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({
+                  endpoint: sj.endpoint, keys: sj.keys || {},
+                  nombre: {{ (usuario.nombre or '')|tojson }}, cargo: 'Secretaria',
+                }),
+              });
+            } catch(e) {}
+          });
+        }
+        document.addEventListener('click', pedir, {once:true, passive:true});
+      } catch (e) {}
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', registrarPush);
+    } else {
+      registrarPush();
+    }
+  })();
+  </script>
+  {% endif %}
 </body>
 </html>

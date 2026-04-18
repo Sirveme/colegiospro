@@ -26,22 +26,43 @@
 {% endif %}
 
 <!-- Barra de ajustes post-generación -->
+{% set ajustes_cliente = ['version_whatsapp', 'version_email'] %}
 <div class="sp-ajustes-bar">
   {% for a in ajustes %}
-  <button
-    class="sp-ajuste-btn"
-    type="button"
-    hx-post="/secretaria/redactor/ajustar"
-    hx-vals='{"ajuste": "{{ a.id }}", "doc_id": "{{ documento_id }}"}'
-    hx-target="{% if a.id == 'sugerir_asunto' %}#sugerencias-asunto{% else %}#sp-resultado{% endif %}"
-    hx-swap="innerHTML"
-    hx-disabled-elt="this"
-  >{{ a.icono }} {{ a.label }}</button>
+    {% if a.id in ajustes_cliente %}
+      <button
+        class="sp-ajuste-btn"
+        type="button"
+        onclick="spAplicarVersionCliente({{ documento_id }}, '{{ a.id }}', '{{ a.label }}')"
+      >{{ a.icono }} {{ a.label }}</button>
+    {% else %}
+      <button
+        class="sp-ajuste-btn"
+        type="button"
+        hx-post="/secretaria/redactor/ajustar"
+        hx-vals='{"ajuste": "{{ a.id }}", "doc_id": "{{ documento_id }}"}'
+        hx-target="{% if a.id == 'sugerir_asunto' %}#sugerencias-asunto{% else %}#sp-resultado{% endif %}"
+        hx-swap="innerHTML"
+        hx-disabled-elt="this"
+      >{{ a.icono }} {{ a.label }}</button>
+    {% endif %}
   {% endfor %}
+  <button
+    class="sp-ajuste-btn sp-ajuste-btn--volver"
+    type="button"
+    id="btn-volver-original-{{ documento_id }}"
+    style="display:none;"
+    onclick="spRestaurarOriginal({{ documento_id }})"
+  >← Versión original</button>
 </div>
 <div id="sugerencias-asunto"></div>
 
-<article class="sp-doc sp-doc--{{ tono or 'formal' }}" data-doc-id="{{ documento_id }}" data-tono="{{ tono or 'formal' }}" data-tipo="{{ tipo_documento or 'carta' }}">
+<div id="sp-version-indicador-{{ documento_id }}" class="sp-version-badge" style="display:none;"></div>
+
+<article class="sp-doc sp-doc--{{ tono or 'formal' }}"
+         data-doc-id="{{ documento_id }}"
+         data-tono="{{ tono or 'formal' }}"
+         data-tipo="{{ tipo_documento or 'carta' }}">
   <pre class="sp-doc-texto" id="sp-doc-texto-{{ documento_id }}">{{ texto_salida }}</pre>
 </article>
 
@@ -140,6 +161,56 @@ window.spEnviarRevision = async function(ev, docId) {
   }
   return false;
 };
+// ─── Toggles de versión (WhatsApp / Email / Original) ───
+window.spTextosOriginales = window.spTextosOriginales || {};
+
+window.spAplicarVersionCliente = async function(docId, ajuste, label) {
+  var pre = document.getElementById('sp-doc-texto-' + docId);
+  var volver = document.getElementById('btn-volver-original-' + docId);
+  var badge = document.getElementById('sp-version-indicador-' + docId);
+  if (!pre) return;
+
+  // Guardar el original la primera vez
+  if (!window.spTextosOriginales[docId]) {
+    window.spTextosOriginales[docId] = pre.innerText;
+  }
+  var btnsAjuste = document.querySelectorAll('.sp-ajustes-bar .sp-ajuste-btn');
+  btnsAjuste.forEach(function(b){ b.disabled = true; });
+  badge.style.display = 'inline-block';
+  badge.textContent = '⏳ Generando ' + label + '…';
+  try {
+    var r = await fetch('/secretaria/redactor/ajustar-json', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ doc_id: docId, ajuste: ajuste })
+    });
+    var data = await r.json();
+    if (!data.ok) {
+      badge.textContent = '⚠ ' + (data.error || 'Error');
+      setTimeout(function(){ badge.style.display='none'; }, 3000);
+      return;
+    }
+    pre.innerText = data.texto || '';
+    badge.textContent = '📌 Viendo: ' + label + ' — no reemplaza el documento guardado';
+    if (volver) volver.style.display = 'inline-block';
+  } catch (e) {
+    badge.textContent = '⚠ Error de red';
+    setTimeout(function(){ badge.style.display='none'; }, 3000);
+  } finally {
+    btnsAjuste.forEach(function(b){ b.disabled = false; });
+  }
+};
+
+window.spRestaurarOriginal = function(docId) {
+  var pre = document.getElementById('sp-doc-texto-' + docId);
+  var volver = document.getElementById('btn-volver-original-' + docId);
+  var badge = document.getElementById('sp-version-indicador-' + docId);
+  var original = window.spTextosOriginales && window.spTextosOriginales[docId];
+  if (pre && original != null) pre.innerText = original;
+  if (volver) volver.style.display = 'none';
+  if (badge) badge.style.display = 'none';
+};
+
 window.spDescargarDocx = async function(docId) {
   const resp = await fetch(`/secretaria/documento/${docId}/docx`);
   const blob = await resp.blob();
