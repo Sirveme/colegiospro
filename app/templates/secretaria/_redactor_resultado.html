@@ -29,13 +29,7 @@
 {% set ajustes_cliente = ['version_whatsapp', 'version_email'] %}
 <div class="sp-ajustes-bar">
   {% for a in ajustes %}
-    {% if a.id in ajustes_cliente %}
-      <button
-        class="sp-ajuste-btn"
-        type="button"
-        onclick="spAplicarVersionCliente({{ documento_id }}, '{{ a.id }}', '{{ a.label }}')"
-      >{{ a.icono }} {{ a.label }}</button>
-    {% else %}
+    {% if a.id not in ajustes_cliente %}
       <button
         class="sp-ajuste-btn"
         type="button"
@@ -47,15 +41,31 @@
       >{{ a.icono }} {{ a.label }}</button>
     {% endif %}
   {% endfor %}
-  <button
-    class="sp-ajuste-btn sp-ajuste-btn--volver"
-    type="button"
-    id="btn-volver-original-{{ documento_id }}"
-    style="display:none;"
-    onclick="spRestaurarOriginal({{ documento_id }})"
-  >← Versión original</button>
 </div>
 <div id="sugerencias-asunto"></div>
+
+<!-- Versiones del documento — 3 botones persistentes -->
+<div class="sp-versiones-bar">
+  <span class="sp-versiones-label">Ver como:</span>
+  <button type="button"
+          class="sp-version-btn activa"
+          id="btn-ver-original-{{ documento_id }}"
+          onclick="spVerVersion({{ documento_id }}, 'original', 'Original')">
+    📄 Original
+  </button>
+  <button type="button"
+          class="sp-version-btn"
+          id="btn-ver-whatsapp-{{ documento_id }}"
+          onclick="spVerVersion({{ documento_id }}, 'version_whatsapp', 'WhatsApp')">
+    💬 WhatsApp
+  </button>
+  <button type="button"
+          class="sp-version-btn"
+          id="btn-ver-email-{{ documento_id }}"
+          onclick="spVerVersion({{ documento_id }}, 'version_email', 'Email')">
+    📧 Email
+  </button>
+</div>
 
 <div id="sp-version-indicador-{{ documento_id }}" class="sp-version-badge" style="display:none;"></div>
 
@@ -161,12 +171,19 @@ window.spEnviarRevision = async function(ev, docId) {
   }
   return false;
 };
-// ─── Toggles de versión (WhatsApp / Email / Original) ───
+// ─── Versiones del documento (Original / WhatsApp / Email) ───
 window.spTextosOriginales = window.spTextosOriginales || {};
+window.spVersionesCache   = window.spVersionesCache   || {};
 
-window.spAplicarVersionCliente = async function(docId, ajuste, label) {
+function spActualizarBotonesVersion(docId, activa) {
+  ['original', 'whatsapp', 'email'].forEach(function(v) {
+    var btn = document.getElementById('btn-ver-' + v + '-' + docId);
+    if (btn) btn.classList.toggle('activa', v === activa);
+  });
+}
+
+window.spVerVersion = async function(docId, ajuste, label) {
   var pre = document.getElementById('sp-doc-texto-' + docId);
-  var volver = document.getElementById('btn-volver-original-' + docId);
   var badge = document.getElementById('sp-version-indicador-' + docId);
   if (!pre) return;
 
@@ -174,8 +191,31 @@ window.spAplicarVersionCliente = async function(docId, ajuste, label) {
   if (!window.spTextosOriginales[docId]) {
     window.spTextosOriginales[docId] = pre.innerText;
   }
-  var btnsAjuste = document.querySelectorAll('.sp-ajustes-bar .sp-ajuste-btn');
-  btnsAjuste.forEach(function(b){ b.disabled = true; });
+
+  // Volver a original
+  if (ajuste === 'original') {
+    pre.innerText = window.spTextosOriginales[docId];
+    if (badge) badge.style.display = 'none';
+    spActualizarBotonesVersion(docId, 'original');
+    return;
+  }
+
+  // Normalizar la clave de versión (quitar prefijo)
+  var key = ajuste.replace('version_', '');  // whatsapp / email
+
+  // Cache hit
+  if (!window.spVersionesCache[docId]) window.spVersionesCache[docId] = {};
+  if (window.spVersionesCache[docId][ajuste]) {
+    pre.innerText = window.spVersionesCache[docId][ajuste];
+    badge.style.display = 'inline-block';
+    badge.textContent = '📌 Viendo: ' + label + ' — no reemplaza el documento guardado';
+    spActualizarBotonesVersion(docId, key);
+    return;
+  }
+
+  // Fetch al backend
+  var btnsVersion = document.querySelectorAll('.sp-versiones-bar .sp-version-btn');
+  btnsVersion.forEach(function(b){ b.disabled = true; });
   badge.style.display = 'inline-block';
   badge.textContent = '⏳ Generando ' + label + '…';
   try {
@@ -187,28 +227,17 @@ window.spAplicarVersionCliente = async function(docId, ajuste, label) {
     var data = await r.json();
     if (!data.ok) {
       badge.textContent = '⚠ ' + (data.error || 'Error');
-      setTimeout(function(){ badge.style.display='none'; }, 3000);
       return;
     }
+    window.spVersionesCache[docId][ajuste] = data.texto || '';
     pre.innerText = data.texto || '';
     badge.textContent = '📌 Viendo: ' + label + ' — no reemplaza el documento guardado';
-    if (volver) volver.style.display = 'inline-block';
+    spActualizarBotonesVersion(docId, key);
   } catch (e) {
     badge.textContent = '⚠ Error de red';
-    setTimeout(function(){ badge.style.display='none'; }, 3000);
   } finally {
-    btnsAjuste.forEach(function(b){ b.disabled = false; });
+    btnsVersion.forEach(function(b){ b.disabled = false; });
   }
-};
-
-window.spRestaurarOriginal = function(docId) {
-  var pre = document.getElementById('sp-doc-texto-' + docId);
-  var volver = document.getElementById('btn-volver-original-' + docId);
-  var badge = document.getElementById('sp-version-indicador-' + docId);
-  var original = window.spTextosOriginales && window.spTextosOriginales[docId];
-  if (pre && original != null) pre.innerText = original;
-  if (volver) volver.style.display = 'none';
-  if (badge) badge.style.display = 'none';
 };
 
 window.spDescargarDocx = async function(docId) {

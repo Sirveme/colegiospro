@@ -3,20 +3,161 @@
 {% block content %}
 <header class="sp-header">
   <h1>Post para Redes</h1>
-  <p>Crea posts e imágenes para Facebook, WhatsApp e Instagram.</p>
+  <p>Genera imágenes con DALL·E 3 para Facebook, WhatsApp e Instagram.</p>
 </header>
 
-<div class="sp-col" style="max-width: 720px;">
-  <div class="sp-placeholder" style="min-height: auto; padding: 2rem;">
-    <h2 style="margin-top:0;">📷 Próximamente</h2>
-    <p>
-      El generador de posts para redes sociales está en construcción.
-      Usará GPT-4o para el copy y DALL·E para las imágenes,
-      con plantillas listas para Facebook, WhatsApp y Instagram.
-    </p>
-    <p style="margin-bottom:0;">
-      Las primeras 10 imágenes serán gratis para cada colegio.
-    </p>
-  </div>
+<div class="sp-alert {% if tiene_key_propia %}sp-alert-ok{% elif imagenes_usadas >= imagenes_limite %}sp-alert-error{% else %}sp-alert-ok{% endif %}" style="margin-bottom:1rem;">
+  {% if tiene_key_propia %}
+    🔑 Usando tu API Key propia de OpenAI — sin límite del sistema.
+  {% else %}
+    📊 <strong>{{ imagenes_usadas }}</strong> de <strong>{{ imagenes_limite }}</strong> imágenes usadas este mes.
+    {% if imagenes_usadas >= imagenes_limite %}
+      Alcanzaste el límite gratuito.
+      <a href="#config-key-openai" style="margin-left:.5rem;">Agrega tu API Key propia</a>
+    {% else %}
+      <a href="#config-key-openai" style="margin-left:.5rem;">¿Necesitas más? Usa tu propia API Key.</a>
+    {% endif %}
+  {% endif %}
 </div>
+
+<section class="sp-col" style="margin-bottom:1rem;">
+  <h2 style="margin-top:0;">Generar imagen</h2>
+  <form id="form-post" class="sp-form" onsubmit="return spGenerarImagen(event)">
+    <label class="sp-field">
+      <span>Describe la imagen (prompt)</span>
+      <textarea name="prompt" id="post-prompt" rows="3" required
+                placeholder="Ej: Poster profesional anunciando la conferencia 'Contabilidad 2026' con paleta azul marino y dorado, estilo editorial"></textarea>
+    </label>
+    <label class="sp-field">
+      <span>Tamaño</span>
+      <select name="size">
+        <option value="1024x1024">Cuadrado (1024×1024) — Instagram post</option>
+        <option value="1792x1024">Horizontal (1792×1024) — Facebook</option>
+        <option value="1024x1792">Vertical (1024×1792) — Stories / WhatsApp</option>
+      </select>
+    </label>
+    <div id="post-estado" class="sp-alert" style="display:none; margin:.5rem 0;"></div>
+    <button type="submit" class="sp-btn sp-btn-primary">✨ Generar imagen</button>
+  </form>
+
+  <div id="post-resultado" style="margin-top:1rem;"></div>
+</section>
+
+<section class="sp-col" style="margin-bottom:1rem;" id="config-key-openai">
+  <h2 style="margin-top:0;">🔑 API Key propia de OpenAI</h2>
+  <p style="color:var(--sp-muted, #6a7285); font-size:.9rem;">
+    Pega tu API Key para generar imágenes sin límite. Tú pagas directamente a OpenAI (≈$0.04/imagen).
+  </p>
+  <ol style="font-size:.9rem; line-height:1.6; color: var(--sp-muted, #6a7285);">
+    <li>Crea una cuenta en <a href="https://platform.openai.com/signup" target="_blank" rel="noopener">platform.openai.com</a></li>
+    <li>Agrega $5 USD mínimo en <a href="https://platform.openai.com/account/billing" target="_blank" rel="noopener">Billing</a></li>
+    <li>Genera una API Key en <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">API Keys</a></li>
+    <li>Pégala abajo — se guardará cifrada y nunca se mostrará.</li>
+  </ol>
+  <form class="sp-form" onsubmit="return spGuardarKeyOpenAI(event)">
+    <label class="sp-field">
+      <span>Tu API Key</span>
+      <input type="password" name="api_key_openai_propia" placeholder="sk-..."
+             {% if tiene_key_propia %}disabled{% endif %}>
+      {% if tiene_key_propia %}
+        <small style="color:var(--sp-muted);">✓ Ya tienes una API Key guardada.</small>
+      {% endif %}
+    </label>
+    <div id="key-estado" class="sp-alert" style="display:none; margin:.5rem 0;"></div>
+    <div style="display:flex; gap:.5rem;">
+      {% if not tiene_key_propia %}
+      <button type="submit" class="sp-btn sp-btn-primary">Guardar API Key</button>
+      {% else %}
+      <button type="button" class="sp-btn" onclick="spEliminarKeyOpenAI()">Eliminar mi API Key</button>
+      {% endif %}
+    </div>
+  </form>
+</section>
+
+<section class="sp-col">
+  <h2 style="margin-top:0;">Mis imágenes recientes</h2>
+  {% if imagenes %}
+  <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:.75rem;">
+    {% for img in imagenes %}
+    <div style="background:rgba(0,0,0,0.03); padding:.5rem; border-radius:8px;">
+      <a href="{{ img.url_resultado }}" target="_blank" rel="noopener">
+        <img src="{{ img.url_resultado }}" alt="Imagen generada"
+             style="width:100%; border-radius:6px; aspect-ratio:1; object-fit:cover;">
+      </a>
+      <small style="display:block; margin-top:.3rem; color:var(--sp-muted);">
+        {{ (img.prompt or '')[:80] }}…
+      </small>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="sp-empty">Aún no has generado imágenes.</p>
+  {% endif %}
+</section>
+
+<script>
+async function spGenerarImagen(ev) {
+  ev.preventDefault();
+  var form = ev.target;
+  var estado = document.getElementById('post-estado');
+  var resultado = document.getElementById('post-resultado');
+  estado.style.display = 'block';
+  estado.className = 'sp-alert';
+  estado.textContent = '🎨 Generando imagen… puede tardar 10-30 segundos.';
+  resultado.innerHTML = '';
+  try {
+    var r = await fetch('/secretaria/post-redes/generar-imagen', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        prompt: form.prompt.value,
+        size: form.size.value,
+      }),
+    });
+    var data = await r.json();
+    if (!data.ok) throw new Error(data.error || 'Error');
+    estado.className = 'sp-alert sp-alert-ok';
+    estado.textContent = '✓ Imagen generada (' + (data.usadas) + '/' + (data.limite) + ' este mes)';
+    resultado.innerHTML =
+      '<a href="' + data.url + '" target="_blank"><img src="' + data.url +
+      '" alt="Generada" style="max-width:100%; border-radius:10px;"></a>';
+  } catch (e) {
+    estado.className = 'sp-alert sp-alert-error';
+    estado.textContent = '⚠ ' + e.message;
+  }
+  return false;
+}
+
+async function spGuardarKeyOpenAI(ev) {
+  ev.preventDefault();
+  var form = ev.target;
+  var estado = document.getElementById('key-estado');
+  var fd = new FormData(form);
+  fd.append('accion', 'guardar');
+  estado.style.display = 'block';
+  estado.className = 'sp-alert';
+  estado.textContent = 'Guardando…';
+  try {
+    var r = await fetch('/secretaria/configuracion/openai-key', { method:'POST', body: fd });
+    var data = await r.json();
+    if (!data.ok) throw new Error(data.error || 'Error');
+    estado.className = 'sp-alert sp-alert-ok';
+    estado.textContent = '✓ API Key guardada de forma cifrada';
+    setTimeout(function(){ window.location.reload(); }, 1200);
+  } catch (e) {
+    estado.className = 'sp-alert sp-alert-error';
+    estado.textContent = '⚠ ' + e.message;
+  }
+  return false;
+}
+
+async function spEliminarKeyOpenAI() {
+  if (!confirm('¿Eliminar tu API Key guardada? Volverás al plan gratuito con límite mensual.')) return;
+  var fd = new FormData();
+  fd.append('accion', 'eliminar');
+  fd.append('api_key_openai_propia', '');
+  var r = await fetch('/secretaria/configuracion/openai-key', { method:'POST', body: fd });
+  var data = await r.json();
+  if (data.ok) window.location.reload();
+}
+</script>
 {% endblock %}

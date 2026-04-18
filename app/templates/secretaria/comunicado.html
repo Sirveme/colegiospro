@@ -3,22 +3,141 @@
 {% block content %}
 <header class="sp-header">
   <h1>Comunicado</h1>
-  <p>Genera comunicados oficiales para tus colegiados.</p>
+  <p>Redacta y envía avisos a tu comunidad por distintos canales.</p>
 </header>
 
-<div class="sp-col" style="max-width: 720px;">
-  <div class="sp-placeholder" style="min-height: auto; padding: 2rem;">
-    <h2 style="margin-top:0;">📣 Próximamente</h2>
-    <p>
-      El módulo de Comunicados está en construcción. Permitirá generar
-      avisos institucionales para enviar a los colegiados por correo,
-      WhatsApp o publicar en el portal del colegio.
-    </p>
-    <p style="margin-bottom:0;">
-      Mientras tanto, puedes usar el
-      <a href="/secretaria/redactor"><strong>Redactor</strong></a>
-      con el tono <em>Cordial</em> para generar comunicados básicos.
-    </p>
-  </div>
+<div class="sp-alert sp-alert-ok" style="margin-bottom:1rem;">
+  🔔 Canal Push: <strong>{{ suscriptores_count }}</strong> dispositivo(s) activos en tu organización
 </div>
+
+<section class="sp-col" style="margin-bottom:1rem;">
+  <form id="form-comunicado" class="sp-form" onsubmit="return spEnviarComunicado(event)">
+    <label class="sp-field">
+      <span>Título del comunicado</span>
+      <input type="text" name="titulo" required maxlength="200" placeholder="Ej: Reunión ordinaria del 30 de abril">
+    </label>
+
+    <label class="sp-field">
+      <span>Cuerpo del mensaje</span>
+      <textarea name="cuerpo" id="com-cuerpo" rows="6" required placeholder="Escribe el comunicado o pulsa ✨ Generar con IA..."></textarea>
+    </label>
+
+    <div style="display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:.5rem;">
+      <button type="button" class="sp-btn" onclick="spGenerarComunicadoIA()">
+        ✨ Generar con IA (tono cordial)
+      </button>
+    </div>
+
+    <div class="sp-form-grid">
+      <label class="sp-field">
+        <span>Canal</span>
+        <select name="canal" id="com-canal">
+          <option value="push">🔔 Push Notification</option>
+          <option value="email" disabled>✉ Email (próximamente)</option>
+          <option value="whatsapp" disabled>💬 WhatsApp (próximamente)</option>
+          <option value="portal" disabled>🌐 Portal del colegio (próximamente)</option>
+        </select>
+      </label>
+      <label class="sp-field">
+        <span>Destinatarios</span>
+        <select name="destinatarios">
+          <option value="mis_secretarias">Mi organización</option>
+          <option value="todos">Todos los suscriptores activos</option>
+        </select>
+      </label>
+    </div>
+
+    <div id="com-estado" class="sp-alert" style="display:none; margin:.5rem 0;"></div>
+
+    <button type="submit" class="sp-btn sp-btn-primary">📤 Enviar</button>
+  </form>
+</section>
+
+<section class="sp-col" style="margin-top:1rem;">
+  <h2 style="margin-top:0;">Historial</h2>
+  <table class="sp-table">
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Título</th>
+        <th>Canal</th>
+        <th>Destinatarios</th>
+        <th>Enviados</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in historial %}
+      <tr>
+        <td>{{ c.creado_en.strftime('%d/%m %H:%M') if c.creado_en else '—' }}</td>
+        <td>{{ c.titulo }}</td>
+        <td>{{ c.canal }}</td>
+        <td>{{ c.destinatarios }}</td>
+        <td>{{ c.enviado_count }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="sp-empty">No hay comunicados aún.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<script>
+async function spGenerarComunicadoIA() {
+  var form = document.getElementById('form-comunicado');
+  var cuerpo = document.getElementById('com-cuerpo');
+  var estado = document.getElementById('com-estado');
+  var idea = cuerpo.value.trim() || form.titulo.value.trim();
+  if (!idea) {
+    estado.style.display='block';
+    estado.className = 'sp-alert sp-alert-error';
+    estado.textContent = 'Primero escribe la idea o al menos el título.';
+    return;
+  }
+  estado.style.display='block';
+  estado.className = 'sp-alert';
+  estado.textContent = 'Generando comunicado…';
+  try {
+    var r = await fetch('/secretaria/comunicado/generar-ia', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ idea: idea, titulo: form.titulo.value }),
+    });
+    var data = await r.json();
+    if (!data.ok) throw new Error(data.error || 'Error');
+    cuerpo.value = data.texto;
+    estado.className = 'sp-alert sp-alert-ok';
+    estado.textContent = '✓ Texto generado. Revísalo y envía cuando quieras.';
+  } catch (e) {
+    estado.className = 'sp-alert sp-alert-error';
+    estado.textContent = '⚠ ' + e.message;
+  }
+}
+
+async function spEnviarComunicado(ev) {
+  ev.preventDefault();
+  var form = ev.target;
+  var estado = document.getElementById('com-estado');
+  var fd = new FormData(form);
+  estado.style.display='block';
+  estado.className = 'sp-alert';
+  estado.textContent = 'Enviando…';
+  try {
+    var r = await fetch('/secretaria/comunicado/enviar', { method:'POST', body: fd });
+    var data = await r.json();
+    if (!data.ok) throw new Error(data.error || 'Error');
+    estado.className = 'sp-alert sp-alert-ok';
+    if (data.info) {
+      estado.textContent = 'ℹ ' + data.info;
+    } else {
+      var res = data.resultado || {};
+      estado.textContent = '✓ Comunicado enviado. Push OK: ' + (res.enviados || 0) +
+                          ' · Dispositivos: ' + (data.total_suscriptores || 0);
+    }
+    setTimeout(function(){ window.location.reload(); }, 1800);
+  } catch (e) {
+    estado.className = 'sp-alert sp-alert-error';
+    estado.textContent = '⚠ ' + e.message;
+  }
+  return false;
+}
+</script>
 {% endblock %}

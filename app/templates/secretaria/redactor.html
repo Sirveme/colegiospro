@@ -482,6 +482,36 @@
     document.getElementById('tab-tono').classList.add('completo');
     actualizarResumen();
   })();
+
+  // ── Reabrir desde historial: leer query params y pre-llenar ──
+  (function initReabrir(){
+    var params = new URLSearchParams(window.location.search);
+    var reabrir = params.get('reabrir');
+    if (!reabrir) return;
+    var texto = params.get('texto');
+    var tono  = params.get('tono');
+    var tipo  = params.get('tipo');
+    if (texto) {
+      var inst = document.getElementById('instruccion');
+      if (inst) inst.value = texto;
+    }
+    if (tipo) {
+      var t = SP_TIPOS.find(function(x){ return x.val === tipo; });
+      if (t) window.spSelTipo(t.val, t.label, t.icono);
+    }
+    if (tono) {
+      var tn = SP_TONOS.find(function(x){ return x.val === tono; });
+      if (tn) window.spSelTono(tn.val, tn.label);
+    }
+    // Mostrar un aviso sutil
+    var badge = document.createElement('div');
+    badge.className = 'sp-alert sp-alert-ok';
+    badge.style.cssText = 'margin-bottom:1rem; font-size:.9rem;';
+    badge.innerHTML = '📂 Documento #' + reabrir + ' reabierto — instrucción, tipo y tono precargados';
+    var wrap = document.getElementById('sp-redactor-wrap');
+    var head = wrap && wrap.querySelector('.sp-redactor-head');
+    if (head && head.parentNode) head.parentNode.insertBefore(badge, head.nextSibling);
+  })();
 })();
 </script>
 
