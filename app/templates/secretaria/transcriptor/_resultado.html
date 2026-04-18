@@ -11,10 +11,9 @@
      class="sp-btn sp-btn-primary" target="_blank" rel="noopener">
     Descargar PDF
   </a>
-  <a href="/secretaria/documento/{{ documento_id }}/docx"
-     class="sp-btn" rel="noopener">
+  <button type="button" class="sp-btn" onclick="spDescargarDocx({{ documento_id }})">
     📝 Descargar Word (.docx)
-  </a>
+  </button>
   <button class="sp-btn"
           hx-post="/secretaria/documento/{{ documento_id }}/guardar"
           hx-swap="none"
@@ -22,3 +21,17 @@
     Guardar en historial
   </button>
 </div>
+<script>
+window.spDescargarDocx = async function(docId) {
+  const resp = await fetch(`/secretaria/documento/${docId}/docx`);
+  const blob = await resp.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `documento_${docId}.docx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+</script>
