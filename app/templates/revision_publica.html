@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Revisión de documento · ColegiosPro</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f4f6fb;
+      color: #1a2332;
+    }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 2rem 1rem; }
+    header {
+      background: #fff;
+      border-bottom: 2px solid #1c3f8f;
+      padding: 1rem 0;
+    }
+    header .wrap { padding: 0.5rem 1rem; }
+    h1 { font-size: 1.3rem; margin: 0; color: #1c3f8f; }
+    .doc-box {
+      background: #fff;
+      border: 1px solid #dce1ec;
+      border-radius: 8px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+      white-space: pre-wrap;
+      font-family: Georgia, serif;
+      line-height: 1.6;
+      max-height: 600px;
+      overflow-y: auto;
+    }
+    .mensaje-envio {
+      background: #fffbea;
+      border-left: 4px solid #ffc107;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border-radius: 4px;
+    }
+    .form-card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 1.5rem;
+      border: 1px solid #dce1ec;
+    }
+    .form-card h2 { margin-top: 0; color: #1c3f8f; }
+    label { display: block; margin-bottom: 1rem; }
+    label > span { display: block; margin-bottom: .4rem; font-weight: 600; }
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      padding: .6rem;
+      border: 1px solid #c7cfdd;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 1rem;
+      resize: vertical;
+    }
+    .opciones { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .op-card {
+      flex: 1;
+      min-width: 180px;
+      border: 2px solid #dce1ec;
+      padding: 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: center;
+      transition: all .15s;
+    }
+    .op-card:has(input:checked) {
+      border-color: #1c3f8f;
+      background: #e8eefc;
+    }
+    .op-card input { display: none; }
+    .op-card .icon { font-size: 2rem; display: block; margin-bottom: .3rem; }
+    button {
+      background: #1c3f8f;
+      color: #fff;
+      border: 0;
+      padding: .8rem 2rem;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { background: #163476; }
+    .respondida {
+      background: #d4edda;
+      border-left: 4px solid #28a745;
+      padding: 1.2rem;
+      border-radius: 4px;
+    }
+    .respondida.correcciones {
+      background: #fff3cd;
+      border-left-color: #ffc107;
+    }
+    .estado-badge {
+      display: inline-block;
+      padding: .25rem .7rem;
+      border-radius: 999px;
+      font-size: .85rem;
+      font-weight: 600;
+    }
+    .estado-aprobado { background: #d4edda; color: #155724; }
+    .estado-correcciones { background: #fff3cd; color: #856404; }
+    footer { text-align: center; color: #6a7285; font-size: .85rem; padding: 2rem 0; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>📋 Solicitud de revisión de documento</h1>
+  </div>
+</header>
+
+<main class="wrap">
+
+  {% if rev.mensaje_envio %}
+  <div class="mensaje-envio">
+    <strong>Mensaje del remitente:</strong>
+    <div style="margin-top:.3rem;">{{ rev.mensaje_envio }}</div>
+  </div>
+  {% endif %}
+
+  <div class="doc-box">{{ doc.texto_salida }}</div>
+
+  {% if ya_respondida %}
+  <div class="respondida {% if rev.estado == 'con_correcciones' %}correcciones{% endif %}">
+    <strong>Ya respondiste esta revisión.</strong>
+    <div style="margin-top:.5rem;">
+      Estado:
+      <span class="estado-badge {% if rev.estado == 'aprobado' %}estado-aprobado{% else %}estado-correcciones{% endif %}">
+        {% if rev.estado == 'aprobado' %}✅ Aprobado{% else %}✏️ Con correcciones{% endif %}
+      </span>
+    </div>
+    {% if rev.feedback %}
+    <div style="margin-top:.8rem;">
+      <strong>Tu feedback:</strong>
+      <div style="white-space:pre-wrap; margin-top:.3rem;">{{ rev.feedback }}</div>
+    </div>
+    {% endif %}
+  </div>
+  {% else %}
+
+  <div class="form-card">
+    <h2>¿Qué opinas de este documento?</h2>
+    <form method="post" action="/ver/{{ rev.token }}/responder">
+      <div class="opciones">
+        <label class="op-card">
+          <input type="radio" name="estado" value="aprobado" required>
+          <span class="icon">✅</span>
+          <strong>Aprobado</strong>
+          <div style="font-size:.9rem; color:#6a7285;">El documento está bien</div>
+        </label>
+        <label class="op-card">
+          <input type="radio" name="estado" value="con_correcciones" required>
+          <span class="icon">✏️</span>
+          <strong>Necesita correcciones</strong>
+          <div style="font-size:.9rem; color:#6a7285;">Hay cambios por hacer</div>
+        </label>
+      </div>
+
+      <label>
+        <span>Comentarios / correcciones sugeridas (opcional si apruebas)</span>
+        <textarea name="feedback" placeholder="Describe qué debe corregirse o agrega cualquier comentario..."></textarea>
+      </label>
+
+      <button type="submit">Enviar respuesta</button>
+    </form>
+  </div>
+  {% endif %}
+</main>
+
+<footer>
+  SecretariaPro · ColegiosPro — Link único de revisión
+</footer>
+
+</body>
+</html>
