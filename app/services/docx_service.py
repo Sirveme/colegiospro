@@ -3,6 +3,7 @@
 # Generación de archivo .docx con membrete institucional.
 # ══════════════════════════════════════════════════════════
 
+import re
 from io import BytesIO
 from typing import Optional
 
@@ -10,9 +11,76 @@ try:
     from docx import Document
     from docx.shared import Pt, Cm, RGBColor
     from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.oxml.ns import qn
+    from docx.oxml import OxmlElement
     _HAS_DOCX = True
 except Exception:
     _HAS_DOCX = False
+
+
+URL_RE = re.compile(r'(https?://[^\s]+)')
+
+
+def _limpiar_delimitadores(texto: str) -> str:
+    """Quita delimitadores ''' o ``` al inicio/fin."""
+    texto = (texto or "").strip()
+    for delim in ("'''", '"""', "```"):
+        if texto.startswith(delim):
+            texto = texto[len(delim):]
+        if texto.endswith(delim):
+            texto = texto[:-len(delim)]
+    return texto.strip()
+
+
+def _agregar_hipervinculo(paragraph, url: str, texto_visible: str = ""):
+    """Inserta un hipervínculo azul subrayado en el párrafo."""
+    part = paragraph.part
+    r_id = part.relate_to(
+        url,
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink",
+        is_external=True,
+    )
+    hyperlink = OxmlElement("w:hyperlink")
+    hyperlink.set(qn("r:id"), r_id)
+
+    new_run = OxmlElement("w:r")
+    rPr = OxmlElement("w:rPr")
+
+    color = OxmlElement("w:color")
+    color.set(qn("w:val"), "0563C1")
+    rPr.append(color)
+
+    underline = OxmlElement("w:u")
+    underline.set(qn("w:val"), "single")
+    rPr.append(underline)
+
+    new_run.append(rPr)
+    t = OxmlElement("w:t")
+    t.text = texto_visible or url
+    t.set(qn("xml:space"), "preserve")
+    new_run.append(t)
+    hyperlink.append(new_run)
+    paragraph._p.append(hyperlink)
+
+
+def _agregar_parrafo_con_links(doc, texto_linea: str):
+    """Crea un párrafo y divide el texto entre texto plano y URLs activas."""
+    p = doc.add_paragraph()
+    p.paragraph_format.space_after = Pt(0)
+    p.paragraph_format.line_spacing = Pt(14)
+
+    if not texto_linea:
+        return p
+
+    partes = URL_RE.split(texto_linea)
+    for parte in partes:
+        if not parte:
+            continue
+        if URL_RE.fullmatch(parte):
+            _agregar_hipervinculo(p, parte, parte)
+        else:
+            p.add_run(parte)
+    return p
 
 
 # Márgenes por tipo de documento — alineados con pdf_service
@@ -49,6 +117,8 @@ def generar_docx_bytes(
 
     Si python-docx no está disponible, devuelve el texto plano en UTF-8.
     """
+    texto = _limpiar_delimitadores(texto)
+
     if not _HAS_DOCX:
         return (texto or "").encode("utf-8")
 
@@ -117,9 +187,7 @@ def generar_docx_bytes(
     # ─── CUERPO ───
     doc.add_paragraph("")
     for linea in (texto or "").split("\n"):
-        p = doc.add_paragraph(linea)
-        p.paragraph_format.space_after = Pt(0)
-        p.paragraph_format.line_spacing = Pt(14)
+        _agregar_parrafo_con_links(doc, linea)
 
     # ─── PIE ───
     if nombre_org or ciudad:

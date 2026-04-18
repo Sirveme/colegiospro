@@ -10,6 +10,40 @@ from html import escape
 from typing import Optional
 from datetime import datetime
 
+
+def _limpiar_delimitadores(texto: str) -> str:
+    """Quita delimitadores ''' o ``` que a veces quedan al inicio/fin del texto."""
+    texto = (texto or "").strip()
+    for delim in ("'''", '"""', "```"):
+        if texto.startswith(delim):
+            texto = texto[len(delim):]
+        if texto.endswith(delim):
+            texto = texto[:-len(delim)]
+    return texto.strip()
+
+
+def construir_nombre_archivo(
+    tipo_doc: str,
+    siglas: str,
+    numero_correlativo: str,
+    ext: str,
+    fecha: Optional[datetime] = None,
+) -> str:
+    """Nombre estándar: TIPO_SIGLAS_CORRELATIVO_FECHA.ext
+    Ej: Carta_MDTMC_001_20260418.pdf"""
+    fecha = fecha or datetime.now()
+    tipo_limpio = (tipo_doc or "documento").replace("_", " ").title().replace(" ", "") or "Documento"
+    siglas_limpias = (siglas or "DOC").replace(" ", "").upper() or "DOC"
+    correlativo = (numero_correlativo or "").strip()
+    if "°" in correlativo:
+        correlativo = correlativo.split("°")[-1].strip()
+    correlativo = correlativo.split("-")[0] if correlativo else "001"
+    correlativo = "".join(c for c in correlativo if c.isdigit())[:6] or "001"
+    correlativo = correlativo.zfill(3)
+    fecha_str = fecha.strftime("%Y%m%d")
+    ext_clean = ext.lstrip(".")
+    return f"{tipo_limpio}_{siglas_limpias}_{correlativo}_{fecha_str}.{ext_clean}"
+
 # WeasyPrint (preferido por estilo CSS) — opcional
 try:
     from weasyprint import HTML  # type: ignore
@@ -163,6 +197,7 @@ def texto_a_pdf_bytes(
         siglas, ciudad, anno_oficial. Se usa para pintar el membrete.
     numero_documento: por ej. "045-2026-SIGLAS" — va en el encabezado.
     """
+    texto = _limpiar_delimitadores(texto)
     tono_norm = (tono or "formal").strip().lower()
     if tono_norm not in ("formal", "cordial", "protocolar"):
         tono_norm = "formal"
@@ -406,14 +441,59 @@ def _generar_pdf_reportlab(
         )
     )
 
+    # Configuración de marca de agua
+    marca_cfg = _leer_marca_agua(org, org_nombre)
+
     # Callback de pie de página + marca de agua
     def _on_page(canvas, _doc):
         _dibujar_pie(canvas, _doc, estilo, org_nombre, org_ciudad, org_siglas)
-        if org_nombre:
-            _dibujar_marca_agua(canvas, _doc, org_nombre)
+        if marca_cfg["activa"] and marca_cfg["texto"]:
+            _dibujar_marca_agua(canvas, _doc, marca_cfg)
 
     doc.build(story, onFirstPage=_on_page, onLaterPages=_on_page)
     return buffer.getvalue()
+
+
+_COLORES_MARCA = {
+    "gris":  (0.40, 0.40, 0.40),
+    "azul":  (0.15, 0.25, 0.55),
+    "rojo":  (0.70, 0.15, 0.15),
+    "verde": (0.15, 0.45, 0.25),
+    "negro": (0.10, 0.10, 0.10),
+}
+
+
+def _leer_marca_agua(org, org_nombre: str) -> dict:
+    """Lee la config de marca de agua desde ConfigOrganizacion (con defaults)."""
+    if org is None:
+        return {
+            "activa": bool(org_nombre),
+            "texto": org_nombre or "",
+            "tamano": 48,
+            "opacidad": 0.08,
+            "angulo": 45,
+            "color": "gris",
+        }
+    activa = getattr(org, "marca_agua_activa", None)
+    if activa is None:
+        activa = True  # default activo si no existe la columna
+    texto = (getattr(org, "marca_agua_texto", None) or org_nombre or "").strip()
+    tamano = getattr(org, "marca_agua_tamano", None) or 48
+    opacidad = getattr(org, "marca_agua_opacidad", None)
+    if opacidad is None:
+        opacidad = 0.08
+    angulo = getattr(org, "marca_agua_angulo", None)
+    if angulo is None:
+        angulo = 45
+    color = (getattr(org, "marca_agua_color", None) or "gris").lower()
+    return {
+        "activa": bool(activa),
+        "texto": texto,
+        "tamano": int(tamano),
+        "opacidad": float(opacidad),
+        "angulo": int(angulo),
+        "color": color,
+    }
 
 
 # ─── Membrete / pie / marca de agua ─────────────────────────────
@@ -584,20 +664,20 @@ def _dibujar_pie(canvas, doc, estilo: dict, org_nombre: str, org_ciudad: str, or
     canvas.restoreState()
 
 
-def _dibujar_marca_agua(canvas, _doc, org_nombre: str):
-    """Marca de agua sutil con el nombre de la organización al 10% opacidad."""
+def _dibujar_marca_agua(canvas, _doc, cfg: dict):
+    """Marca de agua configurable: texto, tamaño, opacidad, ángulo, color."""
     canvas.saveState()
     ancho, alto = A4
+    r, g, b = _COLORES_MARCA.get(cfg["color"], _COLORES_MARCA["gris"])
     try:
-        canvas.setFillColorRGB(0.15, 0.25, 0.55, alpha=0.08)
+        canvas.setFillColorRGB(r, g, b, alpha=cfg["opacidad"])
     except TypeError:
-        # ReportLab viejo sin alpha: omitir marca de agua
         canvas.restoreState()
         return
-    canvas.setFont("Helvetica-Bold", 60)
+    canvas.setFont("Helvetica-Bold", cfg["tamano"])
     canvas.translate(ancho / 2, alto / 2)
-    canvas.rotate(30)
-    canvas.drawCentredString(0, 0, org_nombre[:40])
+    canvas.rotate(cfg["angulo"])
+    canvas.drawCentredString(0, 0, cfg["texto"][:60])
     canvas.restoreState()
 
 
