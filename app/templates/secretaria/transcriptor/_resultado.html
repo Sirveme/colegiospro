@@ -11,6 +11,10 @@
      class="sp-btn sp-btn-primary" target="_blank" rel="noopener">
     Descargar PDF
   </a>
+  <a href="/secretaria/documento/{{ documento_id }}/docx"
+     class="sp-btn" rel="noopener">
+    📝 Descargar Word (.docx)
+  </a>
   <button class="sp-btn"
           hx-post="/secretaria/documento/{{ documento_id }}/guardar"
           hx-swap="none"
