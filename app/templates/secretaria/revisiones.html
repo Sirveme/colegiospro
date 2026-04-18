@@ -1,0 +1,56 @@
+{% extends "secretaria/base.html" %}
+{% block title %}Revisiones{% endblock %}
+{% block content %}
+<header class="sp-header">
+  <h1>Revisiones solicitadas</h1>
+  <p>Solicitudes de revisión enviadas a terceros. Cada una tiene un link público único.</p>
+</header>
+
+<table class="sp-table">
+  <thead>
+    <tr>
+      <th>Fecha</th>
+      <th>Revisor</th>
+      <th>Documento</th>
+      <th>Estado</th>
+      <th>Feedback</th>
+      <th>Link</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for rev, doc in revisiones %}
+    <tr>
+      <td>{{ rev.creado_en.strftime('%d/%m/%Y %H:%M') if rev.creado_en else '—' }}</td>
+      <td>{{ rev.correo_revisor }}</td>
+      <td>
+        <a href="/secretaria/historial/{{ doc.id }}/reabrir">
+          Doc #{{ doc.id }} ({{ doc.modo }})
+        </a>
+      </td>
+      <td>
+        {% if rev.estado == 'pendiente' %}
+          <span style="color:#b8860b;">⏳ Pendiente</span>
+        {% elif rev.estado == 'aprobado' %}
+          <span style="color:#155724;">✅ Aprobado</span>
+        {% else %}
+          <span style="color:#856404;">✏️ Correcciones</span>
+        {% endif %}
+      </td>
+      <td style="max-width:250px; white-space:pre-wrap; font-size:.9rem;">
+        {{ (rev.feedback or '')[:200] }}{% if rev.feedback and rev.feedback|length > 200 %}…{% endif %}
+      </td>
+      <td>
+        <button class="sp-btn" type="button"
+          onclick="navigator.clipboard.writeText('{{ base_url }}/ver/{{ rev.token }}'); this.textContent='✓ Copiado'">
+          Copiar link
+        </button>
+      </td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="6" class="sp-empty">No hay revisiones solicitadas aún.</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

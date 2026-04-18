@@ -104,6 +104,68 @@
   </form>
 </section>
 
+<!-- 2b. Marca de agua -->
+<section class="sp-col" style="margin-bottom:1rem;">
+  <h2 style="margin-top:0;">💧 Marca de agua en PDF</h2>
+  <p style="color:var(--sp-muted); margin-bottom:1rem;">
+    Texto sutil que aparece cruzando la página (útil para borradores o versiones no oficiales).
+  </p>
+  <form
+    hx-post="/secretaria/configuracion/marca-agua"
+    hx-swap="none"
+    hx-on::after-request="this.querySelector('button[type=submit]').textContent='✓ Guardado'"
+    class="sp-form sp-form-grid"
+  >
+    <label class="sp-toggle-item sp-col-2">
+      <input type="checkbox" name="marca_agua_activa" value="1"
+        {% if not config_org or config_org.marca_agua_activa %}checked{% endif %}>
+      <div><strong>Activar marca de agua</strong></div>
+    </label>
+
+    <label class="sp-col-2">
+      <span>Texto (deja vacío para usar el nombre de la organización)</span>
+      <input type="text" name="marca_agua_texto" maxlength="80"
+             value="{{ config_org.marca_agua_texto if config_org else '' }}"
+             placeholder="{{ (config_org.nombre_organizacion if config_org else '') or 'Nombre de la organización' }}">
+    </label>
+
+    <label>
+      <span>Tamaño: <output id="mw_tamano_out">{{ config_org.marca_agua_tamano if config_org else 48 }}</output> pt</span>
+      <input type="range" name="marca_agua_tamano" min="20" max="120" step="2"
+             value="{{ config_org.marca_agua_tamano if config_org else 48 }}"
+             oninput="document.getElementById('mw_tamano_out').textContent=this.value">
+    </label>
+
+    <label>
+      <span>Opacidad: <output id="mw_op_out">{{ '%.2f'|format(config_org.marca_agua_opacidad if config_org else 0.08) }}</output></span>
+      <input type="range" name="marca_agua_opacidad" min="0.02" max="0.5" step="0.01"
+             value="{{ config_org.marca_agua_opacidad if config_org else 0.08 }}"
+             oninput="document.getElementById('mw_op_out').textContent=parseFloat(this.value).toFixed(2)">
+    </label>
+
+    <label>
+      <span>Ángulo: <output id="mw_ang_out">{{ config_org.marca_agua_angulo if config_org else 45 }}</output>°</span>
+      <input type="range" name="marca_agua_angulo" min="0" max="90" step="5"
+             value="{{ config_org.marca_agua_angulo if config_org else 45 }}"
+             oninput="document.getElementById('mw_ang_out').textContent=this.value">
+    </label>
+
+    <label>
+      <span>Color</span>
+      <select name="marca_agua_color">
+        {% set color_actual = (config_org.marca_agua_color if config_org else 'gris') %}
+        <option value="gris"  {% if color_actual == 'gris'  %}selected{% endif %}>Gris</option>
+        <option value="azul"  {% if color_actual == 'azul'  %}selected{% endif %}>Azul</option>
+        <option value="rojo"  {% if color_actual == 'rojo'  %}selected{% endif %}>Rojo</option>
+        <option value="verde" {% if color_actual == 'verde' %}selected{% endif %}>Verde</option>
+        <option value="negro" {% if color_actual == 'negro' %}selected{% endif %}>Negro</option>
+      </select>
+    </label>
+
+    <button type="submit" class="sp-btn sp-btn-primary sp-col-2">Guardar marca de agua</button>
+  </form>
+</section>
+
 <!-- 3. Preferencias de redacción -->
 <section class="sp-col" style="margin-bottom:1rem;">
   <h2 style="margin-top:0;">✍ Preferencias de redacción</h2>

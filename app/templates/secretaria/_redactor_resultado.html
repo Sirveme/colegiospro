@@ -65,8 +65,81 @@
     hx-swap="none"
     onclick="this.textContent='✓ Guardado'"
   >💾 Guardar en historial</button>
+  <button class="sp-btn" type="button" onclick="spAbrirModalRevision({{ documento_id }})">
+    👁 Pedir revisión
+  </button>
+</div>
+
+<!-- Modal de revisión -->
+<div id="sp-modal-revision-{{ documento_id }}" class="sp-modal" style="display:none;">
+  <div class="sp-modal-backdrop" onclick="spCerrarModalRevision({{ documento_id }})"></div>
+  <div class="sp-modal-card">
+    <h3 style="margin-top:0;">Pedir revisión del documento</h3>
+    <p style="color:var(--sp-muted);">
+      Se generará un link único de solo lectura que puedes enviar al revisor.
+      No requiere cuenta para verlo y responder.
+    </p>
+
+    <form onsubmit="return spEnviarRevision(event, {{ documento_id }})">
+      <label class="sp-field">
+        <span>Correo del revisor</span>
+        <input type="email" name="correo_revisor" required placeholder="revisor@dominio.com">
+      </label>
+      <label class="sp-field">
+        <span>Mensaje (opcional)</span>
+        <textarea name="mensaje_envio" rows="3" placeholder="Ej: Hola, ¿puedes revisar este oficio antes del viernes?"></textarea>
+      </label>
+
+      <div id="sp-modal-result-{{ documento_id }}" style="margin:.75rem 0;"></div>
+
+      <div style="display:flex; gap:.5rem; justify-content:flex-end;">
+        <button type="button" class="sp-btn" onclick="spCerrarModalRevision({{ documento_id }})">Cancelar</button>
+        <button type="submit" class="sp-btn sp-btn-primary">Enviar</button>
+      </div>
+    </form>
+  </div>
 </div>
 <script>
+window.spAbrirModalRevision = function(docId) {
+  var m = document.getElementById("sp-modal-revision-" + docId);
+  if (m) m.style.display = "flex";
+};
+window.spCerrarModalRevision = function(docId) {
+  var m = document.getElementById("sp-modal-revision-" + docId);
+  if (m) m.style.display = "none";
+};
+window.spEnviarRevision = async function(ev, docId) {
+  ev.preventDefault();
+  var form = ev.target;
+  var resultBox = document.getElementById("sp-modal-result-" + docId);
+  resultBox.innerHTML = "<p style='color:var(--sp-muted);'>Enviando…</p>";
+  try {
+    var resp = await fetch(`/secretaria/documento/${docId}/compartir`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        correo_revisor: form.correo_revisor.value,
+        mensaje_envio: form.mensaje_envio.value,
+      })
+    });
+    var data = await resp.json();
+    if (data.ok) {
+      resultBox.innerHTML =
+        "<div class='sp-alert sp-alert-ok'>" +
+        "✓ Link generado.<br>" +
+        "<input type='text' readonly value='" + data.link + "' " +
+        "style='width:100%;margin-top:.4rem;padding:.4rem;font-size:.85rem;' " +
+        "onclick='this.select()'>" +
+        "<small>Cópialo y envíalo al revisor.</small>" +
+        "</div>";
+    } else {
+      resultBox.innerHTML = "<div class='sp-alert sp-alert-error'>" + (data.error || "Error") + "</div>";
+    }
+  } catch (e) {
+    resultBox.innerHTML = "<div class='sp-alert sp-alert-error'>Error de red</div>";
+  }
+  return false;
+};
 window.spDescargarDocx = async function(docId) {
   const resp = await fetch(`/secretaria/documento/${docId}/docx`);
   const blob = await resp.blob();
