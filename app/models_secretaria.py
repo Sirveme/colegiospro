@@ -7,7 +7,7 @@
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import (
     Column, Integer, String, DateTime, Text, Boolean, ForeignKey,
-    UniqueConstraint, JSON
+    UniqueConstraint, JSON, Float
 )
 
 from app.database import Base, engine
@@ -185,6 +185,13 @@ class ConfigOrganizacion(Base):
     anno_numero = Column(Integer, default=2026)
     tipos_doc_habilitados = Column(JSON)  # ["carta","oficio","circular"]
     preferencias_redaccion = Column(JSON)  # {"sin_relleno": true, ...}
+    # Marca de agua en PDF
+    marca_agua_activa = Column(Boolean, default=True)
+    marca_agua_texto = Column(String(80), default="")   # "" => usa nombre_organizacion
+    marca_agua_tamano = Column(Integer, default=48)     # puntos
+    marca_agua_opacidad = Column(Float, default=0.08)   # 0.0 - 1.0
+    marca_agua_angulo = Column(Integer, default=45)     # grados
+    marca_agua_color = Column(String(10), default="gris")  # gris/azul/rojo/verde/negro
     onboarding_completo = Column(Boolean, default=False)
     actualizado_en = Column(DateTime, default=_utcnow)
 
@@ -297,6 +304,25 @@ class TranscripcionReunion(Base):
     estado = Column(String(20), default="pendiente")
     # pendiente / transcribiendo / listo / error
     creado_en = Column(DateTime, default=_utcnow)
+
+
+# ─── documento_revisiones ───
+# Solicitudes de revisión con link público por token.
+class DocumentoRevision(Base):
+    __tablename__ = "documento_revisiones"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    documento_id = Column(
+        Integer, ForeignKey("documentos_secretaria.id"), index=True
+    )
+    token = Column(String(64), unique=True, index=True)
+    correo_revisor = Column(String(200))
+    mensaje_envio = Column(Text, default="")
+    estado = Column(String(20), default="pendiente")
+    # pendiente / aprobado / con_correcciones
+    feedback = Column(Text, default="")
+    creado_en = Column(DateTime, default=_utcnow)
+    respondido_en = Column(DateTime, nullable=True)
 
 
 # ─── CREATE TABLES ───

@@ -3,8 +3,11 @@
 # Rutas: home, landing/demo, admin chat, API, WebSocket
 # ══════════════════════════════════════════════════════════
 
+import asyncio
+import logging
 import os
-from fastapi import FastAPI, Request
+from datetime import datetime, timezone
+from fastapi import FastAPI, Request, Form, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -20,6 +23,9 @@ from app import models_secretaria  # noqa: F401
 from app.email_engine import models as email_models  # noqa: F401
 from app.email_engine import tracking as email_tracking
 from app.email_engine import admin as email_admin
+from app.email_engine.sender import procesar_cola as _procesar_cola_email
+
+logger = logging.getLogger("colegiospro.main")
 
 app = FastAPI(
     title="ColegiosPro",
@@ -138,6 +144,69 @@ async def ver_leads():
         db.close()
 
 
+# ─── Revisión pública de documentos (sin login) ──────────────────
+@app.get("/ver/{token}", response_class=HTMLResponse)
+async def ver_documento_revision(token: str, request: Request):
+    """Página pública de revisión. El token identifica una solicitud."""
+    from app.models_secretaria import DocumentoRevision, DocumentoSecretaria
+    db = SessionLocal()
+    try:
+        rev = db.query(DocumentoRevision).filter(
+            DocumentoRevision.token == token
+        ).first()
+        if not rev:
+            raise HTTPException(404, "Link no encontrado o expirado")
+        doc = db.query(DocumentoSecretaria).filter(
+            DocumentoSecretaria.id == rev.documento_id
+        ).first()
+        if not doc:
+            raise HTTPException(404, "Documento no encontrado")
+    finally:
+        db.close()
+
+    return templates.TemplateResponse(
+        request,
+        "revision_publica.html",
+        {
+            "request": request,
+            "rev": rev,
+            "doc": doc,
+            "ya_respondida": rev.estado != "pendiente",
+        },
+    )
+
+
+@app.post("/ver/{token}/responder")
+async def responder_revision(
+    token: str,
+    request: Request,
+    estado: str = Form(...),
+    feedback: Optional[str] = Form(""),
+):
+    """Guarda la respuesta del revisor: aprobado o con_correcciones."""
+    from app.models_secretaria import DocumentoRevision
+    estado_norm = (estado or "").strip().lower()
+    if estado_norm not in ("aprobado", "con_correcciones"):
+        raise HTTPException(400, "Estado inválido")
+
+    db = SessionLocal()
+    try:
+        rev = db.query(DocumentoRevision).filter(
+            DocumentoRevision.token == token
+        ).first()
+        if not rev:
+            raise HTTPException(404, "Link no encontrado")
+        if rev.estado != "pendiente":
+            return RedirectResponse(f"/ver/{token}?ok=1", status_code=302)
+        rev.estado = estado_norm
+        rev.feedback = (feedback or "").strip()[:5000]
+        rev.respondido_en = datetime.now(timezone.utc)
+        db.commit()
+    finally:
+        db.close()
+    return RedirectResponse(f"/ver/{token}?ok=1", status_code=302)
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "app": "colegiospro"}
@@ -161,6 +230,64 @@ async def debug_db():
 async def secretariapro(request: Request):
     """Página estática /SecretariaPro — sin autenticación, sin base de datos."""
     return templates.TemplateResponse(request, "secretariapro.html")
+
+
+# ─── Scheduler en background: heartbeat email cada 5 min ──────
+_scheduler = None
+
+
+async def heartbeat_email_background():
+    """Procesa hasta 5 correos pendientes de la cola de email_engine.
+    Corre en thread para no bloquear el event loop (procesar_cola es sync)."""
+    def _run():
+        db = SessionLocal()
+        try:
+            return _procesar_cola_email(db, max_envios=5)
+        finally:
+            db.close()
+    try:
+        resultado = await asyncio.to_thread(_run)
+        if (resultado.get("enviados") or 0) > 0 or (resultado.get("fallidos") or 0) > 0:
+            logger.info("Heartbeat email: %s", resultado)
+    except Exception as e:
+        logger.exception("Heartbeat email falló: %s", e)
+
+
+@app.on_event("startup")
+async def startup():
+    global _scheduler
+    # Solo arrancar en el proceso real, no en imports de tests/scripts.
+    # Y permitir desactivar con DISABLE_EMAIL_SCHEDULER=1 (útil en CI).
+    if os.environ.get("DISABLE_EMAIL_SCHEDULER") == "1":
+        logger.info("Email scheduler deshabilitado por env var.")
+        return
+    try:
+        from apscheduler.schedulers.asyncio import AsyncIOScheduler
+        _scheduler = AsyncIOScheduler()
+        _scheduler.add_job(
+            heartbeat_email_background,
+            "interval",
+            minutes=5,
+            id="email_heartbeat",
+            max_instances=1,
+            coalesce=True,
+            next_run_time=None,
+        )
+        _scheduler.start()
+        logger.info("Email scheduler iniciado: heartbeat cada 5 min.")
+    except Exception as e:
+        logger.exception("No se pudo iniciar el email scheduler: %s", e)
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    global _scheduler
+    if _scheduler is not None:
+        try:
+            _scheduler.shutdown(wait=False)
+            logger.info("Email scheduler detenido.")
+        except Exception as e:
+            logger.warning("Error al detener email scheduler: %s", e)
 
 
 if __name__ == "__main__":
