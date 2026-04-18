@@ -51,6 +51,7 @@ from app.services.redactor_service import (
     listar_ajustes,
 )
 from app.services.pdf_service import texto_a_pdf_bytes, pdf_disponible
+from app.services.docx_service import generar_docx_bytes, docx_disponible
 from app.services.extract_service import extraer_texto, soportado as extract_soportado
 from app.services.corrector_service import (
     corregir_texto,
@@ -927,6 +928,93 @@ async def documento_pdf(doc_id: int, request: Request):
     return Response(
         content=contenido,
         media_type="text/html; charset=utf-8",
+    )
+
+
+@router.get("/documento/{doc_id}/docx")
+async def documento_docx(doc_id: int, request: Request):
+    """Descarga el documento como .docx (Word) con membrete institucional."""
+    import re
+
+    usuario = _user_or_redirect(request)
+    if not usuario:
+        return RedirectResponse("/secretaria/login", status_code=302)
+    db = _db()
+    try:
+        doc = db.query(DocumentoSecretaria).filter(
+            DocumentoSecretaria.id == doc_id,
+            DocumentoSecretaria.secretaria_id == usuario.id,
+        ).first()
+        if not doc:
+            raise HTTPException(404, "Documento no encontrado")
+        texto = doc.texto_salida or ""
+        creado = doc.creado_en or datetime.utcnow()
+        cfg_org = _get_config_org(db, usuario.id)
+    finally:
+        db.close()
+
+    tipo_doc = doc.formato_salida or "carta"
+
+    # Extraer número del documento desde el texto
+    numero_doc = ""
+    numero_solo = ""
+    match = re.search(
+        r"N[°º]\s*([0-9]{1,4}[-\u2013\u2014]?[0-9]{4}(?:[-\u2013\u2014][A-Za-zÁÉÍÓÚÑ\.]+)?)",
+        texto,
+    )
+    if match:
+        numero_doc = match.group(1).strip()
+        m_num = re.match(r"(\d+)", numero_doc)
+        if m_num:
+            numero_solo = m_num.group(1).zfill(3)
+
+    # Armar número completo estilo "OFICIO N° 045-2026-SIGLAS"
+    tipo_label_upper = tipo_doc.replace("_", " ").upper()
+    numero_completo = f"{tipo_label_upper} N° {numero_doc}" if numero_doc else ""
+
+    org_dict = {}
+    if cfg_org:
+        org_dict = {
+            "nombre_organizacion": cfg_org.nombre_organizacion or "",
+            "siglas": cfg_org.siglas or "",
+            "ciudad": cfg_org.ciudad or "",
+            "anno_oficial": cfg_org.anno_oficial or "",
+        }
+
+    contenido = generar_docx_bytes(
+        texto=texto,
+        config_org=org_dict,
+        tipo_doc=tipo_doc,
+        numero_doc=numero_completo,
+    )
+
+    # Nombre TIPO_NUMERO_FECHA.docx
+    tipo_label = tipo_doc.replace("_", " ").title().replace(" ", "")
+    fecha_str = creado.strftime("%Y-%m-%d")
+    partes = [tipo_label]
+    if numero_solo:
+        partes.append(numero_solo)
+    partes.append(fecha_str)
+    nombre_archivo = "_".join(partes) + ".docx"
+
+    if docx_disponible():
+        return Response(
+            content=contenido,
+            media_type=(
+                "application/vnd.openxmlformats-officedocument."
+                "wordprocessingml.document"
+            ),
+            headers={
+                "Content-Disposition": f'attachment; filename="{nombre_archivo}"'
+            },
+        )
+    # Fallback: texto plano si python-docx no está disponible
+    return Response(
+        content=contenido,
+        media_type="text/plain; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{nombre_archivo}.txt"'
+        },
     )
 
 
