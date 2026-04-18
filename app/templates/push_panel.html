@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Notificaciones · ColegiosPro</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(135deg, #0A1628 0%, #0F2040 100%);
+      color: #F8F5EF;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+    .card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(201,148,58,0.3);
+      border-radius: 14px;
+      padding: 1.5rem;
+      max-width: 420px;
+      width: 100%;
+      margin-bottom: 1rem;
+    }
+    h1 { margin: 0 0 .5rem; font-size: 1.25rem; color: #F5E6C8; }
+    p { color: rgba(248,245,239,0.6); font-size: .9rem; margin: 0 0 .75rem; }
+    label { display: block; margin-bottom: .6rem; }
+    label span {
+      display: block;
+      font-size: .85rem;
+      font-weight: 600;
+      margin-bottom: .25rem;
+      color: rgba(248,245,239,0.7);
+    }
+    input, textarea {
+      width: 100%;
+      padding: .55rem;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.05);
+      color: #F8F5EF;
+      font-family: inherit;
+      font-size: .95rem;
+    }
+    textarea { resize: vertical; min-height: 80px; }
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #C9943A;
+    }
+    button {
+      width: 100%;
+      padding: .8rem;
+      border-radius: 10px;
+      border: 0;
+      background: linear-gradient(135deg, #0D7A60, #0B5E4A);
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: .95rem;
+      margin-top: .5rem;
+    }
+    button.secondary {
+      background: #C9943A;
+      color: #0A1628;
+    }
+    .status {
+      font-size: .85rem;
+      padding: .5rem;
+      border-radius: 6px;
+      margin-top: .5rem;
+    }
+    .status.ok { background: rgba(13,122,96,0.25); color: #a6e8cb; }
+    .status.err { background: rgba(192,57,43,0.25); color: #f8b4ac; }
+    .muted { color: rgba(248,245,239,0.45); font-size: .75rem; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🔔 Activar notificaciones</h1>
+    <p>Recibe avisos del sistema en este dispositivo.</p>
+    <label><span>Nombre</span><input id="f-nombre" type="text" placeholder="Tu nombre"></label>
+    <label><span>Cargo</span><input id="f-cargo" type="text" placeholder="Ej: Decano, Contador..."></label>
+    <button type="button" id="btn-activar">Activar notificaciones</button>
+    <div id="estado-push" class="status" style="display:none;"></div>
+    <p class="muted" style="margin-top:.6rem;">Tu navegador te pedirá permiso.</p>
+  </div>
+
+  <div class="card">
+    <h1>📤 Enviar mensaje a secretaría</h1>
+    <p>Máx. 160 caracteres.</p>
+    <textarea id="f-mensaje" maxlength="160" placeholder="Escribe tu mensaje..."></textarea>
+    <button type="button" class="secondary" id="btn-enviar">Enviar</button>
+    <div id="estado-msg" class="status" style="display:none;"></div>
+  </div>
+
+<script>
+const VAPID_PUB = {{ vapid_public_key|tojson }};
+
+function b64urlToUint8Array(base64) {
+  if (!base64) return new Uint8Array();
+  const padding = '='.repeat((4 - base64.length % 4) % 4);
+  const s = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(s);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+async function activarPush() {
+  const estado = document.getElementById('estado-push');
+  estado.style.display = 'block';
+  estado.className = 'status';
+  estado.textContent = '⏳ Solicitando permiso…';
+  try {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      throw new Error('Tu navegador no soporta notificaciones push');
+    }
+    if (!VAPID_PUB) throw new Error('El servidor no tiene VAPID configurado');
+    const reg = await navigator.serviceWorker.register('/static/sw.js');
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') throw new Error('Permiso denegado');
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: b64urlToUint8Array(VAPID_PUB),
+    });
+    const subJson = sub.toJSON();
+    const payload = {
+      endpoint: subJson.endpoint,
+      keys: subJson.keys || {},
+      nombre: document.getElementById('f-nombre').value,
+      cargo: document.getElementById('f-cargo').value,
+    };
+    const r = await fetch('/push/suscribir', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.error || 'Error al registrar');
+    estado.className = 'status ok';
+    estado.textContent = '✓ Notificaciones activadas en este dispositivo';
+  } catch (e) {
+    estado.className = 'status err';
+    estado.textContent = '⚠ ' + e.message;
+  }
+}
+
+async function enviarMensaje() {
+  const estado = document.getElementById('estado-msg');
+  const texto = document.getElementById('f-mensaje').value.trim();
+  if (!texto) { estado.style.display='block'; estado.className='status err'; estado.textContent='Escribe un mensaje'; return; }
+  estado.style.display = 'block';
+  estado.className = 'status';
+  estado.textContent = '⏳ Enviando…';
+  try {
+    const r = await fetch('/push/panel/enviar-mensaje', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        nombre: document.getElementById('f-nombre').value,
+        cargo: document.getElementById('f-cargo').value,
+        texto: texto,
+      }),
+    });
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.error || 'Error');
+    estado.className = 'status ok';
+    estado.textContent = '✓ Enviado a ' + data.total_suscriptores + ' dispositivo(s)';
+    document.getElementById('f-mensaje').value = '';
+  } catch (e) {
+    estado.className = 'status err';
+    estado.textContent = '⚠ ' + e.message;
+  }
+}
+
+document.getElementById('btn-activar').addEventListener('click', activarPush);
+document.getElementById('btn-enviar').addEventListener('click', enviarMensaje);
+</script>
+</body>
+</html>
