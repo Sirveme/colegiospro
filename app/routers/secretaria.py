@@ -510,6 +510,33 @@ async def redactor_view(request: Request):
         db.close()
     banner, anno_actual = _banner_anno(usuario)
     flags = _context_flags(usuario)
+
+    # Serializar para data-* del wrap (consumido por el panel JS)
+    import json as _json
+    remitentes_data = [
+        {
+            "id": p.id,
+            "nombre": p.nombre or "",
+            "cargo": p.cargo or "",
+            "tratamiento": p.tratamiento or "",
+            "es_default": bool(p.es_default),
+            "foto_url": "",
+        }
+        for p in perfiles
+    ]
+    destinatarios_data = [
+        {
+            "id": i.id,
+            "nombre": i.nombre_institucion or "",
+            "cargo": i.titular_nombre or "",
+            "titular_cargo": i.titular_cargo or "",
+            "institucion": i.nombre_institucion or "",
+        }
+        for i in instituciones
+    ]
+    remitentes_json = _json.dumps(remitentes_data, ensure_ascii=True)
+    destinatarios_json = _json.dumps(destinatarios_data, ensure_ascii=True)
+
     return templates.TemplateResponse(
         request,
         "secretaria/redactor.html",
@@ -522,6 +549,8 @@ async def redactor_view(request: Request):
             ajustes=listar_ajustes(),
             banner_anno=banner,
             anno_actual=anno_actual,
+            remitentes_json=remitentes_json,
+            destinatarios_json=destinatarios_json,
             **flags,
         ),
     )
@@ -1684,6 +1713,28 @@ async def remitentes_nuevo_submit(
     finally:
         db.close()
     return RedirectResponse("/secretaria/remitentes", status_code=302)
+
+
+@router.get("/remitentes/modal-nuevo", response_class=HTMLResponse)
+async def remitentes_modal_nuevo(request: Request):
+    """HTML del modal para agregar un remitente (cargado vía HTMX)."""
+    _ = _require_user(request)
+    return templates.TemplateResponse(
+        request,
+        "secretaria/_modal_nuevo_remitente.html",
+        {},
+    )
+
+
+@router.get("/destinatarios/modal-nuevo", response_class=HTMLResponse)
+async def destinatarios_modal_nuevo(request: Request):
+    """HTML del modal para agregar un destinatario (cargado vía HTMX)."""
+    _ = _require_user(request)
+    return templates.TemplateResponse(
+        request,
+        "secretaria/_modal_nuevo_destinatario.html",
+        {},
+    )
 
 
 @router.post("/api/remitentes/crear")
