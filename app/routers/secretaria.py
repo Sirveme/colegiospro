@@ -28,6 +28,7 @@ from app.models_secretaria import (
     PreferenciasSecretaria,
     ConfigOrganizacion,
     CorrelatividadDocumento,
+    DocumentoRevision,
 )
 from app.services.auth_service import (
     hash_password,
@@ -50,7 +51,11 @@ from app.services.redactor_service import (
     listar_tipos,
     listar_ajustes,
 )
-from app.services.pdf_service import texto_a_pdf_bytes, pdf_disponible
+from app.services.pdf_service import (
+    texto_a_pdf_bytes,
+    pdf_disponible,
+    construir_nombre_archivo,
+)
 from app.services.docx_service import generar_docx_bytes, docx_disponible
 from app.services.extract_service import extraer_texto, soportado as extract_soportado
 from app.services.corrector_service import (
@@ -907,14 +912,15 @@ async def documento_pdf(doc_id: int, request: Request):
         numero_documento=numero_doc,
     )
 
-    # Nombre del archivo: TIPO_NUMERO_FECHA.pdf
-    tipo_label = tipo_doc.replace("_", " ").title().replace(" ", "")
-    fecha_str = creado.strftime("%Y-%m-%d")
-    partes = [tipo_label]
-    if numero_solo:
-        partes.append(numero_solo)
-    partes.append(fecha_str)
-    nombre_archivo = "_".join(partes) + ".pdf"
+    # Nombre estándar: TIPO_SIGLAS_CORRELATIVO_FECHA.pdf
+    siglas = (cfg_org.siglas if cfg_org else "") or "DOC"
+    nombre_archivo = construir_nombre_archivo(
+        tipo_doc=tipo_doc,
+        siglas=siglas,
+        numero_correlativo=numero_solo or numero_doc,
+        ext="pdf",
+        fecha=creado,
+    )
 
     if pdf_disponible():
         return Response(
@@ -990,14 +996,15 @@ async def documento_docx(doc_id: int, request: Request):
         numero_doc=numero_completo,
     )
 
-    # Nombre TIPO_NUMERO_FECHA.docx
-    tipo_label = tipo_doc.replace("_", " ").title().replace(" ", "")
-    fecha_str = creado.strftime("%Y-%m-%d")
-    partes = [tipo_label]
-    if numero_solo:
-        partes.append(numero_solo)
-    partes.append(fecha_str)
-    nombre_archivo = "_".join(partes) + ".docx"
+    # Nombre estándar: TIPO_SIGLAS_CORRELATIVO_FECHA.docx
+    siglas = (cfg_org.siglas if cfg_org else "") or "DOC"
+    nombre_archivo = construir_nombre_archivo(
+        tipo_doc=tipo_doc,
+        siglas=siglas,
+        numero_correlativo=numero_solo or numero_doc,
+        ext="docx",
+        fecha=creado,
+    )
 
     mime_docx = (
         "application/vnd.openxmlformats-officedocument."
@@ -1022,6 +1029,129 @@ async def documento_docx(doc_id: int, request: Request):
             "Content-Type": "text/plain; charset=utf-8",
             "X-Content-Type-Options": "nosniff",
         },
+    )
+
+
+# ─── Revisión por token público ───
+@router.post("/documento/{doc_id}/compartir")
+async def documento_compartir(doc_id: int, request: Request):
+    """Genera un token único y devuelve el link público de revisión."""
+    import secrets
+    usuario = _require_user(request)
+    data = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
+    correo_revisor = (data.get("correo_revisor") or "").strip().lower()
+    mensaje_envio = (data.get("mensaje_envio") or "").strip()[:1000]
+
+    if "@" not in correo_revisor or "." not in correo_revisor:
+        return JSONResponse(
+            {"ok": False, "error": "Correo inválido"}, status_code=400
+        )
+
+    db = _db()
+    try:
+        doc = db.query(DocumentoSecretaria).filter(
+            DocumentoSecretaria.id == doc_id,
+            DocumentoSecretaria.secretaria_id == usuario.id,
+        ).first()
+        if not doc:
+            raise HTTPException(404, "Documento no encontrado")
+
+        token = secrets.token_urlsafe(32)[:64]
+        rev = DocumentoRevision(
+            documento_id=doc.id,
+            token=token,
+            correo_revisor=correo_revisor,
+            mensaje_envio=mensaje_envio,
+            estado="pendiente",
+        )
+        db.add(rev)
+        db.commit()
+        db.refresh(rev)
+    finally:
+        db.close()
+
+    base_url = os.environ.get("BASE_URL", "https://colegiospro.org.pe").rstrip("/")
+    link = f"{base_url}/ver/{token}"
+
+    # Envío por correo (best-effort usando email_engine si está configurado)
+    try:
+        _enviar_correo_revision(correo_revisor, link, mensaje_envio, usuario.nombre)
+    except Exception:
+        pass
+
+    return JSONResponse({
+        "ok": True,
+        "token": token,
+        "link": link,
+        "revision_id": rev.id,
+    })
+
+
+def _enviar_correo_revision(correo: str, link: str, mensaje: str, remitente: str):
+    """Envío best-effort de un correo de revisión.
+    Si no hay SMTP configurado, lo omite silenciosamente."""
+    import smtplib
+    from email.mime.text import MIMEText
+
+    host = os.environ.get("SMTP_HOST")
+    user = os.environ.get("SMTP_USER")
+    pwd = os.environ.get("SMTP_PASS")
+    if not (host and user and pwd):
+        return
+
+    cuerpo = f"""Hola,
+
+{remitente or 'Una secretaría'} te solicita revisar un documento.
+
+{mensaje}
+
+Puedes verlo y responder aquí (no requiere cuenta):
+{link}
+
+— SecretariaPro · ColegiosPro
+"""
+    msg = MIMEText(cuerpo, "plain", "utf-8")
+    msg["Subject"] = "Solicitud de revisión de documento"
+    msg["From"] = user
+    msg["To"] = correo
+
+    puerto = int(os.environ.get("SMTP_PORT", 587))
+    with smtplib.SMTP(host, puerto, timeout=15) as s:
+        s.starttls()
+        s.login(user, pwd)
+        s.sendmail(user, [correo], msg.as_string())
+
+
+@router.get("/revisiones", response_class=HTMLResponse)
+async def revisiones_lista(request: Request):
+    usuario = _user_or_redirect(request)
+    if not usuario:
+        return RedirectResponse("/secretaria/login", status_code=302)
+    db = _db()
+    try:
+        revisiones = (
+            db.query(DocumentoRevision, DocumentoSecretaria)
+            .join(
+                DocumentoSecretaria,
+                DocumentoRevision.documento_id == DocumentoSecretaria.id,
+            )
+            .filter(DocumentoSecretaria.secretaria_id == usuario.id)
+            .order_by(DocumentoRevision.creado_en.desc())
+            .limit(200)
+            .all()
+        )
+    finally:
+        db.close()
+    base_url = os.environ.get("BASE_URL", "https://colegiospro.org.pe").rstrip("/")
+    return templates.TemplateResponse(
+        request,
+        "secretaria/revisiones.html",
+        _ctx(
+            usuario=usuario,
+            modo_actual="revisiones",
+            revisiones=revisiones,
+            base_url=base_url,
+        ),
     )
 
 
@@ -1556,6 +1686,96 @@ async def remitentes_nuevo_submit(
     return RedirectResponse("/secretaria/remitentes", status_code=302)
 
 
+@router.post("/api/remitentes/crear")
+async def api_remitentes_crear(request: Request):
+    """Crea un perfil de remitente desde un modal AJAX y devuelve JSON."""
+    usuario = _require_user(request)
+    data = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
+    if not data:
+        form = await request.form()
+        data = dict(form)
+
+    nombre = (data.get("nombre") or "").strip()
+    if not nombre:
+        return JSONResponse({"ok": False, "error": "El nombre es obligatorio"}, status_code=400)
+
+    db = _db()
+    try:
+        p = PerfilRemitente(
+            secretaria_id=usuario.id,
+            colegio_id=usuario.colegio_id,
+            nombre=nombre,
+            cargo=(data.get("cargo") or "").strip() or None,
+            tratamiento=(data.get("tratamiento") or "").strip() or "",
+            sexo=((data.get("sexo") or "M").strip()[:1].upper() or "M"),
+            institucion=(data.get("institucion") or "").strip() or None,
+            ciudad=(data.get("ciudad") or "Iquitos").strip(),
+            es_default=False,
+        )
+        db.add(p)
+        db.commit()
+        db.refresh(p)
+        payload = {
+            "ok": True,
+            "perfil": {
+                "id": p.id,
+                "nombre": p.nombre,
+                "cargo": p.cargo or "",
+                "tratamiento": p.tratamiento or "",
+            },
+        }
+    finally:
+        db.close()
+    return JSONResponse(payload)
+
+
+@router.post("/api/destinatarios/crear")
+async def api_destinatarios_crear(request: Request):
+    """Crea una institución del directorio desde un modal AJAX y devuelve JSON."""
+    usuario = _require_user(request)
+    data = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
+    if not data:
+        form = await request.form()
+        data = dict(form)
+
+    nombre_inst = (data.get("nombre_institucion") or "").strip()
+    if not nombre_inst:
+        return JSONResponse({"ok": False, "error": "El nombre de la institución es obligatorio"}, status_code=400)
+
+    db = _db()
+    try:
+        inst = DirectorioInstitucional(
+            nombre_institucion=nombre_inst,
+            ruc=(data.get("ruc") or "").strip() or None,
+            tipo=(data.get("tipo") or "").strip() or None,
+            ciudad=(data.get("ciudad") or "").strip() or None,
+            titular_nombre=(data.get("titular_nombre") or "").strip() or None,
+            titular_cargo=(data.get("titular_cargo") or "").strip() or None,
+            titular_tratamiento=(data.get("titular_tratamiento") or "").strip() or None,
+            correo=(data.get("correo") or "").strip() or None,
+            telefono=(data.get("telefono") or "").strip() or None,
+            direccion=(data.get("direccion") or "").strip() or None,
+            registrado_por_colegio_id=usuario.colegio_id,
+            pendiente_revision=True,
+            validado=False,
+        )
+        db.add(inst)
+        db.commit()
+        db.refresh(inst)
+        payload = {
+            "ok": True,
+            "institucion": {
+                "id": inst.id,
+                "nombre_institucion": inst.nombre_institucion,
+                "titular_nombre": inst.titular_nombre or "",
+                "titular_cargo": inst.titular_cargo or "",
+            },
+        }
+    finally:
+        db.close()
+    return JSONResponse(payload)
+
+
 @router.post("/remitentes/{perfil_id}/default")
 async def remitentes_marcar_default(perfil_id: int, request: Request):
     usuario = _require_user(request)
@@ -1692,6 +1912,46 @@ async def configuracion_organizacion(
     finally:
         db.close()
     return RedirectResponse("/secretaria/configuracion", status_code=302)
+
+
+@router.post("/configuracion/marca-agua")
+async def configuracion_marca_agua(
+    request: Request,
+    marca_agua_activa: Optional[str] = Form(None),
+    marca_agua_texto: Optional[str] = Form(None),
+    marca_agua_tamano: Optional[int] = Form(48),
+    marca_agua_opacidad: Optional[float] = Form(0.08),
+    marca_agua_angulo: Optional[int] = Form(45),
+    marca_agua_color: Optional[str] = Form("gris"),
+):
+    usuario = _require_user(request)
+    db = _db()
+    try:
+        cfg = _get_o_crear_config_org(db, usuario.id, usuario.colegio_id)
+        cfg.marca_agua_activa = bool(marca_agua_activa)
+        cfg.marca_agua_texto = (marca_agua_texto or "").strip()[:80]
+        try:
+            cfg.marca_agua_tamano = max(10, min(200, int(marca_agua_tamano or 48)))
+        except (TypeError, ValueError):
+            cfg.marca_agua_tamano = 48
+        try:
+            op = float(marca_agua_opacidad or 0.08)
+        except (TypeError, ValueError):
+            op = 0.08
+        cfg.marca_agua_opacidad = max(0.0, min(1.0, op))
+        try:
+            cfg.marca_agua_angulo = int(marca_agua_angulo or 45) % 360
+        except (TypeError, ValueError):
+            cfg.marca_agua_angulo = 45
+        color = (marca_agua_color or "gris").strip().lower()
+        if color not in {"gris", "azul", "rojo", "verde", "negro"}:
+            color = "gris"
+        cfg.marca_agua_color = color
+        cfg.actualizado_en = datetime.now(timezone.utc)
+        db.commit()
+    finally:
+        db.close()
+    return JSONResponse({"ok": True})
 
 
 @router.post("/configuracion/apariencia")
