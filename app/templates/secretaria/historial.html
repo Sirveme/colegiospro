@@ -58,6 +58,7 @@
       <td class="sp-preview">{{ (d.texto_salida or '')[:120] }}…</td>
       <td>
         <a class="sp-btn" href="/secretaria/documento/{{ d.id }}/pdf" target="_blank">PDF</a>
+        <a class="sp-btn" href="/secretaria/documento/{{ d.id }}/docx">Word</a>
         <a class="sp-btn" href="/secretaria/historial/{{ d.id }}/reabrir">Reabrir</a>
       </td>
     </tr>
