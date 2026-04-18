@@ -44,6 +44,9 @@
       <a href="/secretaria/comunicado" class="{% if modo_actual == 'comunicado' %}active{% endif %}">
         <span class="ic">📣</span> Comunicado
       </a>
+      <a href="/secretaria/muro" class="{% if modo_actual == 'muro' %}active{% endif %}">
+        <span class="ic">🏛</span> Muro
+      </a>
       <a href="/secretaria/post-redes" class="{% if modo_actual == 'post-redes' %}active{% endif %}">
         <span class="ic">📷</span> Post Redes
       </a>
@@ -188,6 +191,29 @@
        implementaciones completas: spinner animado, dictado por voz real,
        fetch HTMX de la ficha, etc.) -->
   <script src="/static/secretaria/secretaria.js?v={{ static_version }}"></script>
+
+  <script>
+  // ─── Reproducir audio de notificación si viene ?play=... ───
+  (function() {
+    function playIfUrl(url) {
+      if (!url) return;
+      try {
+        var a = new Audio(decodeURIComponent(url));
+        a.play().catch(function(){ /* requiere gesto — se ignora */ });
+      } catch (e) {}
+    }
+    try {
+      var p = new URLSearchParams(window.location.search);
+      playIfUrl(p.get('play'));
+    } catch (e) {}
+    // SW puede postMessage cuando la app ya está abierta
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', function(ev) {
+        if (ev.data && ev.data.type === 'PLAY_AUDIO') playIfUrl(ev.data.audio_url);
+      });
+    }
+  })();
+  </script>
 
   {% if usuario and vapid_public_key %}
   <script>

@@ -47,6 +47,62 @@
       </label>
     </div>
 
+    <!-- Enriquecer notificación -->
+    <div class="sp-seccion" style="margin-top:.5rem;">
+      <div class="sp-seccion-hdr" onclick="spToggleComMedia()">
+        <span>🎨 Imagen / GIF / Audio</span>
+        <span class="sp-chevron" id="chv-media-push">▶</span>
+      </div>
+      <div class="sp-seccion-body" id="media-push" style="display:none;">
+
+        <!-- Categorías rápidas -->
+        <div class="sp-categorias-grid">
+          <button type="button" class="sp-cat-btn" onclick="spCargarCategoria('cumpleanos')">🎂 Cumpleaños</button>
+          <button type="button" class="sp-cat-btn" onclick="spCargarCategoria('feriado')">🇵🇪 Feriado</button>
+          <button type="button" class="sp-cat-btn" onclick="spCargarCategoria('urgente')">🚨 Urgente</button>
+          <button type="button" class="sp-cat-btn" onclick="spCargarCategoria('social')">🎉 Social</button>
+          <button type="button" class="sp-cat-btn" onclick="spCargarCategoria('norma')">📋 Norma</button>
+          <button type="button" class="sp-cat-btn" onclick="spCargarCategoria('aniversario')">🏛 Aniversario</button>
+        </div>
+
+        <!-- Galería -->
+        <div class="sp-media-galeria" id="media-galeria">
+          <p class="sp-empty" style="padding:1rem;">Elige una categoría para ver plantillas.</p>
+        </div>
+
+        <!-- Media seleccionado -->
+        <div id="media-seleccionado" style="margin-top:.5rem;"></div>
+
+        <!-- Subir propio -->
+        <label class="sp-btn" style="margin-top:.5rem; display:inline-block;">
+          📎 Subir imagen/GIF/audio propio
+          <input type="file" id="archivo-media" hidden
+                 accept="image/*,audio/*" onchange="spSubirMedia(this)">
+        </label>
+
+        <!-- Hidden inputs que se envían con el form -->
+        <input type="hidden" name="imagen_url" id="com-imagen-url" value="">
+        <input type="hidden" name="gif_url" id="com-gif-url" value="">
+        <input type="hidden" name="audio_url" id="com-audio-url" value="">
+        <input type="hidden" name="categoria" id="com-categoria" value="general">
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:.5rem; margin-top:.5rem;">
+          <label class="sp-field">
+            <span>Emoji destacado</span>
+            <input type="text" name="emoji_grande" id="com-emoji" maxlength="4"
+                   placeholder="🎂" style="font-size:1.4rem; text-align:center;">
+          </label>
+          <label class="sp-toggle-wrap sp-toggle-urgente" style="align-self:end;">
+            <div class="sp-toggle">
+              <input type="checkbox" name="urgente" id="com-urgente">
+              <div class="sp-toggle-slider"></div>
+            </div>
+            <span class="sp-toggle-label">🚨 Urgente</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
     <div id="com-estado" class="sp-alert" style="display:none; margin:.5rem 0;"></div>
 
     <button type="submit" class="sp-btn sp-btn-primary">📤 Enviar</button>
@@ -82,6 +138,95 @@
 </section>
 
 <script>
+window.spToggleComMedia = function() {
+  var body = document.getElementById('media-push');
+  var chv = document.getElementById('chv-media-push');
+  var abierto = body.style.display !== 'none';
+  body.style.display = abierto ? 'none' : 'block';
+  if (chv) chv.style.transform = abierto ? '' : 'rotate(90deg)';
+};
+
+window.spCargarCategoria = async function(cat) {
+  document.getElementById('com-categoria').value = cat;
+  var gal = document.getElementById('media-galeria');
+  gal.innerHTML = '<p class="sp-empty" style="padding:1rem;">Cargando…</p>';
+  try {
+    var r = await fetch('/push/media/biblioteca?categoria=' + encodeURIComponent(cat));
+    var data = await r.json();
+    if (!data.ok) throw new Error('Error');
+    if (!data.items || !data.items.length) {
+      gal.innerHTML = '<p class="sp-empty" style="padding:1rem;">Sin plantillas para esta categoría.</p>';
+      return;
+    }
+    gal.innerHTML = data.items.map(function(m) {
+      var preview;
+      if (m.tipo === 'imagen' || m.tipo === 'gif') {
+        preview = '<img src="' + m.url + '" alt="' + m.nombre + '" ' +
+                  'style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;" ' +
+                  'onerror="this.style.opacity=0.3;this.alt=\'(sin preview)\';">';
+      } else if (m.tipo === 'audio') {
+        preview = '<div style="padding:1rem;background:rgba(0,0,0,0.05);border-radius:6px;text-align:center;">🎵 ' + m.nombre + '</div>';
+      } else {
+        preview = '<div style="padding:1rem;">' + m.nombre + '</div>';
+      }
+      return '<div class="sp-media-tile" ' +
+             'onclick="spElegirMedia(\'' + m.tipo + '\',\'' + m.url + '\',\'' + m.nombre.replace(/\'/g,"\\\\'") + '\')">' +
+             preview +
+             '<small>' + m.nombre + '</small>' +
+             '</div>';
+    }).join('');
+  } catch (e) {
+    gal.innerHTML = '<p class="sp-alert sp-alert-error" style="padding:1rem;">' + e.message + '</p>';
+  }
+};
+
+window.spElegirMedia = function(tipo, url, nombre) {
+  document.getElementById('com-imagen-url').value = '';
+  document.getElementById('com-gif-url').value = '';
+  document.getElementById('com-audio-url').value = '';
+  if (tipo === 'imagen') document.getElementById('com-imagen-url').value = url;
+  else if (tipo === 'gif') document.getElementById('com-gif-url').value = url;
+  else if (tipo === 'audio') document.getElementById('com-audio-url').value = url;
+  var sel = document.getElementById('media-seleccionado');
+  var previewHtml;
+  if (tipo === 'imagen' || tipo === 'gif') {
+    previewHtml = '<img src="' + url + '" alt="" style="max-height:120px;border-radius:6px;">';
+  } else {
+    previewHtml = '<div>🎵 ' + nombre + '</div>';
+  }
+  sel.innerHTML =
+    '<div style="display:flex;gap:.5rem;align-items:center;background:rgba(13,122,96,0.1);padding:.5rem;border-radius:8px;">' +
+      previewHtml +
+      '<div style="flex:1;"><strong>' + nombre + '</strong><br><small>' + tipo + '</small></div>' +
+      '<button type="button" class="sp-btn sp-btn-icon" onclick="spQuitarMedia()">✕</button>' +
+    '</div>';
+};
+
+window.spQuitarMedia = function() {
+  document.getElementById('com-imagen-url').value = '';
+  document.getElementById('com-gif-url').value = '';
+  document.getElementById('com-audio-url').value = '';
+  document.getElementById('media-seleccionado').innerHTML = '';
+};
+
+window.spSubirMedia = async function(inp) {
+  if (!inp.files || !inp.files[0]) return;
+  var file = inp.files[0];
+  var fd = new FormData();
+  fd.append('archivo', file);
+  fd.append('categoria', document.getElementById('com-categoria').value || 'general');
+  fd.append('nombre', file.name);
+  try {
+    var r = await fetch('/push/media/subir', { method:'POST', body: fd });
+    var data = await r.json();
+    if (!data.ok) throw new Error(data.error || 'Error');
+    spElegirMedia(data.tipo, data.url, data.nombre);
+  } catch (e) {
+    alert('Error al subir: ' + e.message);
+  }
+  inp.value = '';
+};
+
 async function spGenerarComunicadoIA() {
   var form = document.getElementById('form-comunicado');
   var cuerpo = document.getElementById('com-cuerpo');

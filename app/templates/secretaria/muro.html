@@ -1,0 +1,120 @@
+{% extends "secretaria/base.html" %}
+{% block title %}Muro institucional{% endblock %}
+{% block content %}
+<header class="sp-header">
+  <h1>🏛 Muro institucional</h1>
+  <p>Calendario, normas, sociales y comunicados recientes de tu organización.</p>
+</header>
+
+<div class="sp-muro-grid">
+
+  <!-- Calendario -->
+  <section class="sp-col sp-muro-card">
+    <h2 style="margin-top:0;">📅 Calendario institucional</h2>
+
+    <h3 style="font-size:1rem; margin:.5rem 0;">🎂 Cumpleaños del mes</h3>
+    <div class="sp-placeholder" style="padding:1rem;">
+      <p style="margin:0;">Próximamente: lista de cumpleaños de tu equipo.</p>
+      <small>Requiere cargar fechas en el módulo de Directorio.</small>
+    </div>
+
+    <h3 style="font-size:1rem; margin:1rem 0 .5rem;">🏛 Aniversarios</h3>
+    <div class="sp-placeholder" style="padding:1rem;">
+      <p style="margin:0;">Próximamente: aniversarios institucionales.</p>
+    </div>
+
+    <h3 style="font-size:1rem; margin:1rem 0 .5rem;">🇵🇪 Feriados nacionales 2026</h3>
+    <ul style="list-style:none; padding:0; margin:0; font-size:.9rem;">
+      {% for f in feriados[:8] %}
+      <li style="padding:.3rem 0; border-bottom:1px dashed rgba(0,0,0,0.08);">
+        <strong>{{ f.fecha[8:] }}/{{ f.fecha[5:7] }}</strong> — {{ f.nombre }}
+      </li>
+      {% endfor %}
+    </ul>
+    <details style="margin-top:.5rem;">
+      <summary style="cursor:pointer; font-size:.85rem; color:var(--sp-muted);">Ver todos los feriados</summary>
+      <ul style="list-style:none; padding:0; margin:.5rem 0 0; font-size:.9rem;">
+        {% for f in feriados[8:] %}
+        <li style="padding:.3rem 0; border-bottom:1px dashed rgba(0,0,0,0.08);">
+          <strong>{{ f.fecha[8:] }}/{{ f.fecha[5:7] }}</strong> — {{ f.nombre }}
+        </li>
+        {% endfor %}
+      </ul>
+    </details>
+  </section>
+
+  <!-- Normas vigentes -->
+  <section class="sp-col sp-muro-card">
+    <h2 style="margin-top:0;">📋 Normas vigentes</h2>
+    <ul style="list-style:none; padding:0;">
+      <li class="sp-muro-item">
+        <strong>📄 Reglamento interno</strong>
+        <small>Próximamente — podrás subir tu reglamento aquí.</small>
+      </li>
+      <li class="sp-muro-item">
+        <strong>⚖ Código de ética</strong>
+        <small>Próximamente.</small>
+      </li>
+      <li class="sp-muro-item">
+        <strong>🚫 Normas anticorrupción</strong>
+        <small>Próximamente.</small>
+      </li>
+    </ul>
+  </section>
+
+  <!-- Sociales -->
+  <section class="sp-col sp-muro-card">
+    <h2 style="margin-top:0;">🎉 Sociales</h2>
+    <div class="sp-placeholder" style="padding:2rem 1rem;">
+      <p style="margin:0;">Publicaciones tipo muro (próximamente).</p>
+      <small>Podrás compartir fotos de eventos, felicitaciones y noticias.</small>
+    </div>
+  </section>
+
+  <!-- Comunicados recientes -->
+  <section class="sp-col sp-muro-card">
+    <h2 style="margin-top:0;">📢 Comunicados recientes</h2>
+    {% if comunicados %}
+    <ul style="list-style:none; padding:0;">
+      {% for c in comunicados %}
+      <li class="sp-muro-item">
+        <strong>{{ c.titulo }}</strong>
+        <small>{{ c.creado_en.strftime('%d/%m %H:%M') if c.creado_en else '' }} · {{ c.canal }}</small>
+        <p style="margin:.3rem 0 0; font-size:.9rem; color:var(--sp-muted);">{{ (c.cuerpo or '')[:140] }}{% if c.cuerpo and c.cuerpo|length > 140 %}…{% endif %}</p>
+      </li>
+      {% endfor %}
+    </ul>
+    <a class="sp-btn" href="/secretaria/comunicado">+ Nuevo comunicado</a>
+    {% else %}
+    <div class="sp-placeholder" style="padding:1rem;">
+      <p style="margin:0;">Aún no hay comunicados.</p>
+      <a class="sp-btn sp-btn-primary" href="/secretaria/comunicado" style="margin-top:.5rem;">📢 Crear el primero</a>
+    </div>
+    {% endif %}
+  </section>
+
+</div>
+
+<style>
+.sp-muro-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+}
+.sp-muro-card {
+  margin-bottom: 0;
+}
+.sp-muro-item {
+  padding: .6rem .8rem;
+  margin-bottom: .4rem;
+  background: rgba(0,0,0,0.03);
+  border-radius: 8px;
+  display: block;
+}
+.sp-muro-item strong { display: block; }
+.sp-muro-item small { color: var(--sp-muted, #6a7285); font-size: .8rem; }
+[data-tema="oscuro"] .sp-muro-item {
+  background: rgba(255,255,255,0.04);
+}
+</style>
+{% endblock %}

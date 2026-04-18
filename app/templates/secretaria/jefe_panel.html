@@ -37,12 +37,15 @@
         <span>Instrucción (qué comunicar)</span>
         <textarea name="instruccion" rows="3" required placeholder="Ej: Redactar una carta al alcalde agradeciendo el apoyo..."></textarea>
       </label>
-      <label class="sp-toggle-item">
-        <input type="checkbox" name="urgente" value="1">
-        <span><strong>Urgente</strong></span>
+      <label class="sp-toggle-wrap sp-toggle-urgente">
+        <div class="sp-toggle">
+          <input type="checkbox" name="urgente" value="1">
+          <div class="sp-toggle-slider"></div>
+        </div>
+        <span class="sp-toggle-label">🚨 Marcar como urgente</span>
       </label>
       <div class="sp-solicitud-estado" style="display:none;"></div>
-      <button type="submit" class="sp-btn sp-btn-primary">Enviar solicitud</button>
+      <button type="submit" class="sp-btn-accion sp-btn-accion-primary">📝 Enviar solicitud</button>
     </form>
   </section>
 
@@ -65,12 +68,15 @@
         <span>Nota / corrección</span>
         <textarea name="nota" rows="3" required placeholder="Describe qué corregir..."></textarea>
       </label>
-      <label class="sp-toggle-item">
-        <input type="checkbox" name="urgente" value="1">
-        <span><strong>Urgente</strong></span>
+      <label class="sp-toggle-wrap sp-toggle-urgente">
+        <div class="sp-toggle">
+          <input type="checkbox" name="urgente" value="1">
+          <div class="sp-toggle-slider"></div>
+        </div>
+        <span class="sp-toggle-label">🚨 Marcar como urgente</span>
       </label>
       <div class="sp-solicitud-estado" style="display:none;"></div>
-      <button type="submit" class="sp-btn sp-btn-primary">Enviar</button>
+      <button type="submit" class="sp-btn-accion sp-btn-accion-gold">✏️ Enviar corrección</button>
     </form>
   </section>
 
@@ -89,12 +95,15 @@
           <option value="todos">Todos los suscriptores activos</option>
         </select>
       </label>
-      <label class="sp-toggle-item">
-        <input type="checkbox" name="urgente" value="1">
-        <span><strong>Urgente</strong></span>
+      <label class="sp-toggle-wrap sp-toggle-urgente">
+        <div class="sp-toggle">
+          <input type="checkbox" name="urgente" value="1">
+          <div class="sp-toggle-slider"></div>
+        </div>
+        <span class="sp-toggle-label">🚨 Marcar como urgente</span>
       </label>
       <div class="sp-solicitud-estado" style="display:none;"></div>
-      <button type="submit" class="sp-btn sp-btn-primary">Enviar</button>
+      <button type="submit" class="sp-btn-accion sp-btn-accion-primary">📢 Enviar comunicado</button>
     </form>
   </section>
 
