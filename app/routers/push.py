@@ -10,11 +10,17 @@ from fastapi import APIRouter, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+import pathlib
+import secrets as _secrets
+
+from fastapi import UploadFile, File
+
 from app.database import SessionLocal
 from app.models_secretaria import (
     UsuarioSecretaria,
     PushSuscriptor,
     PushMensaje,
+    PushMediaBiblioteca,
     DocumentoSecretaria,
 )
 from app.services.auth_service import get_current_user_id
@@ -23,6 +29,11 @@ from app.services.push_service import (
     vapid_public_key,
     push_habilitado,
 )
+
+
+UPLOADS_MEDIA_DIR = pathlib.Path("static/img/push-uploads")
+UPLOADS_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+EXT_PERMITIDAS = {"jpg", "jpeg", "png", "gif", "webp", "mp3", "ogg", "wav", "m4a"}
 
 
 router = APIRouter(tags=["Push"])
@@ -239,3 +250,104 @@ async def push_panel_enviar(request: Request):
 
 # Los endpoints del panel jefe (/secretaria/jefe y /secretaria/jefe/solicitud)
 # se movieron a app/routers/secretaria.py para usar su prefix /secretaria.
+
+
+# ─── Biblioteca de medios para Push ───
+@router.get("/push/media/biblioteca")
+async def push_media_biblioteca(request: Request, categoria: Optional[str] = None):
+    """Lista los medios disponibles. Incluye plantillas del sistema +
+    medios propios de la secretaria logueada."""
+    uid = get_current_user_id(request)
+    db = _db()
+    try:
+        q = db.query(PushMediaBiblioteca)
+        if categoria:
+            q = q.filter(PushMediaBiblioteca.categoria == categoria)
+        # Plantillas del sistema (sin dueño) + mis propios
+        from sqlalchemy import or_
+        if uid:
+            q = q.filter(or_(
+                PushMediaBiblioteca.es_plantilla == True,  # noqa: E712
+                PushMediaBiblioteca.secretaria_id == uid,
+            ))
+        else:
+            q = q.filter(PushMediaBiblioteca.es_plantilla == True)  # noqa: E712
+        items = q.order_by(PushMediaBiblioteca.es_plantilla.desc(), PushMediaBiblioteca.creado_en.desc()).all()
+        return JSONResponse({
+            "ok": True,
+            "items": [
+                {
+                    "id": i.id,
+                    "categoria": i.categoria,
+                    "nombre": i.nombre,
+                    "tipo": i.tipo,
+                    "url": i.url,
+                    "es_plantilla": bool(i.es_plantilla),
+                }
+                for i in items
+            ],
+        })
+    finally:
+        db.close()
+
+
+@router.post("/push/media/subir")
+async def push_media_subir(
+    request: Request,
+    archivo: UploadFile = File(...),
+    categoria: str = "general",
+    nombre: str = "",
+):
+    """Sube un archivo (imagen/gif/audio) y lo guarda en la biblioteca."""
+    uid = get_current_user_id(request)
+    if not uid:
+        raise HTTPException(401, "No autenticado")
+
+    fname = (archivo.filename or "").strip()
+    if not fname:
+        return JSONResponse({"ok": False, "error": "Sin archivo"}, status_code=400)
+    ext = fname.rsplit(".", 1)[-1].lower() if "." in fname else ""
+    if ext not in EXT_PERMITIDAS:
+        return JSONResponse(
+            {"ok": False, "error": f"Extensión no permitida: .{ext}"},
+            status_code=400,
+        )
+
+    tipo = "imagen"
+    if ext in ("gif",):
+        tipo = "gif"
+    elif ext in ("mp3", "ogg", "wav", "m4a"):
+        tipo = "audio"
+
+    # Guardar con nombre aleatorio
+    random_name = _secrets.token_urlsafe(12) + "." + ext
+    dest = UPLOADS_MEDIA_DIR / random_name
+    contenido = await archivo.read()
+    if len(contenido) > 10 * 1024 * 1024:  # 10 MB
+        return JSONResponse(
+            {"ok": False, "error": "Archivo demasiado grande (máx 10 MB)"},
+            status_code=413,
+        )
+    dest.write_bytes(contenido)
+    url = f"/static/img/push-uploads/{random_name}"
+
+    db = _db()
+    try:
+        m = PushMediaBiblioteca(
+            secretaria_id=uid,
+            categoria=(categoria or "general").strip()[:30],
+            nombre=(nombre or fname)[:100],
+            tipo=tipo,
+            url=url,
+            es_plantilla=False,
+        )
+        db.add(m)
+        db.commit()
+        db.refresh(m)
+        return JSONResponse({
+            "ok": True,
+            "id": m.id, "url": url, "tipo": tipo,
+            "nombre": m.nombre, "categoria": m.categoria,
+        })
+    finally:
+        db.close()

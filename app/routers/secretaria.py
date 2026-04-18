@@ -1731,6 +1731,12 @@ async def comunicado_enviar(
     cuerpo: str = Form(""),
     canal: str = Form("push"),
     destinatarios: str = Form("mis_secretarias"),
+    imagen_url: Optional[str] = Form(""),
+    gif_url: Optional[str] = Form(""),
+    audio_url: Optional[str] = Form(""),
+    emoji_grande: Optional[str] = Form(""),
+    categoria: Optional[str] = Form("general"),
+    urgente: Optional[str] = Form(None),
 ):
     """Envía el comunicado. Hoy solo el canal 'push' está operativo."""
     usuario = _require_user(request)
@@ -1775,11 +1781,17 @@ async def comunicado_enviar(
             q = q.filter(PushSuscriptor.secretaria_id == usuario.id)
         suscriptores = q.all()
 
+        urg = bool(urgente)
         payload = {
             "titulo": f"📣 {titulo}",
             "cuerpo": cuerpo[:250],
             "url": "/secretaria/",
-            "urgente": False,
+            "urgente": urg,
+            "imagen_url": (imagen_url or "").strip(),
+            "gif_url": (gif_url or "").strip(),
+            "audio_url": (audio_url or "").strip(),
+            "emoji_grande": (emoji_grande or "").strip()[:10],
+            "categoria": (categoria or "general").strip()[:30],
         }
         resultado = enviar_push_multi(suscriptores, payload)
 
@@ -1795,8 +1807,13 @@ async def comunicado_enviar(
         msg = PushMensaje(
             de_usuario_id=usuario.id,
             titulo=payload["titulo"], cuerpo=payload["cuerpo"],
-            url_destino=payload["url"], urgente=False,
+            url_destino=payload["url"], urgente=urg,
             enviado_a=[s.id for s in suscriptores],
+            imagen_url=payload["imagen_url"],
+            gif_url=payload["gif_url"],
+            audio_url=payload["audio_url"],
+            categoria=payload["categoria"],
+            emoji_grande=payload["emoji_grande"],
         )
         db.add(msg)
         db.commit()
@@ -1808,6 +1825,56 @@ async def comunicado_enviar(
         "resultado": resultado,
         "total_suscriptores": len(suscriptores),
     })
+
+
+# ─── Muro institucional ───
+@router.get("/muro", response_class=HTMLResponse)
+async def muro_view(request: Request):
+    usuario = _user_or_redirect(request)
+    if not usuario:
+        return RedirectResponse("/secretaria/login", status_code=302)
+    db = _db()
+    try:
+        # Comunicados recientes para el bloque "Comunicados"
+        comunicados = (
+            db.query(Comunicado)
+            .filter(Comunicado.secretaria_id == usuario.id)
+            .order_by(Comunicado.creado_en.desc())
+            .limit(5)
+            .all()
+        )
+    finally:
+        db.close()
+
+    # Feriados nacionales Perú 2026 (hardcoded por ahora)
+    feriados_peru = [
+        {"fecha": "2026-01-01", "nombre": "Año Nuevo"},
+        {"fecha": "2026-04-02", "nombre": "Jueves Santo"},
+        {"fecha": "2026-04-03", "nombre": "Viernes Santo"},
+        {"fecha": "2026-05-01", "nombre": "Día del Trabajo"},
+        {"fecha": "2026-06-29", "nombre": "San Pedro y San Pablo"},
+        {"fecha": "2026-07-23", "nombre": "Día de la Fuerza Aérea"},
+        {"fecha": "2026-07-28", "nombre": "Fiestas Patrias"},
+        {"fecha": "2026-07-29", "nombre": "Fiestas Patrias"},
+        {"fecha": "2026-08-06", "nombre": "Batalla de Junín"},
+        {"fecha": "2026-08-30", "nombre": "Santa Rosa de Lima"},
+        {"fecha": "2026-10-08", "nombre": "Combate de Angamos"},
+        {"fecha": "2026-11-01", "nombre": "Todos los Santos"},
+        {"fecha": "2026-12-08", "nombre": "Inmaculada Concepción"},
+        {"fecha": "2026-12-09", "nombre": "Batalla de Ayacucho"},
+        {"fecha": "2026-12-25", "nombre": "Navidad"},
+    ]
+
+    return templates.TemplateResponse(
+        request,
+        "secretaria/muro.html",
+        _ctx(
+            usuario=usuario,
+            modo_actual="muro",
+            comunicados=comunicados,
+            feriados=feriados_peru,
+        ),
+    )
 
 
 # ─── Panel del Jefe / Funcionario ───
