@@ -29,6 +29,10 @@ from app.models_secretaria import (
     ConfigOrganizacion,
     CorrelatividadDocumento,
     DocumentoRevision,
+    PushSuscriptor,
+    PushMensaje,
+    Comunicado,
+    PostRedesImagen,
 )
 from app.services.auth_service import (
     hash_password,
@@ -1321,8 +1325,10 @@ async def historial_reabrir(doc_id: int, request: Request):
     # En la práctica, devolvemos al Redactor con los datos en query params
     from urllib.parse import quote
     texto = (doc.texto_entrada or "")[:500]
+    tipo = doc.formato_salida or "carta"
     return RedirectResponse(
-        f"/secretaria/redactor?reabrir={doc_id}&texto={quote(texto)}&tono={doc.tono or 'formal'}",
+        f"/secretaria/redactor?reabrir={doc_id}&texto={quote(texto)}"
+        f"&tono={doc.tono or 'formal'}&tipo={quote(tipo)}",
         status_code=302,
     )
 
@@ -1664,30 +1670,429 @@ async def corrector_procesar(
     )
 
 
-# ─── Modo 3: Comunicado (placeholder navegable) ────────────────────
+# ─── Modo 3: Comunicado ─────────────────────────────────────
 @router.get("/comunicado", response_class=HTMLResponse)
 async def comunicado_view(request: Request):
     usuario = _user_or_redirect(request)
     if not usuario:
         return RedirectResponse("/secretaria/login", status_code=302)
+    db = _db()
+    try:
+        historial = (
+            db.query(Comunicado)
+            .filter(Comunicado.secretaria_id == usuario.id)
+            .order_by(Comunicado.creado_en.desc())
+            .limit(30)
+            .all()
+        )
+        suscriptores_count = db.query(PushSuscriptor).filter(
+            PushSuscriptor.secretaria_id == usuario.id,
+            PushSuscriptor.activo == True,  # noqa: E712
+        ).count()
+    finally:
+        db.close()
     return templates.TemplateResponse(
         request,
         "secretaria/comunicado.html",
-        _ctx(usuario=usuario, modo_actual="comunicado"),
+        _ctx(
+            usuario=usuario,
+            modo_actual="comunicado",
+            historial=historial,
+            suscriptores_count=suscriptores_count,
+        ),
     )
 
 
-# ─── Modo 4: Post Redes (placeholder navegable) ────────────────────
+@router.post("/comunicado/generar-ia")
+async def comunicado_generar_ia(request: Request):
+    """Genera cuerpo del comunicado con IA usando el redactor en tono cordial."""
+    usuario = _require_user(request)
+    data = await request.json()
+    idea = (data.get("idea") or "").strip()
+    titulo = (data.get("titulo") or "").strip()
+    if not idea:
+        return JSONResponse({"ok": False, "error": "Escribe primero la idea"}, status_code=400)
+
+    from app.services.redactor_service import generar_documento
+    texto, _alertas = generar_documento(
+        texto_entrada=idea,
+        tono="cordial",
+        destinatario=None,
+        remitente={"nombre_colegio": titulo or "", "nombre_firmante": usuario.nombre or "", "cargo_firmante": "Secretaría"},
+        tipo_documento="comunicado_general",
+    )
+    return JSONResponse({"ok": True, "texto": texto})
+
+
+@router.post("/comunicado/enviar")
+async def comunicado_enviar(
+    request: Request,
+    titulo: str = Form(""),
+    cuerpo: str = Form(""),
+    canal: str = Form("push"),
+    destinatarios: str = Form("mis_secretarias"),
+):
+    """Envía el comunicado. Hoy solo el canal 'push' está operativo."""
+    usuario = _require_user(request)
+    titulo = (titulo or "").strip()[:200]
+    cuerpo = (cuerpo or "").strip()[:5000]
+    canal = (canal or "push").strip().lower()
+    destinatarios = (destinatarios or "mis_secretarias").strip()
+
+    if not titulo or not cuerpo:
+        return JSONResponse(
+            {"ok": False, "error": "Título y cuerpo son obligatorios"},
+            status_code=400,
+        )
+
+    if canal != "push":
+        # Registrar la intención pero avisar que está en desarrollo
+        db = _db()
+        try:
+            c = Comunicado(
+                secretaria_id=usuario.id,
+                colegio_id=usuario.colegio_id,
+                titulo=titulo, cuerpo=cuerpo, canal=canal,
+                destinatarios=destinatarios, enviado_count=0,
+            )
+            db.add(c); db.commit()
+        finally:
+            db.close()
+        return JSONResponse({
+            "ok": True,
+            "info": f"El canal '{canal}' estará disponible pronto. Comunicado guardado en historial.",
+            "enviado_count": 0,
+        })
+
+    # Canal push
+    from app.services.push_service import enviar_push_multi
+    db = _db()
+    try:
+        q = db.query(PushSuscriptor).filter(PushSuscriptor.activo == True)  # noqa: E712
+        if destinatarios == "todos":
+            pass
+        else:
+            q = q.filter(PushSuscriptor.secretaria_id == usuario.id)
+        suscriptores = q.all()
+
+        payload = {
+            "titulo": f"📣 {titulo}",
+            "cuerpo": cuerpo[:250],
+            "url": "/secretaria/",
+            "urgente": False,
+        }
+        resultado = enviar_push_multi(suscriptores, payload)
+
+        c = Comunicado(
+            secretaria_id=usuario.id,
+            colegio_id=usuario.colegio_id,
+            titulo=titulo, cuerpo=cuerpo, canal=canal,
+            destinatarios=destinatarios,
+            enviado_count=resultado.get("enviados", 0),
+        )
+        db.add(c)
+        # Registrar en push_mensajes también
+        msg = PushMensaje(
+            de_usuario_id=usuario.id,
+            titulo=payload["titulo"], cuerpo=payload["cuerpo"],
+            url_destino=payload["url"], urgente=False,
+            enviado_a=[s.id for s in suscriptores],
+        )
+        db.add(msg)
+        db.commit()
+    finally:
+        db.close()
+
+    return JSONResponse({
+        "ok": True,
+        "resultado": resultado,
+        "total_suscriptores": len(suscriptores),
+    })
+
+
+# ─── Panel del Jefe / Funcionario ───
+@router.get("/jefe", response_class=HTMLResponse)
+async def jefe_panel(request: Request):
+    usuario = _user_or_redirect(request)
+    if not usuario:
+        return RedirectResponse("/secretaria/login", status_code=302)
+    db = _db()
+    try:
+        docs = (
+            db.query(DocumentoSecretaria)
+            .filter(DocumentoSecretaria.secretaria_id == usuario.id)
+            .order_by(DocumentoSecretaria.creado_en.desc())
+            .limit(20)
+            .all()
+        )
+        suscriptores_count = db.query(PushSuscriptor).filter(
+            PushSuscriptor.secretaria_id == usuario.id,
+            PushSuscriptor.activo == True,  # noqa: E712
+        ).count()
+        historial = (
+            db.query(PushMensaje)
+            .order_by(PushMensaje.creado_en.desc())
+            .limit(30)
+            .all()
+        )
+    finally:
+        db.close()
+
+    from app.services.push_service import vapid_public_key, push_habilitado
+    return templates.TemplateResponse(
+        request,
+        "secretaria/jefe_panel.html",
+        _ctx(
+            usuario=usuario,
+            modo_actual="jefe",
+            docs_recientes=docs,
+            suscriptores_count=suscriptores_count,
+            historial=historial,
+            vapid_public_key=vapid_public_key(),
+            push_habilitado=push_habilitado(),
+        ),
+    )
+
+
+@router.post("/jefe/solicitud")
+async def jefe_solicitud(
+    request: Request,
+    accion: str = Form(...),
+    tipo_doc: Optional[str] = Form(""),
+    instruccion: Optional[str] = Form(""),
+    doc_id: Optional[int] = Form(None),
+    nota: Optional[str] = Form(""),
+    mensaje: Optional[str] = Form(""),
+    destinatarios: Optional[str] = Form("mis_secretarias"),
+    urgente: Optional[str] = Form(None),
+):
+    usuario = _require_user(request)
+    from app.services.push_service import enviar_push_multi
+
+    accion = (accion or "").strip()
+    urg = bool(urgente)
+    if accion == "solicitar_nuevo":
+        titulo = "📝 Nueva solicitud de documento"
+        cuerpo = f"Tipo: {tipo_doc or '—'}. {(instruccion or '')[:140]}"
+        url = "/secretaria/redactor"
+    elif accion == "corregir":
+        titulo = "✏️ Corrección solicitada"
+        cuerpo = f"Doc #{doc_id or '?'}: {(nota or '')[:140]}"
+        url = f"/secretaria/historial/{doc_id}/reabrir" if doc_id else "/secretaria/historial"
+    elif accion == "comunicado":
+        titulo = "📢 Comunicado"
+        cuerpo = (mensaje or "")[:200]
+        url = "/secretaria/"
+    else:
+        raise HTTPException(400, "Acción inválida")
+
+    db = _db()
+    try:
+        q = db.query(PushSuscriptor).filter(PushSuscriptor.activo == True)  # noqa: E712
+        if destinatarios == "todos":
+            pass
+        else:
+            q = q.filter(PushSuscriptor.secretaria_id == usuario.id)
+        suscriptores = q.all()
+
+        payload = {"titulo": titulo, "cuerpo": cuerpo, "url": url, "urgente": urg}
+        resultado = enviar_push_multi(suscriptores, payload)
+
+        msg = PushMensaje(
+            de_usuario_id=usuario.id,
+            titulo=titulo, cuerpo=cuerpo, url_destino=url, urgente=urg,
+            enviado_a=[s.id for s in suscriptores],
+        )
+        db.add(msg); db.commit()
+        return JSONResponse({
+            "ok": True,
+            "resultado": resultado,
+            "total": len(suscriptores),
+        })
+    finally:
+        db.close()
+
+
+# ─── Modo 4: Post Redes (DALL-E) ────────────────────
 @router.get("/post-redes", response_class=HTMLResponse)
 async def post_redes_view(request: Request):
     usuario = _user_or_redirect(request)
     if not usuario:
         return RedirectResponse("/secretaria/login", status_code=302)
+    db = _db()
+    try:
+        cfg = _get_config_org(db, usuario.id)
+        imgs = (
+            db.query(PostRedesImagen)
+            .filter(PostRedesImagen.secretaria_id == usuario.id)
+            .order_by(PostRedesImagen.creado_en.desc())
+            .limit(12)
+            .all()
+        )
+    finally:
+        db.close()
+
+    tiene_key_propia = bool(cfg and (cfg.imagen_openai_key_enc or "").strip())
+    usadas = (cfg.imagenes_generadas_mes if cfg else 0) or 0
+    limite = (cfg.imagenes_limite_mes if cfg else 10) or 10
     return templates.TemplateResponse(
         request,
         "secretaria/post_redes.html",
-        _ctx(usuario=usuario, modo_actual="post-redes"),
+        _ctx(
+            usuario=usuario,
+            modo_actual="post-redes",
+            imagenes=imgs,
+            imagenes_usadas=usadas,
+            imagenes_limite=limite,
+            tiene_key_propia=tiene_key_propia,
+        ),
     )
+
+
+def _descifrar_key(enc: str) -> str:
+    if not enc:
+        return ""
+    try:
+        from cryptography.fernet import Fernet
+        fernet_key = os.environ.get("FERNET_KEY", "")
+        if not fernet_key:
+            return enc
+        f = Fernet(fernet_key.encode() if isinstance(fernet_key, str) else fernet_key)
+        return f.decrypt(enc.encode()).decode()
+    except Exception:
+        return enc  # dev: sin cifrar
+
+
+def _cifrar_key(plain: str) -> str:
+    if not plain:
+        return ""
+    try:
+        from cryptography.fernet import Fernet
+        fernet_key = os.environ.get("FERNET_KEY", "")
+        if not fernet_key:
+            return plain
+        f = Fernet(fernet_key.encode() if isinstance(fernet_key, str) else fernet_key)
+        return f.encrypt(plain.encode()).decode()
+    except Exception:
+        return plain
+
+
+@router.post("/post-redes/generar-imagen")
+async def post_redes_generar(request: Request):
+    """Genera una imagen con DALL-E 3. Usa API key propia si la tiene,
+    si no usa la del sistema. Respeta límite mensual."""
+    usuario = _require_user(request)
+    data = await request.json()
+    prompt = (data.get("prompt") or "").strip()[:1500]
+    size = (data.get("size") or "1024x1024").strip()
+    if size not in ("1024x1024", "1792x1024", "1024x1792"):
+        size = "1024x1024"
+    if not prompt:
+        return JSONResponse({"ok": False, "error": "Escribe un prompt"}, status_code=400)
+
+    db = _db()
+    try:
+        cfg = _get_o_crear_config_org(db, usuario.id, usuario.colegio_id)
+
+        # Reset mensual si el mes cambió
+        ahora = datetime.now(timezone.utc)
+        reset = cfg.imagenes_reset_fecha
+        if not reset or (reset.month != ahora.month) or (reset.year != ahora.year):
+            cfg.imagenes_generadas_mes = 0
+            cfg.imagenes_reset_fecha = ahora
+            db.commit()
+
+        api_key_propia = _descifrar_key(cfg.imagen_openai_key_enc or "")
+        usa_propia = bool(api_key_propia)
+
+        # Si usa key del sistema, validar límite
+        if not usa_propia:
+            usadas = cfg.imagenes_generadas_mes or 0
+            limite = cfg.imagenes_limite_mes or 10
+            if usadas >= limite:
+                return JSONResponse({
+                    "ok": False,
+                    "error": f"Alcanzaste el límite mensual gratuito ({limite} imágenes). "
+                             f"Agrega tu propia API Key de OpenAI en Configuración para generar más.",
+                    "limite_alcanzado": True,
+                }, status_code=429)
+
+        api_key = api_key_propia or os.environ.get("OPENAI_API_KEY", "")
+        if not api_key:
+            return JSONResponse(
+                {"ok": False, "error": "No hay API key configurada en el servidor ni en tu cuenta"},
+                status_code=500,
+            )
+
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=api_key)
+            resp = client.images.generate(
+                model="dall-e-3",
+                prompt=prompt,
+                size=size,
+                quality="standard",
+                n=1,
+            )
+            url = resp.data[0].url
+        except Exception as e:
+            return JSONResponse(
+                {"ok": False, "error": f"OpenAI: {str(e)[:200]}"},
+                status_code=502,
+            )
+
+        # Incrementar contador solo si usa la key del sistema
+        if not usa_propia:
+            cfg.imagenes_generadas_mes = (cfg.imagenes_generadas_mes or 0) + 1
+            db.commit()
+
+        img = PostRedesImagen(
+            secretaria_id=usuario.id,
+            prompt=prompt,
+            url_resultado=url or "",
+            modelo="dall-e-3",
+        )
+        db.add(img)
+        db.commit()
+        db.refresh(img)
+
+        return JSONResponse({
+            "ok": True,
+            "url": url,
+            "id": img.id,
+            "usadas": cfg.imagenes_generadas_mes,
+            "limite": cfg.imagenes_limite_mes,
+            "usa_key_propia": usa_propia,
+        })
+    finally:
+        db.close()
+
+
+@router.post("/configuracion/openai-key")
+async def configuracion_openai_key(
+    request: Request,
+    api_key_openai_propia: str = Form(""),
+    accion: str = Form("guardar"),
+):
+    """Guarda o elimina la API Key propia de OpenAI para DALL-E."""
+    usuario = _require_user(request)
+    db = _db()
+    try:
+        cfg = _get_o_crear_config_org(db, usuario.id, usuario.colegio_id)
+        if accion == "eliminar":
+            cfg.imagen_openai_key_enc = ""
+        else:
+            k = (api_key_openai_propia or "").strip()
+            if not k:
+                return JSONResponse({"ok": False, "error": "API Key vacía"}, status_code=400)
+            if not k.startswith("sk-"):
+                return JSONResponse({"ok": False, "error": "Formato inválido (debe empezar con sk-)"}, status_code=400)
+            cfg.imagen_openai_key_enc = _cifrar_key(k)
+        cfg.actualizado_en = datetime.now(timezone.utc)
+        db.commit()
+    finally:
+        db.close()
+    return JSONResponse({"ok": True})
 
 
 # ═══════════════════════════════════════════════════════════════════
