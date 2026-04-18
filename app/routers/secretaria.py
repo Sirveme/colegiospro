@@ -856,6 +856,8 @@ async def documento_guardar(doc_id: int, request: Request):
 
 @router.get("/documento/{doc_id}/pdf")
 async def documento_pdf(doc_id: int, request: Request):
+    import re
+
     usuario = _user_or_redirect(request)
     if not usuario:
         return RedirectResponse("/secretaria/login", status_code=302)
@@ -869,28 +871,56 @@ async def documento_pdf(doc_id: int, request: Request):
             raise HTTPException(404, "Documento no encontrado")
         texto = doc.texto_salida or ""
         tono_doc = doc.tono or "formal"
+        creado = doc.creado_en or datetime.utcnow()
         cfg_col = None
         if usuario.colegio_id:
             cfg_col = db.query(ConfigSecretariaColegio).filter(
                 ConfigSecretariaColegio.colegio_id == usuario.colegio_id
             ).first()
+        cfg_org = _get_config_org(db, usuario.id)
     finally:
         db.close()
 
     tipo_doc = doc.formato_salida or "carta"
+
+    # Extraer número del documento desde el texto (ej: "OFICIO N° 045-2026-SIGLAS")
+    numero_doc = ""
+    numero_solo = ""
+    match = re.search(
+        r"N[°º]\s*([0-9]{1,4}[-\u2013\u2014]?[0-9]{4}(?:[-\u2013\u2014][A-Za-zÁÉÍÓÚÑ\.]+)?)",
+        texto,
+    )
+    if match:
+        numero_doc = match.group(1).strip()
+        m_num = re.match(r"(\d+)", numero_doc)
+        if m_num:
+            numero_solo = m_num.group(1).zfill(3)
+
     contenido = texto_a_pdf_bytes(
         texto,
         titulo=f"Documento_{doc_id}",
         tono=tono_doc,
         config_colegio=cfg_col,
         tipo_documento=tipo_doc,
+        config_organizacion=cfg_org,
+        numero_documento=numero_doc,
     )
+
+    # Nombre del archivo: TIPO_NUMERO_FECHA.pdf
+    tipo_label = tipo_doc.replace("_", " ").title().replace(" ", "")
+    fecha_str = creado.strftime("%Y-%m-%d")
+    partes = [tipo_label]
+    if numero_solo:
+        partes.append(numero_solo)
+    partes.append(fecha_str)
+    nombre_archivo = "_".join(partes) + ".pdf"
+
     if pdf_disponible():
         return Response(
             content=contenido,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": f'attachment; filename="documento_{doc_id}.pdf"'
+                "Content-Disposition": f'attachment; filename="{nombre_archivo}"'
             },
         )
     # Fallback: HTML imprimible
