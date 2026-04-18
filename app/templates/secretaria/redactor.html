@@ -62,14 +62,15 @@
       </div>
     </div>
 
-    <!-- Tipo de documento (colapsado, seleccionable) -->
+    <!-- Tipo de documento — 4 principales + resto colapsado -->
+    {% set tipos_principales_ids = ['carta', 'oficio', 'memorandum', 'circular'] %}
     <div class="sp-field">
       <label><span>Tipo de documento</span></label>
-      <div class="sp-tipo-grid" id="tipo-grid">
-        {% for t in tipos %}
+      <div class="sp-tipo-grid" id="tipos-principales">
+        {% for t in tipos if t.id in tipos_principales_ids %}
         <button
           type="button"
-          class="sp-tipo-btn {% if loop.first %}activo{% endif %}"
+          class="sp-tipo-btn {% if t.id == 'carta' %}activo{% endif %}"
           data-tipo="{{ t.id }}"
           onclick="spSeleccionarTipo('{{ t.id }}')"
         >
@@ -78,41 +79,75 @@
         </button>
         {% endfor %}
       </div>
+
+      <div class="sp-tipo-grid" id="tipos-extra" style="display:none; margin-top:.5rem;">
+        {% for t in tipos if t.id not in tipos_principales_ids %}
+        <button
+          type="button"
+          class="sp-tipo-btn"
+          data-tipo="{{ t.id }}"
+          onclick="spSeleccionarTipo('{{ t.id }}')"
+        >
+          <span class="tipo-icono">{{ t.icono }}</span>
+          {{ t.label }}
+        </button>
+        {% endfor %}
+      </div>
+
+      <button type="button" id="btn-tipos-extra" class="sp-link-btn" onclick="spToggleTiposExtra()">
+        ＋ Ver todos los tipos de documento
+      </button>
+
       <input type="hidden" name="tipo_documento" id="tipo-seleccionado" value="carta">
     </div>
 
-    <!-- Destinatario -->
-    <label class="sp-field">
-      <span>Destinatario (opcional)</span>
-      <div class="sp-dest-row">
-        <select name="institucion_id" id="sp-institucion-select">
-          <option value="">— Sin destinatario específico —</option>
-          {% for inst in instituciones %}
-            <option value="{{ inst.id }}">
-              {{ inst.nombre_institucion }}{% if inst.titular_nombre %} · {{ inst.titular_nombre }}{% endif %}
+    <!-- REMITENTE (visible por defecto) -->
+    <div class="sp-field">
+      <div class="sp-seccion-header" onclick="spToggleSeccion('remitente')">
+        <span>👤 Remitente / Firmante</span>
+        <div class="sp-seccion-actions">
+          <a class="sp-btn-mini" href="/secretaria/remitentes/nuevo" onclick="event.stopPropagation()">＋ Agregar</a>
+          <span id="chevron-remitente" class="sp-chevron">▼</span>
+        </div>
+      </div>
+      <div id="seccion-remitente" class="sp-seccion-body">
+        <select name="perfil_remitente_id" id="perfil-remitente">
+          <option value="">— Usar datos del colegio —</option>
+          {% for p in perfiles %}
+            <option value="{{ p.id }}" {% if p.es_default %}selected{% endif %}>
+              {% if p.tratamiento %}{{ p.tratamiento }} {% endif %}{{ p.nombre }}{% if p.cargo %} · {{ p.cargo }}{% endif %}{% if p.es_default %} (default){% endif %}
             </option>
           {% endfor %}
         </select>
-        <button type="button" class="sp-btn sp-btn-icon" title="Ver ficha" onclick="spAbrirFicha()">👤</button>
+        <small style="display:block; margin-top:.3rem;">
+          <a href="/secretaria/remitentes">Gestionar remitentes</a>
+        </small>
       </div>
-    </label>
+    </div>
 
-    <!-- Remitente / Firmante -->
-    <label class="sp-field">
-      <span>Remitente / Firmante</span>
-      <select name="perfil_remitente_id" id="perfil-remitente">
-        <option value="">— Usar datos del colegio —</option>
-        {% for p in perfiles %}
-          <option value="{{ p.id }}" {% if p.es_default %}selected{% endif %}>
-            {% if p.tratamiento %}{{ p.tratamiento }} {% endif %}{{ p.nombre }}{% if p.cargo %} · {{ p.cargo }}{% endif %}{% if p.es_default %} (default){% endif %}
-          </option>
-        {% endfor %}
-      </select>
-      <small>
-        <a href="/secretaria/remitentes/nuevo">+ Agregar remitente</a> ·
-        <a href="/secretaria/remitentes">Gestionar</a>
-      </small>
-    </label>
+    <!-- DESTINATARIO (colapsado por defecto) -->
+    <div class="sp-field">
+      <div class="sp-seccion-header" onclick="spToggleSeccion('destinatario')">
+        <span>📬 Destinatario <small style="font-weight:400; color:var(--sp-muted);">(opcional)</small></span>
+        <div class="sp-seccion-actions">
+          <a class="sp-btn-mini" href="/secretaria/directorio" onclick="event.stopPropagation()">＋ Agregar</a>
+          <span id="chevron-destinatario" class="sp-chevron">▶</span>
+        </div>
+      </div>
+      <div id="seccion-destinatario" class="sp-seccion-body" style="display:none;">
+        <div class="sp-dest-row">
+          <select name="institucion_id" id="sp-institucion-select">
+            <option value="">— Sin destinatario específico —</option>
+            {% for inst in instituciones %}
+              <option value="{{ inst.id }}">
+                {{ inst.nombre_institucion }}{% if inst.titular_nombre %} · {{ inst.titular_nombre }}{% endif %}
+              </option>
+            {% endfor %}
+          </select>
+          <button type="button" class="sp-btn sp-btn-icon" title="Ver ficha" onclick="spAbrirFicha()">👤</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Tono -->
     <fieldset class="sp-field sp-tonos">
@@ -160,6 +195,26 @@
     </div>
   </div>
 </section>
+
+<script>
+window.spToggleTiposExtra = function() {
+  var extra = document.getElementById('tipos-extra');
+  var btn = document.getElementById('btn-tipos-extra');
+  var visible = extra.style.display !== 'none';
+  extra.style.display = visible ? 'none' : 'grid';
+  btn.textContent = visible
+    ? '＋ Ver todos los tipos de documento'
+    : '－ Ver menos';
+};
+window.spToggleSeccion = function(nombre) {
+  var body = document.getElementById('seccion-' + nombre);
+  var chevron = document.getElementById('chevron-' + nombre);
+  if (!body) return;
+  var visible = body.style.display !== 'none';
+  body.style.display = visible ? 'none' : 'block';
+  if (chevron) chevron.textContent = visible ? '▶' : '▼';
+};
+</script>
 
 <!-- Panel lateral ficha -->
 <aside id="sp-ficha-panel" class="sp-ficha-panel" aria-hidden="true">
