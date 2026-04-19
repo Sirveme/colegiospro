@@ -19,6 +19,17 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/secretaria/secretaria.css?v={{ static_version }}">
+
+  <!-- PWA -->
+  <link rel="manifest" href="/static/manifest-secretaria.json">
+  <meta name="theme-color" content="#0F3460">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SecretariaPro">
+  <link rel="apple-touch-icon" href="/static/img/pwa/icon-192.png">
+  <link rel="apple-touch-startup-image" href="/static/img/pwa/icon-512.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/static/img/pwa/icon-192.png">
+
   <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
 </head>
 <body class="sp-body" hx-boost="true" hx-target="body" hx-swap="outerHTML show:window:top">
@@ -77,6 +88,10 @@
         <span class="ic">⚙</span> Configuración
       </a>
     </nav>
+    <!-- Instalar PWA — visible solo cuando el navegador lo permite -->
+    <a href="#" id="btn-instalar-pwa" class="sp-install-btn" onclick="return spInstalarPWA(event)">
+      <span class="ic">📲</span> Instalar app
+    </a>
     <div class="sp-foot">
       <div class="sp-foot-row">
         <a href="/secretaria/logout" hx-boost="false">Cerrar sesión</a>
@@ -191,6 +206,38 @@
        implementaciones completas: spinner animado, dictado por voz real,
        fetch HTMX de la ficha, etc.) -->
   <script src="/static/secretaria/secretaria.js?v={{ static_version }}"></script>
+
+  <script>
+  // ─── PWA install prompt ───
+  (function() {
+    let spInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      spInstallPrompt = e;
+      var btn = document.getElementById('btn-instalar-pwa');
+      if (btn) btn.style.display = 'flex';
+    });
+    window.addEventListener('appinstalled', function() {
+      var btn = document.getElementById('btn-instalar-pwa');
+      if (btn) btn.style.display = 'none';
+      spInstallPrompt = null;
+    });
+    window.spInstalarPWA = async function(ev) {
+      if (ev) ev.preventDefault();
+      if (!spInstallPrompt) return false;
+      spInstallPrompt.prompt();
+      try {
+        var res = await spInstallPrompt.userChoice;
+        if (res && res.outcome === 'accepted') {
+          var btn = document.getElementById('btn-instalar-pwa');
+          if (btn) btn.style.display = 'none';
+          spInstallPrompt = null;
+        }
+      } catch (e) {}
+      return false;
+    };
+  })();
+  </script>
 
   <script>
   // ─── Reproducir audio de notificación si viene ?play=... ───
