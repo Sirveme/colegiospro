@@ -476,15 +476,34 @@ function spUrlCustom(sel) {
   custom.style.display = sel.value === 'custom' ? 'block' : 'none';
 }
 
-/* Listeners */
-document.addEventListener('DOMContentLoaded', function(){
-  document.getElementById('inp-titulo').addEventListener('input', spSyncPreview);
-  document.getElementById('inp-cuerpo').addEventListener('input', spSyncPreview);
-  document.getElementById('inp-btn1').addEventListener('input', spSyncBotones);
-  document.getElementById('inp-btn2').addEventListener('input', spSyncBotones);
+/* Listeners — robustos en todos los flujos de carga */
+function spBindPreview() {
+  var t = document.getElementById('inp-titulo');
+  var c = document.getElementById('inp-cuerpo');
+  var b1 = document.getElementById('inp-btn1');
+  var b2 = document.getElementById('inp-btn2');
+  if (!t || !c || !b1 || !b2) return false;
+  /* idempotente: evita duplicar listeners si spBindPreview corre varias veces */
+  if (t.dataset.spBound !== '1') {
+    t.addEventListener('input', spSyncPreview);
+    c.addEventListener('input', spSyncPreview);
+    b1.addEventListener('input', spSyncBotones);
+    b2.addEventListener('input', spSyncBotones);
+    t.dataset.spBound = '1';
+  }
   spSyncPreview();
   spSyncBotones();
-});
+  return true;
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', spBindPreview);
+} else {
+  /* script ya cargado después de que el DOM esté listo */
+  spBindPreview();
+}
+/* bfcache: al volver atrás, re-sincroniza si el navegador restauró valores */
+window.addEventListener('pageshow', spBindPreview);
 
 /* ──────────────── Media (galería + subir) ──────────────── */
 window.spToggleComMedia = function() {
