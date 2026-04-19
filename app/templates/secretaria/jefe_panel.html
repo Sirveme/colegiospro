@@ -45,6 +45,12 @@ async function spEnviarPushTest() {
     <h2 style="margin-top:0;">📝 Solicitar documento nuevo</h2>
     <form class="sp-form" onsubmit="return spEnviarSolicitud(event, 'solicitar_nuevo')">
       <label class="sp-field">
+        <span>Área / Gerencia</span>
+        <input type="text" name="area_solicitante" class="sp-input"
+               maxlength="150"
+               placeholder="Ej: Gerencia Municipal, Sub Gerencia de RR.HH.">
+      </label>
+      <label class="sp-field">
         <span>Tipo de documento</span>
         <select name="tipo_doc">
           <option value="carta">Carta</option>
@@ -76,6 +82,12 @@ async function spEnviarPushTest() {
   <section class="sp-col" style="margin-bottom:1rem;">
     <h2 style="margin-top:0;">✏️ Corregir documento</h2>
     <form class="sp-form" onsubmit="return spEnviarSolicitud(event, 'corregir')">
+      <label class="sp-field">
+        <span>Área / Gerencia</span>
+        <input type="text" name="area_solicitante" class="sp-input"
+               maxlength="150"
+               placeholder="Ej: Gerencia Municipal, Sub Gerencia de RR.HH.">
+      </label>
       <label class="sp-field">
         <span>Documento</span>
         <select name="doc_id" required>

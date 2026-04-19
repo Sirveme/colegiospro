@@ -47,6 +47,14 @@
   font-size:.82rem; color: var(--sp-muted);
   margin-bottom:.65rem;
 }
+.sp-sol-meta {
+  font-size:.85rem; color: var(--sp-text); opacity:.8;
+  margin-bottom:.65rem;
+  display:flex; gap:.3rem; flex-wrap:wrap;
+}
+.sp-sol-meta .sp-sol-area {
+  font-weight:600; color: #C9943A;
+}
 .sp-sol-acciones { display:flex; gap:.45rem; flex-wrap:wrap; }
 .sp-sol-btn {
   padding:.5rem .9rem; border:1.5px solid var(--sp-border);
@@ -110,8 +118,14 @@
       <div class="sp-sol-cuerpo">{{ sol.instruccion }}</div>
       {% endif %}
 
-      <div class="sp-sol-from">
-        {{ sol.solicitante_nombre or 'Jefe' }}{% if sol.solicitante_cargo %} · {{ sol.solicitante_cargo }}{% endif %}
+      <div class="sp-sol-meta">
+        <span>{{ sol.solicitante_nombre or 'Jefe' }}</span>
+        {% if sol.area_solicitante %}
+        <span class="sp-sol-area">· {{ sol.area_solicitante }}</span>
+        {% endif %}
+        {% if sol.accion != 'corregir' and sol.tipo_documento %}
+        <span>· {{ sol.tipo_documento }}</span>
+        {% endif %}
       </div>
 
       <div class="sp-sol-acciones">
