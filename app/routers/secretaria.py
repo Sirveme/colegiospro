@@ -1748,13 +1748,28 @@ async def comunicado_view(request: Request):
         return RedirectResponse("/secretaria/login", status_code=302)
     db = _db()
     try:
-        historial = (
+        rows = (
             db.query(Comunicado)
             .filter(Comunicado.secretaria_id == usuario.id)
             .order_by(Comunicado.creado_en.desc())
             .limit(30)
             .all()
         )
+        # Serializar a dicts mientras la sesión está viva — evita
+        # DetachedInstanceError cuando el template accede a atributos
+        # después de cerrar la sesión.
+        historial = [
+            {
+                "id": c.id,
+                "creado_en": c.creado_en,
+                "titulo": c.titulo or "",
+                "cuerpo": c.cuerpo or "",
+                "canal": c.canal or "",
+                "destinatarios": c.destinatarios or "",
+                "enviado_count": c.enviado_count or 0,
+            }
+            for c in rows
+        ]
         suscriptores_count = db.query(PushSuscriptor).filter(
             PushSuscriptor.secretaria_id == usuario.id,
             PushSuscriptor.activo == True,  # noqa: E712
