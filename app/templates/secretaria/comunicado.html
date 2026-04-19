@@ -1,5 +1,6 @@
 {% extends "secretaria/base.html" %}
 {% block title %}Comunicado{% endblock %}
+{% block main_class %}sp-main-wide{% endblock %}
 {% block content %}
 <header class="sp-header">
   <h1>Comunicado</h1>
@@ -169,6 +170,20 @@
   float: right;
 }
 
+/* ─── Historial con scroll ─── */
+.sp-push-historial {
+  max-height: 320px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(201,148,58,0.3) transparent;
+}
+.sp-push-historial::-webkit-scrollbar { width: 6px; }
+.sp-push-historial::-webkit-scrollbar-thumb {
+  background: rgba(201,148,58,0.35);
+  border-radius: 4px;
+}
+.sp-push-historial::-webkit-scrollbar-track { background: transparent; }
+
 /* ─── Selector de ícono ─── */
 .sp-icon-picker {
   display: flex;
@@ -335,6 +350,26 @@
                placeholder="https://...">
       </label>
 
+      <!-- ─── Publicar en el muro público ─── -->
+      <label class="sp-toggle-wrap" style="display:flex; gap:.75rem; align-items:flex-start; padding:.6rem .75rem; background:rgba(13,122,96,0.06); border:1px solid var(--sp-border); border-radius:10px;">
+        <div class="sp-toggle">
+          <input type="checkbox" name="es_publico" id="toggle-publico" value="1">
+          <div class="sp-toggle-slider"></div>
+        </div>
+        <div>
+          <span class="sp-toggle-label" style="font-weight:600; display:block;">Publicar en el muro institucional</span>
+          <span class="sp-toggle-sub" style="font-size:.82rem; color:var(--sp-muted); display:block;">
+            Visible para todos en <code>/comunicados/{token}</code> (sin login)
+          </span>
+          {% if token_publico %}
+          <a href="/comunicados/{{ token_publico }}" target="_blank"
+             style="font-size:.78rem; color:var(--sp-muted); display:inline-block; margin-top:4px;">
+            🔗 Ver página pública
+          </a>
+          {% endif %}
+        </div>
+      </label>
+
       <div id="com-estado" class="sp-alert" style="display:none; margin:.5rem 0;"></div>
 
       <button type="submit" class="sp-btn sp-btn-primary">📤 Enviar</button>
@@ -388,6 +423,7 @@
 
 <section class="sp-col" style="margin-top:1rem;">
   <h2 style="margin-top:0;">Historial</h2>
+  <div class="sp-push-historial">
   <table class="sp-table">
     <thead>
       <tr>
@@ -412,6 +448,7 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
 </section>
 
 <script>

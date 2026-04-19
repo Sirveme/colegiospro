@@ -117,7 +117,7 @@
   </aside>
   {% endif %}
 
-  <main class="sp-main {% if not usuario %}sp-main-full{% endif %}">
+  <main class="sp-main {% if not usuario %}sp-main-full{% else %}{% block main_class %}{% endblock %}{% endif %}">
     {% block content %}{% endblock %}
   </main>
 
