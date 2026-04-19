@@ -1,24 +1,33 @@
 // ══════════════════════════════════════════════
-// ColegiosPro — Service Worker
-// Served from /sw.js (via FastAPI route)
+// ColegiosPro + SecretariaPro — Service Worker
+// Served from /static/sw.js
 // ══════════════════════════════════════════════
 
-const CACHE_NAME = 'colegiospro-v1';
-const ASSETS = [
+const CACHE_NAME = 'secretariapro-v2';
+const PRECACHE = [
   '/',
   '/demo',
   '/manifest.json',
-  '/static/img/duilio-cta.jpg',
-  '/static/img/duilio-chat.jpg',
+  '/static/manifest-secretaria.json',
+  '/secretaria/',
+  '/static/secretaria/secretaria.css',
+  '/static/secretaria/secretaria.js',
   '/static/img/icon-192.png',
+  '/static/img/pwa/icon-192.png',
+  '/static/img/pwa/icon-512.png',
+  '/offline.html',
 ];
 
 // ─── INSTALL ───
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(ASSETS))
-      .catch(err => console.log('Cache addAll failed:', err))
+      .then(cache => {
+        // addAll falla si UNO falla; usamos add individual para ser tolerante
+        return Promise.all(PRECACHE.map(url =>
+          cache.add(url).catch(err => console.log('precache miss:', url, err))
+        ));
+      })
   );
   self.skipWaiting();
 });
@@ -33,22 +42,42 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// ─── FETCH (network-first) ───
+// ─── FETCH (network-first con fallback a cache y offline) ───
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
-  // Skip WebSocket requests
-  if (event.request.url.includes('/ws/')) return;
+  const req = event.request;
+  if (req.method !== 'GET') return;
+  const url = req.url;
+
+  // No cachear WebSockets, APIs, admin, tracking
+  if (url.includes('/ws/')) return;
+  if (url.includes('/api/')) return;
+  if (url.includes('/admin/')) return;
+  if (url.includes('/track/')) return;
+  if (url.includes('/push/')) return;
+  // HTMX partials no deberían cachearse tampoco
+  if (req.headers.get('HX-Request') === 'true') return;
 
   event.respondWith(
-    fetch(event.request)
+    fetch(req)
       .then(response => {
-        if (response.ok) {
+        if (response && response.ok && response.type !== 'opaque') {
           const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(req, clone).catch(() => {});
+          });
         }
         return response;
       })
-      .catch(() => caches.match(event.request))
+      .catch(() =>
+        caches.match(req).then(cached => {
+          if (cached) return cached;
+          // Para navegaciones HTML, mostrar offline.html
+          if (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html')) {
+            return caches.match('/offline.html');
+          }
+          return new Response('', { status: 504, statusText: 'offline' });
+        })
+      )
   );
 });
 
