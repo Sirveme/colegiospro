@@ -1801,7 +1801,7 @@ async def comunicado_enviar(
         btn2 = (btn2_label or "✓ OK").strip()[:30] or "✓ OK"
 
         payload = {
-            "titulo": f"📣 {titulo}",
+            "titulo": titulo,
             "cuerpo": cuerpo[:250],
             "url": url_sel,
             "urgente": urg,
@@ -1818,6 +1818,13 @@ async def comunicado_enviar(
             "btn1_label": btn1,
             "btn2_label": btn2,
         }
+        import logging as _lg
+        _lg.getLogger("secretaria.push").info(
+            "push payload → url=%s icon=%s btn1=%s btn2=%s categoria=%s urgente=%s",
+            payload.get("url"), payload.get("icon"),
+            payload.get("btn1_label"), payload.get("btn2_label"),
+            payload.get("categoria"), payload.get("urgente"),
+        )
         resultado = enviar_push_multi(suscriptores, payload)
 
         c = Comunicado(
