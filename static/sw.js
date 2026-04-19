@@ -3,7 +3,7 @@
 // Served from /static/sw.js
 // ══════════════════════════════════════════════
 
-const CACHE_NAME = 'secretariapro-v3';
+const CACHE_NAME = 'secretariapro-v4';
 const PRECACHE = [
   '/',
   '/demo',
@@ -100,6 +100,7 @@ self.addEventListener('push', (event) => {
   try {
     if (event.data) {
       const payload = event.data.json();
+      try { console.log('[SW] Push recibido:', JSON.stringify(payload)); } catch (e) {}
       // Soporta ambas convenciones: {title,body} y {titulo,cuerpo}
       titulo = payload.title || payload.titulo || titulo;
       if (payload.emoji_grande) titulo = payload.emoji_grande + ' ' + titulo;
@@ -131,6 +132,7 @@ self.addEventListener('push', (event) => {
       };
     }
   } catch (e) {
+    console.error('[SW] Error parseando push:', e);
     opciones.body = event.data ? event.data.text() : opciones.body;
   }
   event.waitUntil(self.registration.showNotification(titulo, opciones));
@@ -142,6 +144,7 @@ self.addEventListener('notificationclick', (event) => {
   if (event.action === 'ok') return; // confirma y cierra
   const dta = event.notification.data || {};
   let url = dta.url || '/secretaria/muro';
+  try { console.log('[SW] Click en notificación, URL:', url, 'action:', event.action); } catch (e) {}
   // Si hay audio, pasarlo como ?play=<url> para que base.html lo reproduzca
   if (dta.audio_url) {
     try {
