@@ -1882,6 +1882,31 @@ async def comunicado_enviar(
             q = q.filter(PushSuscriptor.secretaria_id == usuario.id)
         suscriptores = q.all()
 
+        import logging as _lg
+        _log_subs = _lg.getLogger("secretaria.push")
+        _log_subs.info(
+            "comunicado/enviar → usuario=%s destinatarios=%s suscriptores_activos=%d",
+            usuario.id, destinatarios, len(suscriptores),
+        )
+        for s in suscriptores:
+            ep = (s.endpoint or "")
+            tag = ep[:60] + ("…" if len(ep) > 60 else "")
+            # Identificar proveedor del endpoint: FCM (chrome) / mozilla / apple
+            prov = "?"
+            if "fcm.googleapis" in ep:
+                prov = "chrome"
+            elif "mozilla" in ep:
+                prov = "firefox"
+            elif "apple" in ep or "icloud" in ep:
+                prov = "apple"
+            elif "windows" in ep:
+                prov = "edge-win"
+            _log_subs.info(
+                "  → sub id=%s secretaria_id=%s proveedor=%s nombre=%r endpoint=%s",
+                s.id, s.secretaria_id, prov,
+                (s.nombre or "")[:30], tag,
+            )
+
         urg = bool(urgente)
         url_sel = (url_destino or "").strip()
         if url_sel == "custom":
