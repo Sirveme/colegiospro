@@ -3,7 +3,7 @@
 // Served from /static/sw.js
 // ══════════════════════════════════════════════
 
-const CACHE_NAME = 'secretariapro-v4';
+const CACHE_NAME = 'secretariapro-v5';
 const PRECACHE = [
   '/',
   '/demo',
@@ -100,7 +100,17 @@ self.addEventListener('push', (event) => {
   try {
     if (event.data) {
       const payload = event.data.json();
-      try { console.log('[SW] Push recibido:', JSON.stringify(payload)); } catch (e) {}
+      try {
+        console.log('[SW] Push recibido:', JSON.stringify(payload));
+        console.log('[SW] Push data.titulo:', payload.titulo);
+        console.log('[SW] Push data.cuerpo:', payload.cuerpo);
+        console.log('[SW] Push data.url:', payload.url);
+        console.log('[SW] Push data.icon:', payload.icon || payload.icon_url);
+        console.log('[SW] Push data.btn1_label:', payload.btn1_label);
+        console.log('[SW] Push data.btn2_label:', payload.btn2_label);
+        console.log('[SW] Push data.categoria:', payload.categoria);
+        console.log('[SW] Push data.urgente:', payload.urgente);
+      } catch (e) {}
       // Soporta ambas convenciones: {title,body} y {titulo,cuerpo}
       titulo = payload.title || payload.titulo || titulo;
       if (payload.emoji_grande) titulo = payload.emoji_grande + ' ' + titulo;
@@ -141,10 +151,14 @@ self.addEventListener('push', (event) => {
 // ─── NOTIFICATION CLICK ───
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  if (event.action === 'ok') return; // confirma y cierra
   const dta = event.notification.data || {};
+  try {
+    console.log('[SW] notification.data completo:', JSON.stringify(dta));
+    console.log('[SW] click action:', event.action);
+  } catch (e) {}
+  if (event.action === 'ok') return; // confirma y cierra
   let url = dta.url || '/secretaria/muro';
-  try { console.log('[SW] Click en notificación, URL:', url, 'action:', event.action); } catch (e) {}
+  try { console.log('[SW] Navegando a URL:', url); } catch (e) {}
   // Si hay audio, pasarlo como ?play=<url> para que base.html lo reproduzca
   if (dta.audio_url) {
     try {
