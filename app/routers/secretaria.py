@@ -1739,6 +1739,11 @@ async def comunicado_enviar(
     emoji_grande: Optional[str] = Form(""),
     categoria: Optional[str] = Form("general"),
     urgente: Optional[str] = Form(None),
+    icon_url: Optional[str] = Form(""),
+    btn1_label: Optional[str] = Form("👁 Ver"),
+    btn2_label: Optional[str] = Form("✓ OK"),
+    url_destino: Optional[str] = Form(""),
+    url_custom: Optional[str] = Form(""),
 ):
     """Envía el comunicado. Hoy solo el canal 'push' está operativo."""
     usuario = _require_user(request)
@@ -1784,16 +1789,30 @@ async def comunicado_enviar(
         suscriptores = q.all()
 
         urg = bool(urgente)
+        url_sel = (url_destino or "").strip()
+        if url_sel == "custom":
+            url_sel = (url_custom or "").strip()
+        if not url_sel:
+            url_sel = "/secretaria/"
+        url_sel = url_sel[:500]
+
+        icon_final = (icon_url or "").strip() or "/static/img/pwa/icon-192.png"
+        btn1 = (btn1_label or "👁 Ver").strip()[:30] or "👁 Ver"
+        btn2 = (btn2_label or "✓ OK").strip()[:30] or "✓ OK"
+
         payload = {
             "titulo": f"📣 {titulo}",
             "cuerpo": cuerpo[:250],
-            "url": "/secretaria/",
+            "url": url_sel,
             "urgente": urg,
             "imagen_url": (imagen_url or "").strip(),
             "gif_url": (gif_url or "").strip(),
             "audio_url": (audio_url or "").strip(),
             "emoji_grande": (emoji_grande or "").strip()[:10],
             "categoria": (categoria or "general").strip()[:30],
+            "icon_url": icon_final,
+            "btn1_label": btn1,
+            "btn2_label": btn2,
         }
         resultado = enviar_push_multi(suscriptores, payload)
 
@@ -1817,6 +1836,7 @@ async def comunicado_enviar(
             categoria=payload["categoria"],
             emoji_grande=payload["emoji_grande"],
         )
+        # icon_url y botones viajan en el payload al SW; no se persisten aún.
         db.add(msg)
         db.commit()
     finally:
