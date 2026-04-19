@@ -10,104 +10,372 @@
   🔔 Canal Push: <strong>{{ suscriptores_count }}</strong> dispositivo(s) activos en tu organización
 </div>
 
-<section class="sp-col" style="margin-bottom:1rem;">
-  <form id="form-comunicado" class="sp-form" onsubmit="return spEnviarComunicado(event)">
-    <label class="sp-field">
-      <span>Título del comunicado</span>
-      <input type="text" name="titulo" required maxlength="200" placeholder="Ej: Reunión ordinaria del 30 de abril">
-    </label>
+<style>
+/* ─── Layout dos columnas (form + preview) ─── */
+.sp-push-layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 960px) {
+  .sp-push-layout { grid-template-columns: 1fr; }
+  .sp-push-preview { position: static !important; }
+}
 
-    <label class="sp-field">
-      <span>Cuerpo del mensaje</span>
-      <textarea name="cuerpo" id="com-cuerpo" rows="6" required placeholder="Escribe el comunicado o pulsa ✨ Generar con IA..."></textarea>
-    </label>
+/* ─── Panel de preview ─── */
+.sp-push-preview {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--sp-border);
+  border-radius: 16px;
+  padding: 20px;
+  position: sticky;
+  top: 20px;
+}
+.sp-preview-titulo {
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--sp-muted);
+  margin-bottom: 12px;
+}
 
-    <div style="display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:.5rem;">
-      <button type="button" class="sp-btn" onclick="spGenerarComunicadoIA()">
-        ✨ Generar con IA (tono cordial)
-      </button>
-    </div>
+/* ─── Mock desktop ─── */
+.sp-push-mock-desktop {
+  background: #1E1E1E;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.1);
+  font-family: 'Segoe UI', sans-serif;
+}
+.sp-mock-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 6px;
+}
+.sp-mock-badge { width: 16px; height: 16px; border-radius: 3px; }
+.sp-mock-app {
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+  flex: 1;
+}
+.sp-mock-icon {
+  width: 40px; height: 40px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+.sp-mock-body { padding: 4px 12px 8px; }
+.sp-mock-titulo {
+  font-size: 13px;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 3px;
+  word-break: break-word;
+}
+.sp-mock-cuerpo {
+  font-size: 12px;
+  color: rgba(255,255,255,0.65);
+  line-height: 1.4;
+  word-break: break-word;
+}
+.sp-mock-imagen-wrap { margin: 8px 0 4px; }
+.sp-mock-imagen {
+  width: 100%;
+  max-height: 140px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+.sp-mock-actions {
+  display: flex;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.sp-mock-btn {
+  flex: 1;
+  padding: 10px;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.6);
+  font-size: 12px;
+  cursor: default;
+  border-right: 1px solid rgba(255,255,255,0.08);
+}
+.sp-mock-btn:last-child { border-right: none; }
 
-    <div class="sp-form-grid">
+/* ─── Mock móvil ─── */
+.sp-push-mock-movil {
+  background: #1C1C1E;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.sp-mock-movil-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px 4px;
+}
+.sp-mock-badge-sm { width: 14px; height: 14px; border-radius: 3px; }
+.sp-mock-app-sm {
+  font-size: 11px;
+  color: rgba(255,255,255,0.45);
+  flex: 1;
+}
+.sp-mock-tiempo {
+  font-size: 11px;
+  color: rgba(255,255,255,0.3);
+}
+.sp-mock-movil-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 4px 12px 8px;
+}
+.sp-mock-movil-texto { flex: 1; min-width: 0; }
+.sp-mock-icon-sm {
+  width: 44px; height: 44px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.sp-mock-imagen-movil {
+  width: calc(100% - 24px);
+  margin: 0 12px 8px;
+  max-height: 120px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+.sp-mock-actions-movil {
+  display: flex;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.sp-mock-btn-sm {
+  flex: 1;
+  padding: 10px;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.5);
+  font-size: 12px;
+  border-right: 1px solid rgba(255,255,255,0.06);
+  cursor: default;
+}
+.sp-mock-btn-sm:last-child { border-right: none; }
+
+/* ─── Contadores ─── */
+.sp-char-count {
+  font-size: 11px;
+  color: var(--sp-muted);
+  font-weight: 400;
+  float: right;
+}
+
+/* ─── Selector de ícono ─── */
+.sp-icon-picker {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.sp-icon-picker img {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--sp-border);
+}
+.sp-icon-picker label {
+  padding: .45rem .8rem;
+  border: 1.5px solid var(--sp-border);
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: .9rem;
+}
+</style>
+
+<div class="sp-push-layout">
+  <section class="sp-col">
+    <form id="form-comunicado" class="sp-form" onsubmit="return spEnviarComunicado(event)">
       <label class="sp-field">
-        <span>Canal</span>
-        <select name="canal" id="com-canal">
-          <option value="push">🔔 Push Notification</option>
-          <option value="email" disabled>✉ Email (próximamente)</option>
-          <option value="whatsapp" disabled>💬 WhatsApp (próximamente)</option>
-          <option value="portal" disabled>🌐 Portal del colegio (próximamente)</option>
-        </select>
+        <span>Título del comunicado <span class="sp-char-count" id="cc-titulo">0/50</span></span>
+        <input type="text" name="titulo" id="inp-titulo" required maxlength="50"
+               placeholder="Ej: 🎂 Feliz cumpleaños Carmen">
       </label>
-      <label class="sp-field">
-        <span>Destinatarios</span>
-        <select name="destinatarios">
-          <option value="mis_secretarias">Mi organización</option>
-          <option value="todos">Todos los suscriptores activos</option>
-        </select>
-      </label>
-    </div>
 
-    <!-- Enriquecer notificación -->
-    <div class="sp-seccion" style="margin-top:.5rem;">
-      <div class="sp-seccion-hdr" onclick="spToggleComMedia()">
-        <span>🎨 Imagen / GIF / Audio</span>
-        <span class="sp-chevron" id="chv-media-push">▶</span>
+      <label class="sp-field">
+        <span>Cuerpo del mensaje <span class="sp-char-count" id="cc-cuerpo">0/120</span></span>
+        <textarea name="cuerpo" id="inp-cuerpo" rows="3" required maxlength="120"
+                  placeholder="Texto de la notificación..."></textarea>
+        <small>Máximo 120 caracteres — texto plano, sin formato.</small>
+      </label>
+
+      <div style="display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:.5rem;">
+        <button type="button" class="sp-btn" onclick="spGenerarComunicadoIA()">
+          ✨ Generar con IA (tono cordial)
+        </button>
       </div>
-      <div class="sp-seccion-body" id="media-push" style="display:none;">
 
-        <!-- Categorías rápidas -->
-        <div class="sp-categorias-grid">
-          <button type="button" class="sp-cat-btn" onclick="spCargarCategoria('cumpleanos')">🎂 Cumpleaños</button>
-          <button type="button" class="sp-cat-btn" onclick="spCargarCategoria('feriado')">🇵🇪 Feriado</button>
-          <button type="button" class="sp-cat-btn" onclick="spCargarCategoria('urgente')">🚨 Urgente</button>
-          <button type="button" class="sp-cat-btn" onclick="spCargarCategoria('social')">🎉 Social</button>
-          <button type="button" class="sp-cat-btn" onclick="spCargarCategoria('norma')">📋 Norma</button>
-          <button type="button" class="sp-cat-btn" onclick="spCargarCategoria('aniversario')">🏛 Aniversario</button>
-        </div>
-
-        <!-- Galería -->
-        <div class="sp-media-galeria" id="media-galeria">
-          <p class="sp-empty" style="padding:1rem;">Elige una categoría para ver plantillas.</p>
-        </div>
-
-        <!-- Media seleccionado -->
-        <div id="media-seleccionado" style="margin-top:.5rem;"></div>
-
-        <!-- Subir propio -->
-        <label class="sp-btn" style="margin-top:.5rem; display:inline-block;">
-          📎 Subir imagen/GIF/audio propio
-          <input type="file" id="archivo-media" hidden
-                 accept="image/*,audio/*" onchange="spSubirMedia(this)">
+      <div class="sp-form-grid">
+        <label class="sp-field">
+          <span>Canal</span>
+          <select name="canal" id="com-canal">
+            <option value="push">🔔 Push Notification</option>
+            <option value="email" disabled>✉ Email (próximamente)</option>
+            <option value="whatsapp" disabled>💬 WhatsApp (próximamente)</option>
+            <option value="portal" disabled>🌐 Portal del colegio (próximamente)</option>
+          </select>
         </label>
+        <label class="sp-field">
+          <span>Destinatarios</span>
+          <select name="destinatarios">
+            <option value="mis_secretarias">Mi organización</option>
+            <option value="todos">Todos los suscriptores activos</option>
+          </select>
+        </label>
+      </div>
 
-        <!-- Hidden inputs que se envían con el form -->
-        <input type="hidden" name="imagen_url" id="com-imagen-url" value="">
-        <input type="hidden" name="gif_url" id="com-gif-url" value="">
-        <input type="hidden" name="audio_url" id="com-audio-url" value="">
-        <input type="hidden" name="categoria" id="com-categoria" value="general">
-
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:.5rem; margin-top:.5rem;">
-          <label class="sp-field">
-            <span>Emoji destacado</span>
-            <input type="text" name="emoji_grande" id="com-emoji" maxlength="4"
-                   placeholder="🎂" style="font-size:1.4rem; text-align:center;">
+      <!-- ─── Ícono pequeño ─── -->
+      <label class="sp-field">
+        <span>Ícono pequeño (192×192 px)</span>
+        <div class="sp-icon-picker">
+          <img src="/static/img/pwa/icon-192.png" id="prev-icon-sel" alt="ícono actual">
+          <label>
+            Cambiar ícono
+            <input type="file" hidden accept="image/*" onchange="spPrevIcon(this)">
           </label>
-          <label class="sp-toggle-wrap sp-toggle-urgente" style="align-self:end;">
-            <div class="sp-toggle">
-              <input type="checkbox" name="urgente" id="com-urgente">
-              <div class="sp-toggle-slider"></div>
-            </div>
-            <span class="sp-toggle-label">🚨 Urgente</span>
-          </label>
+          <input type="hidden" name="icon_url" id="inp-icon" value="/static/img/pwa/icon-192.png">
         </div>
+      </label>
+
+      <!-- Enriquecer notificación -->
+      <div class="sp-seccion" style="margin-top:.5rem;">
+        <div class="sp-seccion-hdr" onclick="spToggleComMedia()">
+          <span>🎨 Imagen grande / GIF / Audio</span>
+          <span class="sp-chevron" id="chv-media-push">▶</span>
+        </div>
+        <div class="sp-seccion-body" id="media-push" style="display:none;">
+
+          <!-- Categorías rápidas -->
+          <div class="sp-categorias-grid">
+            <button type="button" class="sp-cat-btn" onclick="spCargarCategoria('cumpleanos')">🎂 Cumpleaños</button>
+            <button type="button" class="sp-cat-btn" onclick="spCargarCategoria('feriado')">🇵🇪 Feriado</button>
+            <button type="button" class="sp-cat-btn" onclick="spCargarCategoria('urgente')">🚨 Urgente</button>
+            <button type="button" class="sp-cat-btn" onclick="spCargarCategoria('social')">🎉 Social</button>
+            <button type="button" class="sp-cat-btn" onclick="spCargarCategoria('norma')">📋 Norma</button>
+            <button type="button" class="sp-cat-btn" onclick="spCargarCategoria('aniversario')">🏛 Aniversario</button>
+          </div>
+
+          <!-- Galería -->
+          <div class="sp-media-galeria" id="media-galeria">
+            <p class="sp-empty" style="padding:1rem;">Elige una categoría para ver plantillas.</p>
+          </div>
+
+          <!-- Media seleccionado -->
+          <div id="media-seleccionado" style="margin-top:.5rem;"></div>
+
+          <!-- Subir propio -->
+          <label class="sp-btn" style="margin-top:.5rem; display:inline-block;">
+            📎 Subir imagen/GIF/audio propio
+            <input type="file" id="archivo-media" hidden
+                   accept="image/*,audio/*" onchange="spSubirMedia(this)">
+          </label>
+
+          <!-- Hidden inputs que se envían con el form -->
+          <input type="hidden" name="imagen_url" id="com-imagen-url" value="">
+          <input type="hidden" name="gif_url" id="com-gif-url" value="">
+          <input type="hidden" name="audio_url" id="com-audio-url" value="">
+          <input type="hidden" name="categoria" id="com-categoria" value="general">
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:.5rem; margin-top:.5rem;">
+            <label class="sp-field">
+              <span>Emoji destacado</span>
+              <input type="text" name="emoji_grande" id="com-emoji" maxlength="4"
+                     placeholder="🎂" style="font-size:1.4rem; text-align:center;">
+            </label>
+            <label class="sp-toggle-wrap sp-toggle-urgente" style="align-self:end;">
+              <div class="sp-toggle">
+                <input type="checkbox" name="urgente" id="com-urgente">
+                <div class="sp-toggle-slider"></div>
+              </div>
+              <span class="sp-toggle-label">🚨 Urgente</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Botones de acción personalizables ─── -->
+      <label class="sp-field">
+        <span>Botones de acción</span>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+          <input type="text" name="btn1_label" id="inp-btn1" value="👁 Ver"
+                 maxlength="20" placeholder="Botón 1">
+          <input type="text" name="btn2_label" id="inp-btn2" value="✓ OK"
+                 maxlength="20" placeholder="Botón 2">
+        </div>
+      </label>
+
+      <!-- ─── URL de destino ─── -->
+      <label class="sp-field">
+        <span>URL al tocar el botón principal</span>
+        <select name="url_destino" id="inp-url" onchange="spUrlCustom(this)">
+          <option value="/secretaria/muro">🏛 Muro institucional</option>
+          <option value="/secretaria/redactor">✍️ Redactor</option>
+          <option value="/secretaria/historial">📚 Historial</option>
+          <option value="/secretaria/agenda/">📅 Agenda</option>
+          <option value="custom">🔗 URL personalizada…</option>
+        </select>
+        <input type="text" id="inp-url-custom" name="url_custom"
+               style="display:none;margin-top:8px"
+               placeholder="https://...">
+      </label>
+
+      <div id="com-estado" class="sp-alert" style="display:none; margin:.5rem 0;"></div>
+
+      <button type="submit" class="sp-btn sp-btn-primary">📤 Enviar</button>
+    </form>
+  </section>
+
+  <!-- ═════════ PANEL DE PREVIEW ═════════ -->
+  <aside class="sp-push-preview">
+    <div class="sp-preview-titulo">Vista previa — Desktop</div>
+    <div class="sp-push-mock-desktop">
+      <div class="sp-mock-header">
+        <img src="/static/img/pwa/icon-72.png" class="sp-mock-badge" id="prev-badge" alt="">
+        <span class="sp-mock-app">Chrome · colegiospro.org.pe · ahora</span>
+        <img src="/static/img/pwa/icon-192.png" class="sp-mock-icon" id="prev-icon" alt="">
+      </div>
+      <div class="sp-mock-body">
+        <div class="sp-mock-titulo" id="prev-titulo">Título del comunicado</div>
+        <div class="sp-mock-cuerpo" id="prev-cuerpo">Cuerpo del mensaje…</div>
+        <div class="sp-mock-imagen-wrap">
+          <img src="" class="sp-mock-imagen" id="prev-imagen" style="display:none" alt="">
+        </div>
+      </div>
+      <div class="sp-mock-actions">
+        <button type="button" class="sp-mock-btn" id="prev-btn1">👁 Ver</button>
+        <button type="button" class="sp-mock-btn" id="prev-btn2">✓ OK</button>
       </div>
     </div>
 
-    <div id="com-estado" class="sp-alert" style="display:none; margin:.5rem 0;"></div>
-
-    <button type="submit" class="sp-btn sp-btn-primary">📤 Enviar</button>
-  </form>
-</section>
+    <div class="sp-preview-titulo" style="margin-top:20px">Vista previa — Móvil</div>
+    <div class="sp-push-mock-movil">
+      <div class="sp-mock-movil-header">
+        <img src="/static/img/pwa/icon-72.png" class="sp-mock-badge-sm" alt="">
+        <span class="sp-mock-app-sm">Chrome · colegiospro.org.pe</span>
+        <span class="sp-mock-tiempo">ahora</span>
+      </div>
+      <div class="sp-mock-movil-content">
+        <div class="sp-mock-movil-texto">
+          <div class="sp-mock-titulo" id="prev-titulo-m">Título</div>
+          <div class="sp-mock-cuerpo" id="prev-cuerpo-m">Cuerpo…</div>
+        </div>
+        <img src="/static/img/pwa/icon-192.png" class="sp-mock-icon-sm" id="prev-icon-m" alt="">
+      </div>
+      <img src="" class="sp-mock-imagen-movil" id="prev-imagen-m" style="display:none" alt="">
+      <div class="sp-mock-actions-movil">
+        <button type="button" class="sp-mock-btn-sm" id="prev-btn1-m">👁 Ver</button>
+        <button type="button" class="sp-mock-btn-sm" id="prev-btn2-m">✓ OK</button>
+      </div>
+    </div>
+  </aside>
+</div>
 
 <section class="sp-col" style="margin-top:1rem;">
   <h2 style="margin-top:0;">Historial</h2>
@@ -138,9 +406,81 @@
 </section>
 
 <script>
+/* ──────────────── Preview en tiempo real ──────────────── */
+function spSyncPreview() {
+  var titulo = document.getElementById('inp-titulo')?.value || '';
+  var cuerpo = document.getElementById('inp-cuerpo')?.value || '';
+
+  document.getElementById('prev-titulo').textContent   = titulo || 'Título del comunicado';
+  document.getElementById('prev-cuerpo').textContent   = cuerpo || 'Cuerpo del mensaje…';
+  document.getElementById('prev-titulo-m').textContent = titulo || 'Título';
+  document.getElementById('prev-cuerpo-m').textContent = cuerpo || 'Cuerpo…';
+
+  document.getElementById('cc-titulo').textContent = titulo.length + '/50';
+  document.getElementById('cc-cuerpo').textContent = cuerpo.length + '/120';
+}
+
+function spSyncBotones() {
+  var b1 = document.getElementById('inp-btn1').value || '👁 Ver';
+  var b2 = document.getElementById('inp-btn2').value || '✓ OK';
+  document.getElementById('prev-btn1').textContent   = b1;
+  document.getElementById('prev-btn1-m').textContent = b1;
+  document.getElementById('prev-btn2').textContent   = b2;
+  document.getElementById('prev-btn2-m').textContent = b2;
+}
+
+function spPrevImagen(url) {
+  ['prev-imagen', 'prev-imagen-m'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (!el) return;
+    if (url) { el.src = url; el.style.display = 'block'; }
+    else     { el.src = ''; el.style.display = 'none'; }
+  });
+}
+
+function spPrevIcon(input) {
+  if (!input.files || !input.files[0]) return;
+  var localUrl = URL.createObjectURL(input.files[0]);
+  document.getElementById('prev-icon-sel').src = localUrl;
+  document.getElementById('prev-icon').src     = localUrl;
+  document.getElementById('prev-icon-m').src   = localUrl;
+
+  var fd = new FormData();
+  fd.append('archivo', input.files[0]);
+  fd.append('categoria', 'iconos');
+  fd.append('nombre', input.files[0].name);
+  fetch('/push/media/subir', { method:'POST', body: fd })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d && d.ok && d.url) {
+        document.getElementById('inp-icon').value = d.url;
+        document.getElementById('prev-icon-sel').src = d.url;
+        document.getElementById('prev-icon').src     = d.url;
+        document.getElementById('prev-icon-m').src   = d.url;
+      }
+    })
+    .catch(function(){});
+}
+
+function spUrlCustom(sel) {
+  var custom = document.getElementById('inp-url-custom');
+  custom.style.display = sel.value === 'custom' ? 'block' : 'none';
+}
+
+/* Listeners */
+document.addEventListener('DOMContentLoaded', function(){
+  document.getElementById('inp-titulo').addEventListener('input', spSyncPreview);
+  document.getElementById('inp-cuerpo').addEventListener('input', spSyncPreview);
+  document.getElementById('inp-btn1').addEventListener('input', spSyncBotones);
+  document.getElementById('inp-btn2').addEventListener('input', spSyncBotones);
+  spSyncPreview();
+  spSyncBotones();
+});
+
+/* ──────────────── Media (galería + subir) ──────────────── */
 window.spToggleComMedia = function() {
   var body = document.getElementById('media-push');
-  var chv = document.getElementById('chv-media-push');
+  var chv  = document.getElementById('chv-media-push');
   var abierto = body.style.display !== 'none';
   body.style.display = abierto ? 'none' : 'block';
   if (chv) chv.style.transform = abierto ? '' : 'rotate(90deg)';
@@ -182,11 +522,12 @@ window.spCargarCategoria = async function(cat) {
 
 window.spElegirMedia = function(tipo, url, nombre) {
   document.getElementById('com-imagen-url').value = '';
-  document.getElementById('com-gif-url').value = '';
+  document.getElementById('com-gif-url').value   = '';
   document.getElementById('com-audio-url').value = '';
   if (tipo === 'imagen') document.getElementById('com-imagen-url').value = url;
-  else if (tipo === 'gif') document.getElementById('com-gif-url').value = url;
+  else if (tipo === 'gif')   document.getElementById('com-gif-url').value   = url;
   else if (tipo === 'audio') document.getElementById('com-audio-url').value = url;
+
   var sel = document.getElementById('media-seleccionado');
   var previewHtml;
   if (tipo === 'imagen' || tipo === 'gif') {
@@ -200,13 +541,18 @@ window.spElegirMedia = function(tipo, url, nombre) {
       '<div style="flex:1;"><strong>' + nombre + '</strong><br><small>' + tipo + '</small></div>' +
       '<button type="button" class="sp-btn sp-btn-icon" onclick="spQuitarMedia()">✕</button>' +
     '</div>';
+
+  /* Actualiza mockups si es imagen/gif */
+  if (tipo === 'imagen' || tipo === 'gif') spPrevImagen(url);
+  else spPrevImagen('');
 };
 
 window.spQuitarMedia = function() {
   document.getElementById('com-imagen-url').value = '';
-  document.getElementById('com-gif-url').value = '';
+  document.getElementById('com-gif-url').value   = '';
   document.getElementById('com-audio-url').value = '';
   document.getElementById('media-seleccionado').innerHTML = '';
+  spPrevImagen('');
 };
 
 window.spSubirMedia = async function(inp) {
@@ -227,28 +573,30 @@ window.spSubirMedia = async function(inp) {
   inp.value = '';
 };
 
+/* ──────────────── IA ──────────────── */
 async function spGenerarComunicadoIA() {
   var form = document.getElementById('form-comunicado');
-  var cuerpo = document.getElementById('com-cuerpo');
+  var cuerpo = document.getElementById('inp-cuerpo');
   var estado = document.getElementById('com-estado');
   var idea = cuerpo.value.trim() || form.titulo.value.trim();
   if (!idea) {
-    estado.style.display='block';
+    estado.style.display = 'block';
     estado.className = 'sp-alert sp-alert-error';
     estado.textContent = 'Primero escribe la idea o al menos el título.';
     return;
   }
-  estado.style.display='block';
+  estado.style.display = 'block';
   estado.className = 'sp-alert';
   estado.textContent = 'Generando comunicado…';
   try {
     var r = await fetch('/secretaria/comunicado/generar-ia', {
-      method:'POST', headers:{'Content-Type':'application/json'},
+      method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ idea: idea, titulo: form.titulo.value }),
     });
     var data = await r.json();
     if (!data.ok) throw new Error(data.error || 'Error');
-    cuerpo.value = data.texto;
+    cuerpo.value = (data.texto || '').slice(0, 120);
+    spSyncPreview();
     estado.className = 'sp-alert sp-alert-ok';
     estado.textContent = '✓ Texto generado. Revísalo y envía cuando quieras.';
   } catch (e) {
@@ -257,12 +605,13 @@ async function spGenerarComunicadoIA() {
   }
 }
 
+/* ──────────────── Enviar ──────────────── */
 async function spEnviarComunicado(ev) {
   ev.preventDefault();
   var form = ev.target;
   var estado = document.getElementById('com-estado');
   var fd = new FormData(form);
-  estado.style.display='block';
+  estado.style.display = 'block';
   estado.className = 'sp-alert';
   estado.textContent = 'Enviando…';
   try {
