@@ -1820,6 +1820,7 @@ async def comunicado_enviar(
         }
         import json as _json, logging as _lg
         _push_log = _lg.getLogger("secretaria.push")
+        _push_log.info("URL destino push: %s", payload.get("url"))
         _push_log.info(
             "push payload → url=%s icon=%s btn1=%s btn2=%s categoria=%s urgente=%s",
             payload.get("url"), payload.get("icon"),
