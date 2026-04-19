@@ -246,6 +246,26 @@ def _get_o_crear_config_org(db, secretaria_id: int, colegio_id=None) -> ConfigOr
     return cfg
 
 
+def _ensure_token_publico(db, cfg: ConfigOrganizacion) -> str:
+    """Asegura que la organización tenga un token_publico para su página pública
+    de comunicados. Genera uno UUID-4 corto (8 chars) si no existe."""
+    if cfg is None:
+        return ""
+    if getattr(cfg, "token_publico", None):
+        return cfg.token_publico
+    import secrets as _secrets
+    for _ in range(5):
+        token = _secrets.token_urlsafe(6)[:8].replace("-", "a").replace("_", "b")
+        existe = db.query(ConfigOrganizacion).filter(
+            ConfigOrganizacion.token_publico == token
+        ).first()
+        if not existe:
+            cfg.token_publico = token
+            db.commit()
+            return token
+    return cfg.token_publico or ""
+
+
 def _check_onboarding(request: Request, usuario):
     """Devuelve RedirectResponse si el onboarding no está completo, o None."""
     if not usuario:
@@ -1739,6 +1759,8 @@ async def comunicado_view(request: Request):
             PushSuscriptor.secretaria_id == usuario.id,
             PushSuscriptor.activo == True,  # noqa: E712
         ).count()
+        cfg_org = _get_o_crear_config_org(db, usuario.id, usuario.colegio_id)
+        token_publico = _ensure_token_publico(db, cfg_org)
     finally:
         db.close()
     return templates.TemplateResponse(
@@ -1749,6 +1771,7 @@ async def comunicado_view(request: Request):
             modo_actual="comunicado",
             historial=historial,
             suscriptores_count=suscriptores_count,
+            token_publico=token_publico,
         ),
     )
 
@@ -1794,6 +1817,7 @@ async def comunicado_enviar(
     btn2_label: Optional[str] = Form("✓ OK"),
     url_destino: Optional[str] = Form(""),
     url_custom: Optional[str] = Form(""),
+    es_publico: Optional[str] = Form(None),
 ):
     """Envía el comunicado. Hoy solo el canal 'push' está operativo."""
     usuario = _require_user(request)
@@ -1907,6 +1931,7 @@ async def comunicado_enviar(
             audio_url=payload["audio_url"],
             categoria=payload["categoria"],
             emoji_grande=payload["emoji_grande"],
+            es_publico=bool(es_publico),
         )
         # icon_url y botones viajan en el payload al SW; no se persisten aún.
         db.add(msg)
