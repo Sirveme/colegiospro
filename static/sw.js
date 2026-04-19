@@ -3,7 +3,7 @@
 // Served from /static/sw.js
 // ══════════════════════════════════════════════
 
-const CACHE_NAME = 'secretariapro-v2';
+const CACHE_NAME = 'secretariapro-v3';
 const PRECACHE = [
   '/',
   '/demo',
@@ -107,20 +107,22 @@ self.addEventListener('push', (event) => {
       opciones = {
         body: payload.body || payload.cuerpo || opciones.body,
         // icon: dinámico si el comunicado lo define, si no logo institucional
-        icon: payload.icon_url || '/static/img/pwa/icon-192.png',
+        icon: payload.icon || payload.icon_url || '/static/img/pwa/icon-192.png',
         // image: imagen grande dinámica del comunicado (Android)
-        image: payload.imagen_url || payload.gif_url || undefined,
+        image: payload.image || payload.imagen_url || payload.gif_url || undefined,
         badge: '/static/img/sp-badge-72.png',
         vibrate: urgente ? [300,100,300,100,300] : [200,100,200],
         tag: payload.categoria || payload.tag || 'general',
         renotify: true,
         requireInteraction: urgente,
         data: {
-          url: payload.url || payload.url_destino || '/',
+          url: payload.url || payload.url_destino || '/secretaria/muro',
           audio_url: payload.audio_url || null,
           chatMessage: payload.chatMessage || null,
           categoria: payload.categoria || 'general',
           urgente: urgente,
+          btn1_label: payload.btn1_label || '👁 Ver',
+          btn2_label: payload.btn2_label || '✓ OK',
         },
         actions: [
           { action: 'abrir', title: payload.btn1_label || '👁 Ver' },
@@ -139,7 +141,7 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   if (event.action === 'ok') return; // confirma y cierra
   const dta = event.notification.data || {};
-  let url = dta.url || '/';
+  let url = dta.url || '/secretaria/muro';
   // Si hay audio, pasarlo como ?play=<url> para que base.html lo reproduzca
   if (dta.audio_url) {
     try {
@@ -151,14 +153,22 @@ self.addEventListener('notificationclick', (event) => {
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
       for (const client of windowClients) {
         if (client.url.includes(self.location.origin)) {
-          client.focus();
-          if (dta.chatMessage) {
-            client.postMessage({ type: 'OPEN_CHAT', message: dta.chatMessage });
-          }
-          if (dta.audio_url) {
-            client.postMessage({ type: 'PLAY_AUDIO', audio_url: dta.audio_url });
-          }
-          return;
+          // Navegar la ventana existente a la URL del comunicado.
+          const goto = () => {
+            if (typeof client.navigate === 'function') {
+              return client.navigate(url).catch(() => null);
+            }
+            return null;
+          };
+          return Promise.resolve(goto()).then(() => {
+            try { client.focus(); } catch (e) {}
+            if (dta.chatMessage) {
+              client.postMessage({ type: 'OPEN_CHAT', message: dta.chatMessage });
+            }
+            if (dta.audio_url) {
+              client.postMessage({ type: 'PLAY_AUDIO', audio_url: dta.audio_url });
+            }
+          });
         }
       }
       return clients.openWindow(url);
