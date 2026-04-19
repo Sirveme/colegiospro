@@ -192,7 +192,10 @@
 
 <div class="sp-push-layout">
   <section class="sp-col">
-    <form id="form-comunicado" class="sp-form" onsubmit="return spEnviarComunicado(event)">
+    <form id="form-comunicado" class="sp-form"
+          method="post" action="/secretaria/comunicado/enviar"
+          enctype="multipart/form-data"
+          onsubmit="return spEnviarComunicado(event)">
       <label class="sp-field">
         <span>Título del comunicado <span class="sp-char-count" id="cc-titulo">0/50</span></span>
         <input type="text" name="titulo" id="inp-titulo" required maxlength="50"
