@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Sin conexión — SecretariaPro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(135deg, #0A1628 0%, #0F2040 100%);
+      color: white;
+      font-family: 'Plus Jakarta Sans', -apple-system, system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      text-align: center;
+      padding: 24px;
+    }
+    .sp-offline-icon { font-size: 64px; margin-bottom: 24px; }
+    h1 { font-size: 24px; color: #C9943A; margin-bottom: 12px; }
+    p { color: rgba(255,255,255,0.65); font-size: 15px; line-height: 1.6; max-width: 420px; }
+    button {
+      margin-top: 32px;
+      background: linear-gradient(135deg, #0D7A60, #0B5E4A);
+      color: white;
+      border: none;
+      padding: 14px 32px;
+      border-radius: 100px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(13,122,96,0.35);
+      transition: transform 0.15s;
+    }
+    button:hover { transform: translateY(-2px); }
+  </style>
+</head>
+<body>
+  <div class="sp-offline-icon">📡</div>
+  <h1>Sin conexión</h1>
+  <p>SecretariaPro necesita internet para generar documentos.<br>
+     Revisa tu conexión e intenta nuevamente.</p>
+  <button onclick="location.reload()">🔄 Reintentar</button>
+</body>
+</html>
