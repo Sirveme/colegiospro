@@ -2,117 +2,301 @@
 {% block title %}Nuevo evento{% endblock %}
 {% block content %}
 <header class="sp-header">
-  <a href="/secretaria/agenda/">← Volver a la agenda</a>
+  <a href="/secretaria/agenda/" class="sp-back">← Volver a la agenda</a>
   <h1>Nuevo evento</h1>
 </header>
 
-<div class="sp-col" style="max-width:720px;">
-  <form method="post" action="/secretaria/agenda/nuevo" class="sp-form sp-form-grid"
-        enctype="multipart/form-data">
-    <label class="sp-col-2">
-      <span>Título del evento *</span>
-      <input type="text" name="titulo" required placeholder="Reunión con Decano del CIP">
-    </label>
+<style>
+/* ─── Selectores unificados para agenda/nuevo ───
+   Usan el pseudo-selector :has() para reflejar el estado del radio.
+   Fallback: en navegadores sin :has, el estilo base sigue siendo legible. */
 
-    <label>
-      <span>Fecha *</span>
-      <input type="date" name="fecha" required>
-    </label>
-    <label>
-      <span>Hora de inicio *</span>
-      <input type="time" name="hora_inicio" required value="09:00">
-    </label>
+/* CHIPS — opciones cortas (duración, buffer) */
+.sp-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.sp-chip { cursor: pointer; }
+.sp-chip > span {
+  display: block;
+  padding: 8px 16px;
+  background: rgba(0,0,0,0.03);
+  border: 1.5px solid var(--sp-border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sp-text);
+  opacity: .65;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.sp-chip:hover > span {
+  border-color: rgba(201,148,58,0.4);
+  opacity: 1;
+}
+.sp-chip:has(input:checked) > span {
+  background: rgba(201,148,58,0.12);
+  border-color: #C9943A;
+  color: #8A6B1A;
+  opacity: 1;
+  font-weight: 700;
+}
+[data-tema="oscuro"] .sp-chip:has(input:checked) > span { color: #F5E6C8; }
 
-    <div class="sp-field sp-col-2">
-      <span style="font-weight:600;font-size:.9rem;display:block;margin-bottom:.35rem;">Duración</span>
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+/* CARDS SELECTOR — tipos de evento con ícono */
+.sp-cards-selector {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+.sp-card-sel {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 8px;
+  background: rgba(0,0,0,0.02);
+  border: 1.5px solid var(--sp-border);
+  border-radius: 12px;
+  transition: all 0.2s;
+  text-align: center;
+}
+.sp-cs-icono { font-size: 22px; line-height: 1; }
+.sp-cs-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--sp-text);
+  opacity: .7;
+}
+.sp-card-sel:hover { border-color: rgba(201,148,58,0.35); }
+.sp-card-sel:has(input:checked) {
+  background: rgba(201,148,58,0.1);
+  border-color: #C9943A;
+}
+.sp-card-sel:has(input:checked) .sp-cs-label { opacity: 1; font-weight: 700; }
+
+/* PILLS 3 — modalidad */
+.sp-pills-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.sp-pill-sel { cursor: pointer; }
+.sp-pill-sel > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 8px;
+  background: rgba(0,0,0,0.02);
+  border: 1.5px solid var(--sp-border);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sp-text);
+  opacity: .7;
+  transition: all 0.2s;
+}
+.sp-pill-sel:has(input:checked) > span {
+  background: rgba(13,122,96,0.12);
+  border-color: #0D7A60;
+  opacity: 1;
+  font-weight: 700;
+}
+
+/* Grid 2 columnas para fecha/hora, lugar/modalidad, etc. */
+.sp-form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 600px) {
+  .sp-form-grid-2 { grid-template-columns: 1fr; }
+  .sp-cards-selector { grid-template-columns: repeat(3, 1fr); }
+}
+
+.sp-form-group { display: flex; flex-direction: column; gap: 6px; }
+.sp-form-group > label,
+.sp-form-group > .sp-form-label {
+  font-size: .88rem;
+  font-weight: 600;
+  color: var(--sp-text);
+}
+.sp-form-group .sp-input,
+.sp-form-group input[type="text"],
+.sp-form-group input[type="date"],
+.sp-form-group input[type="time"],
+.sp-form-group input[type="file"],
+.sp-form-group select,
+.sp-form-group textarea {
+  width: 100%;
+  padding: .6rem .75rem;
+  border: 1px solid var(--sp-border);
+  border-radius: 8px;
+  font: inherit;
+  background: #fff;
+  color: var(--sp-text);
+  box-sizing: border-box;
+}
+[data-tema="oscuro"] .sp-form-group input,
+[data-tema="oscuro"] .sp-form-group select,
+[data-tema="oscuro"] .sp-form-group textarea {
+  background: #1a1f30;
+  color: #e6e8f0;
+}
+
+.sp-seccion-simple {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--sp-border);
+}
+.sp-seccion-simple > .sp-form-label {
+  display: block;
+  font-size: .88rem;
+  font-weight: 600;
+  color: var(--sp-text);
+  margin-bottom: 8px;
+}
+</style>
+
+<div class="sp-col">
+  <form method="post" action="/secretaria/agenda/nuevo" enctype="multipart/form-data"
+        style="display:flex; flex-direction:column; gap:14px;">
+
+    <!-- Título -->
+    <div class="sp-form-group">
+      <label for="evt-titulo">Título del evento *</label>
+      <input type="text" id="evt-titulo" name="titulo" class="sp-input" required
+             placeholder="Reunión con Decano del CIP">
+    </div>
+
+    <!-- Fecha + Hora -->
+    <div class="sp-form-grid-2">
+      <div class="sp-form-group">
+        <label>Fecha *</label>
+        <input type="date" name="fecha" class="sp-input" required>
+      </div>
+      <div class="sp-form-group">
+        <label>Hora de inicio *</label>
+        <input type="time" name="hora_inicio" class="sp-input" required value="09:00">
+      </div>
+    </div>
+
+    <!-- Duración (chips) -->
+    <div class="sp-seccion-simple">
+      <span class="sp-form-label">Duración</span>
+      <div class="sp-chips">
         {% for v, l in [(30,'30 min'),(60,'1h'),(90,'1.5h'),(120,'2h')] %}
-        <label class="sp-radio">
-          <input type="radio" name="duracion_min" value="{{ v }}" {% if v == 60 %}checked{% endif %}>
+        <label class="sp-chip">
+          <input type="radio" name="duracion_min" value="{{ v }}" {% if v == 60 %}checked{% endif %} hidden>
           <span>{{ l }}</span>
         </label>
         {% endfor %}
       </div>
     </div>
 
-    <div class="sp-field sp-col-2">
-      <span style="font-weight:600;font-size:.9rem;display:block;margin-bottom:.35rem;">Tipo</span>
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-        {% for v, l in [('reunion','Reunión'),('bloque_enfoque','Bloque enfoque'),('tarea','Tarea'),('recordatorio','Recordatorio'),('almuerzo','Almuerzo')] %}
-        <label class="sp-radio">
-          <input type="radio" name="tipo" value="{{ v }}" {% if v == 'reunion' %}checked{% endif %}>
+    <!-- Tipo (cards con ícono) -->
+    <div class="sp-seccion-simple">
+      <span class="sp-form-label">Tipo de evento</span>
+      <div class="sp-cards-selector">
+        {% for v, l, ic in [
+          ('reunion','Reunión','🤝'),
+          ('bloque_enfoque','Enfoque','🎯'),
+          ('tarea','Tarea','✅'),
+          ('recordatorio','Recordatorio','🔔'),
+          ('almuerzo','Almuerzo','🍽')
+        ] %}
+        <label class="sp-card-sel">
+          <input type="radio" name="tipo" value="{{ v }}" {% if v == 'reunion' %}checked{% endif %} hidden>
+          <span class="sp-cs-icono">{{ ic }}</span>
+          <span class="sp-cs-label">{{ l }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Lugar + Modalidad -->
+    <div class="sp-form-grid-2">
+      <div class="sp-form-group">
+        <label>Lugar</label>
+        <input type="text" name="lugar" class="sp-input"
+               placeholder="Sala de reuniones / Zoom / etc.">
+      </div>
+      <div class="sp-form-group">
+        <label>Modalidad</label>
+        <div class="sp-pills-3">
+          <label class="sp-pill-sel">
+            <input type="radio" name="modalidad" value="presencial" checked hidden>
+            <span>🏢 Presencial</span>
+          </label>
+          <label class="sp-pill-sel">
+            <input type="radio" name="modalidad" value="virtual" hidden>
+            <span>💻 Virtual</span>
+          </label>
+          <label class="sp-pill-sel">
+            <input type="radio" name="modalidad" value="telefono" hidden>
+            <span>📞 Teléfono</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Buffer antes (chips) -->
+    <div class="sp-seccion-simple">
+      <span class="sp-form-label">Buffer antes</span>
+      <div class="sp-chips">
+        {% for v, l in [(0,'Sin buffer'),(10,'10 min'),(15,'15 min'),(30,'30 min')] %}
+        <label class="sp-chip">
+          <input type="radio" name="buffer_antes" value="{{ v }}" {% if v == 15 %}checked{% endif %} hidden>
           <span>{{ l }}</span>
         </label>
         {% endfor %}
       </div>
     </div>
 
-    <label>
-      <span>Lugar</span>
-      <input type="text" name="lugar" placeholder="Sala de reuniones / Zoom / etc.">
-    </label>
-
-    <div class="sp-field">
-      <span style="font-weight:600;font-size:.9rem;display:block;margin-bottom:.35rem;">Modalidad</span>
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-        <label class="sp-radio"><input type="radio" name="modalidad" value="presencial" checked> <span>Presencial</span></label>
-        <label class="sp-radio"><input type="radio" name="modalidad" value="virtual"> <span>Virtual</span></label>
-        <label class="sp-radio"><input type="radio" name="modalidad" value="telefono"> <span>Teléfono</span></label>
-      </div>
-    </div>
-
-    <div class="sp-col-2">
-      <label>
-        <span>Participantes</span>
-      </label>
-      <div id="participantes-lista"></div>
+    <!-- Participantes -->
+    <div class="sp-seccion-simple">
+      <span class="sp-form-label">Participantes</span>
+      <div id="participantes-lista" style="margin-bottom:.5rem;"></div>
       <button type="button" class="sp-btn" onclick="spAgregarParticipante()">+ Agregar participante</button>
       <input type="hidden" name="participantes_json" id="participantes-json" value="[]">
     </div>
 
-    <div class="sp-field sp-col-2">
-      <span style="font-weight:600;font-size:.9rem;display:block;margin-bottom:.35rem;">Buffer antes</span>
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-        {% for v, l in [(0,'Sin buffer'),(10,'10 min'),(15,'15 min'),(30,'30 min')] %}
-        <label class="sp-radio">
-          <input type="radio" name="buffer_antes" value="{{ v }}" {% if v == 15 %}checked{% endif %}>
-          <span>{{ l }}</span>
-        </label>
-        {% endfor %}
+    <!-- Adjunto + Documento relacionado -->
+    <div class="sp-form-grid-2">
+      <div class="sp-form-group">
+        <label>Adjunto (opcional)</label>
+        <input type="file" name="archivo_adjunto" class="sp-input">
+      </div>
+      <div class="sp-form-group">
+        <label>Documento relacionado</label>
+        <select name="documento_id">
+          <option value="">— Ninguno —</option>
+          {% for d in documentos %}
+          <option value="{{ d.id }}">{{ d.modo }} #{{ d.id }} · {{ d.creado_en.strftime('%d/%m/%Y') if d.creado_en else '' }}</option>
+          {% endfor %}
+        </select>
       </div>
     </div>
 
-    <label class="sp-col-2">
-      <span>Adjunto (opcional)</span>
-      <input type="file" name="archivo_adjunto">
-    </label>
+    <!-- Descripción -->
+    <div class="sp-form-group">
+      <label>Notas / Agenda de la reunión</label>
+      <textarea name="descripcion" rows="3"
+                placeholder="Puntos a tratar, antecedentes..."></textarea>
+    </div>
 
-    <label class="sp-col-2">
-      <span>Documento relacionado (opcional)</span>
-      <select name="documento_id">
-        <option value="">— Ninguno —</option>
-        {% for d in documentos %}
-        <option value="{{ d.id }}">{{ d.modo }} #{{ d.id }} · {{ d.creado_en.strftime('%d/%m/%Y') if d.creado_en else '' }}</option>
-        {% endfor %}
-      </select>
-    </label>
-
-    <label class="sp-col-2">
-      <span>Notas / Agenda de la reunión</span>
-      <textarea name="descripcion" rows="3" placeholder="Puntos a tratar, antecedentes..."></textarea>
-    </label>
-
-    <label class="sp-col-2 sp-toggle-item" style="display:flex;align-items:center;gap:.5rem;">
+    <!-- Toggles -->
+    <label style="display:flex; align-items:center; gap:.5rem;">
       <input type="checkbox" name="notif_jefe" value="1" checked>
       <span>Notificar al jefe 30 min antes</span>
     </label>
-
-    <label class="sp-col-2 sp-toggle-item" style="display:flex;align-items:center;gap:.5rem;">
+    <label style="display:flex; align-items:center; gap:.5rem;">
       <input type="checkbox" name="incluir_sugerencia" value="1" checked>
       <span>Incluir sugerencia de la IA</span>
     </label>
 
-    <button type="submit" class="sp-btn sp-btn-primary sp-col-2">Crear evento</button>
+    <button type="submit" class="sp-btn sp-btn-primary" style="align-self:flex-start;">
+      Crear evento
+    </button>
   </form>
 </div>
 
@@ -124,7 +308,6 @@
     cont.innerHTML = '';
     participantes.forEach(function(p, idx){
       var div = document.createElement('div');
-      div.className = 'sp-participante-item';
       div.style.cssText = 'display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem;';
       div.innerHTML =
         '<input type="text" placeholder="Nombre" value="' + (p.nombre||'') + '" oninput="spActParticipante(' + idx + ', \'nombre\', this.value)" style="flex:1;padding:.4rem .6rem;border:1px solid var(--sp-border);border-radius:6px;">' +
