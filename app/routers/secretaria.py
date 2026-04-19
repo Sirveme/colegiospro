@@ -2220,6 +2220,7 @@ async def jefe_solicitud(
     mensaje: Optional[str] = Form(""),
     destinatarios: Optional[str] = Form("mis_secretarias"),
     urgente: Optional[str] = Form(None),
+    area_solicitante: Optional[str] = Form(""),
 ):
     usuario = _require_user(request)
     from app.services.push_service import enviar_push_multi
@@ -2260,6 +2261,7 @@ async def jefe_solicitud(
                 solicitante_id=usuario.id,
                 solicitante_nombre=(usuario.nombre or "").strip()[:100],
                 solicitante_cargo="Jefe",
+                area_solicitante=(area_solicitante or "").strip()[:150],
                 accion=accion,
                 tipo_documento=(tipo_doc or "carta").strip()[:50] if accion == "solicitar_nuevo" else "",
                 instruccion=(instruccion or nota or "").strip(),
