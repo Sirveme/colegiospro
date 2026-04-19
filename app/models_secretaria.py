@@ -198,6 +198,8 @@ class ConfigOrganizacion(Base):
     imagenes_limite_mes = Column(Integer, default=10)
     imagenes_reset_fecha = Column(DateTime, nullable=True)
     onboarding_completo = Column(Boolean, default=False)
+    # Token público para exponer comunicados en /comunicados/{token}
+    token_publico = Column(String(16), nullable=True, unique=True, index=True)
     actualizado_en = Column(DateTime, default=_utcnow)
 
 
@@ -377,6 +379,8 @@ class PushMensaje(Base):
     categoria = Column(String(30), default="general")
     color_tema = Column(String(10), default="#0D7A60")
     emoji_grande = Column(String(10), default="")
+    # Publicación pública en /comunicados/{token_publico}
+    es_publico = Column(Boolean, default=False, index=True)
     creado_en = Column(DateTime, default=_utcnow, index=True)
 
 
@@ -504,7 +508,7 @@ def _migrar_columnas():
                 except Exception:
                     pass
 
-    # Columnas nuevas en push_mensajes (enriquecimiento visual)
+    # Columnas nuevas en push_mensajes (enriquecimiento visual + público)
     if insp.has_table("push_mensajes"):
         cols = {c["name"] for c in insp.get_columns("push_mensajes")}
         alters_push = [
@@ -514,6 +518,7 @@ def _migrar_columnas():
             ("categoria",    "VARCHAR(30) DEFAULT 'general'"),
             ("color_tema",   "VARCHAR(10) DEFAULT '#0D7A60'"),
             ("emoji_grande", "VARCHAR(10) DEFAULT ''"),
+            ("es_publico",   "BOOLEAN DEFAULT 0"),
         ]
         for col_name, col_def in alters_push:
             if col_name not in cols:
@@ -524,6 +529,18 @@ def _migrar_columnas():
                         ))
                 except Exception:
                     pass
+
+    # token_publico en config_organizacion — UUID corto para URL pública
+    if insp.has_table("config_organizacion"):
+        cols = {c["name"] for c in insp.get_columns("config_organizacion")}
+        if "token_publico" not in cols:
+            try:
+                with engine.begin() as conn:
+                    conn.execute(text(
+                        "ALTER TABLE config_organizacion ADD COLUMN token_publico VARCHAR(16)"
+                    ))
+            except Exception:
+                pass
 
 
 _migrar_columnas()

@@ -208,6 +208,53 @@ async def responder_revision(
     return RedirectResponse(f"/ver/{token}?ok=1", status_code=302)
 
 
+@app.get("/comunicados/{token}", response_class=HTMLResponse)
+async def comunicados_publicos(token: str, request: Request):
+    """Página pública de comunicados de una organización.
+    El token se genera por organización (ConfigOrganizacion.token_publico).
+    Muestra sólo los push con es_publico=True, sin login ni sidebar."""
+    from app.models_secretaria import (
+        ConfigOrganizacion, PushMensaje, UsuarioSecretaria,
+    )
+    token = (token or "").strip()[:16]
+    if not token:
+        raise HTTPException(404, "Link inválido")
+    db = SessionLocal()
+    try:
+        cfg = db.query(ConfigOrganizacion).filter(
+            ConfigOrganizacion.token_publico == token
+        ).first()
+        if not cfg:
+            raise HTTPException(404, "Organización no encontrada")
+        secretaria = db.query(UsuarioSecretaria).filter(
+            UsuarioSecretaria.id == cfg.secretaria_id
+        ).first()
+        secretaria_id = cfg.secretaria_id
+        mensajes = (
+            db.query(PushMensaje)
+            .filter(
+                PushMensaje.de_usuario_id == secretaria_id,
+                PushMensaje.es_publico == True,  # noqa: E712
+            )
+            .order_by(PushMensaje.creado_en.desc())
+            .limit(50)
+            .all()
+        )
+    finally:
+        db.close()
+    return templates.TemplateResponse(
+        request,
+        "comunicados_publicos.html",
+        {
+            "request": request,
+            "org": cfg,
+            "secretaria": secretaria,
+            "mensajes": mensajes,
+            "token": token,
+        },
+    )
+
+
 @app.get("/offline.html", response_class=HTMLResponse)
 async def offline_page(request: Request):
     """Página mostrada por el SW cuando no hay red."""
