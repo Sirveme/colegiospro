@@ -2,18 +2,19 @@
 # app/routers/push.py — Web Push + panel del jefe + panel público
 # ══════════════════════════════════════════════════════════
 
+import logging
 import os
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Request, Form, HTTPException
+from fastapi import APIRouter, Request, Form, HTTPException, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 import pathlib
 import secrets as _secrets
 
-from fastapi import UploadFile, File
+logger = logging.getLogger("secretaria.push_routes")
 
 from app.database import SessionLocal
 from app.models_secretaria import (
@@ -51,6 +52,116 @@ def _user(request: Request) -> Optional[UsuarioSecretaria]:
     db = _db()
     try:
         return db.query(UsuarioSecretaria).filter(UsuarioSecretaria.id == uid).first()
+    finally:
+        db.close()
+
+
+# ─── Diagnóstico: enviar un push de prueba al usuario logueado ───
+@router.post("/test")
+async def push_test(request: Request):
+    """Envía un push de prueba a TODOS los suscriptores activos del usuario
+    actual, logueando cada paso para diagnosticar 404/500 de web-push."""
+    logger.info("════════ /push/test START ════════")
+
+    # 1. Verificar configuración
+    from app.services.push_service import _vapid_keys, _HAS_PYWEBPUSH
+    priv, pub, sub = _vapid_keys()
+    logger.info(
+        "pywebpush instalado=%s  VAPID_PUBLIC=%s  VAPID_PRIVATE=%s  SUB=%s",
+        _HAS_PYWEBPUSH,
+        f"OK(len={len(pub)})" if pub else "FALTA",
+        f"OK(len={len(priv)})" if priv else "FALTA",
+        sub or "(default)",
+    )
+
+    # 2. Usuario
+    uid = get_current_user_id(request)
+    if not uid:
+        logger.warning("/push/test sin usuario logueado")
+        return JSONResponse({"ok": False, "error": "No autenticado"}, status_code=401)
+
+    db = _db()
+    try:
+        suscriptores = db.query(PushSuscriptor).filter(
+            PushSuscriptor.secretaria_id == uid,
+            PushSuscriptor.activo == True,  # noqa: E712
+        ).all()
+        logger.info("usuario_id=%s suscriptores_activos=%d", uid, len(suscriptores))
+
+        if not suscriptores:
+            # Si no hay propios, probar con cualquier activo (para ver si VAPID funciona)
+            suscriptores = db.query(PushSuscriptor).filter(
+                PushSuscriptor.activo == True  # noqa: E712
+            ).limit(3).all()
+            logger.info("sin suscriptores propios, usando %d globales", len(suscriptores))
+
+        for s in suscriptores:
+            logger.info(
+                "  suscriptor id=%s secretaria=%s endpoint=%s… p256dh_len=%d auth_len=%d",
+                s.id, s.secretaria_id,
+                (s.endpoint or "")[:50],
+                len(s.p256dh or ""),
+                len(s.auth or ""),
+            )
+
+        if not suscriptores:
+            logger.warning("/push/test: no hay NINGÚN suscriptor activo en la DB")
+            return JSONResponse({
+                "ok": False,
+                "error": "No hay suscriptores activos. Primero acepta el permiso de notificaciones en este navegador.",
+                "diagnostico": {
+                    "pywebpush": _HAS_PYWEBPUSH,
+                    "vapid_public": bool(pub),
+                    "vapid_private": bool(priv),
+                    "suscriptores_globales": 0,
+                },
+            })
+
+        payload = {
+            "titulo": "🧪 Push de prueba",
+            "cuerpo": f"Si ves esto, el sistema funciona. {datetime.now().strftime('%H:%M:%S')}",
+            "url": "/secretaria/",
+            "urgente": False,
+            "categoria": "test",
+            "emoji_grande": "🧪",
+        }
+        logger.info("payload: %s", payload)
+
+        resultado = enviar_push_multi(suscriptores, payload)
+        logger.info("resultado: %s", resultado)
+
+        # Registrar el test en push_mensajes
+        try:
+            msg = PushMensaje(
+                de_usuario_id=uid,
+                titulo=payload["titulo"],
+                cuerpo=payload["cuerpo"],
+                url_destino=payload["url"],
+                urgente=False,
+                enviado_a=[s.id for s in suscriptores],
+                categoria="test",
+                emoji_grande="🧪",
+            )
+            db.add(msg)
+            db.commit()
+        except Exception as e:
+            logger.warning("no se pudo registrar push_mensaje de test: %s", e)
+            db.rollback()
+
+        logger.info("════════ /push/test END ════════")
+        return JSONResponse({
+            "ok": True,
+            "resultado": resultado,
+            "total_suscriptores": len(suscriptores),
+            "diagnostico": {
+                "pywebpush": _HAS_PYWEBPUSH,
+                "vapid_public": bool(pub),
+                "vapid_public_len": len(pub),
+                "vapid_private": bool(priv),
+                "vapid_sub": sub,
+                "push_habilitado": push_habilitado(),
+            },
+        })
     finally:
         db.close()
 
