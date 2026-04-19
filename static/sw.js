@@ -106,8 +106,8 @@ self.addEventListener('push', (event) => {
       const urgente = !!payload.urgente;
       opciones = {
         body: payload.body || payload.cuerpo || opciones.body,
-        // icon: logo institucional fijo (siempre SecretariaPro)
-        icon: '/static/img/pwa/icon-192.png',
+        // icon: dinámico si el comunicado lo define, si no logo institucional
+        icon: payload.icon_url || '/static/img/pwa/icon-192.png',
         // image: imagen grande dinámica del comunicado (Android)
         image: payload.imagen_url || payload.gif_url || undefined,
         badge: '/static/img/sp-badge-72.png',
@@ -123,8 +123,8 @@ self.addEventListener('push', (event) => {
           urgente: urgente,
         },
         actions: [
-          { action: 'abrir', title: '👁 Ver' },
-          { action: 'ok',    title: '✓ OK' }
+          { action: 'abrir', title: payload.btn1_label || '👁 Ver' },
+          { action: 'ok',    title: payload.btn2_label || '✓ OK' }
         ],
       };
     }
