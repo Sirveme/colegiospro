@@ -208,6 +208,12 @@ async def responder_revision(
     return RedirectResponse(f"/ver/{token}?ok=1", status_code=302)
 
 
+@app.get("/offline.html", response_class=HTMLResponse)
+async def offline_page(request: Request):
+    """Página mostrada por el SW cuando no hay red."""
+    return templates.TemplateResponse(request, "offline.html")
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "app": "colegiospro"}
