@@ -437,11 +437,11 @@
     <tbody>
       {% for c in historial %}
       <tr>
-        <td>{{ c.creado_en.strftime('%d/%m %H:%M') if c.creado_en else '—' }}</td>
-        <td>{{ c.titulo }}</td>
-        <td>{{ c.canal }}</td>
-        <td>{{ c.destinatarios }}</td>
-        <td>{{ c.enviado_count }}</td>
+        <td>{{ c.get('creado_en').strftime('%d/%m %H:%M') if c.get('creado_en') else '—' }}</td>
+        <td>{{ c.get('titulo', '—') }}</td>
+        <td>{{ c.get('canal', '—') }}</td>
+        <td>{{ c.get('destinatarios', '—') }}</td>
+        <td>{{ c.get('enviado_count', 0) }}</td>
       </tr>
       {% else %}
       <tr><td colspan="5" class="sp-empty">No hay comunicados aún.</td></tr>
