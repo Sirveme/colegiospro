@@ -1714,6 +1714,7 @@ async def comunicado_generar_ia(request: Request):
         return JSONResponse({"ok": False, "error": "Escribe primero la idea"}, status_code=400)
 
     from app.services.redactor_service import generar_documento
+    from app.services.pdf_service import _limpiar_delimitadores
     texto, _alertas = generar_documento(
         texto_entrada=idea,
         tono="cordial",
@@ -1721,6 +1722,7 @@ async def comunicado_generar_ia(request: Request):
         remitente={"nombre_colegio": titulo or "", "nombre_firmante": usuario.nombre or "", "cargo_firmante": "Secretaría"},
         tipo_documento="comunicado_general",
     )
+    texto = _limpiar_delimitadores(texto or "")
     return JSONResponse({"ok": True, "texto": texto})
 
 

@@ -36,7 +36,7 @@ UPLOADS_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
 EXT_PERMITIDAS = {"jpg", "jpeg", "png", "gif", "webp", "mp3", "ogg", "wav", "m4a"}
 
 
-router = APIRouter(tags=["Push"])
+router = APIRouter(prefix="/push", tags=["Push"])
 templates = Jinja2Templates(directory="app/templates")
 
 
@@ -56,7 +56,7 @@ def _user(request: Request) -> Optional[UsuarioSecretaria]:
 
 
 # ─── Suscripción push ───
-@router.post("/push/suscribir")
+@router.post("/suscribir")
 async def push_suscribir(request: Request):
     """Registra un PushSubscription del navegador. Acepta dos formatos:
     - El nativo: {endpoint, keys:{p256dh, auth}}
@@ -111,7 +111,7 @@ async def push_suscribir(request: Request):
 
 
 # ─── Enviar push ───
-@router.post("/push/enviar")
+@router.post("/enviar")
 async def push_enviar(request: Request):
     """Envía un push a uno o varios suscriptores.
     Body JSON: { titulo, cuerpo, url_destino?, urgente?, a_ids?: [int], a_todos?: bool }
@@ -184,7 +184,7 @@ async def push_enviar(request: Request):
 
 
 # ─── Panel público simple para servidores externos ───
-@router.get("/push/panel", response_class=HTMLResponse)
+@router.get("/panel", response_class=HTMLResponse)
 async def push_panel_publico(request: Request):
     """Panel ultra-simple, sin login: permite al colaborador/jefe externo
     suscribirse a notificaciones y enviar un mensaje corto a la secretaria."""
@@ -197,7 +197,7 @@ async def push_panel_publico(request: Request):
     )
 
 
-@router.post("/push/panel/enviar-mensaje")
+@router.post("/panel/enviar-mensaje")
 async def push_panel_enviar(request: Request):
     """Recibe mensajes del panel público (colaboradores externos)
     y los envía como push a todas las secretarias registradas."""
@@ -253,7 +253,7 @@ async def push_panel_enviar(request: Request):
 
 
 # ─── Biblioteca de medios para Push ───
-@router.get("/push/media/biblioteca")
+@router.get("/media/biblioteca")
 async def push_media_biblioteca(request: Request, categoria: Optional[str] = None):
     """Lista los medios disponibles. Incluye plantillas del sistema +
     medios propios de la secretaria logueada."""
@@ -291,7 +291,7 @@ async def push_media_biblioteca(request: Request, categoria: Optional[str] = Non
         db.close()
 
 
-@router.post("/push/media/subir")
+@router.post("/media/subir")
 async def push_media_subir(
     request: Request,
     archivo: UploadFile = File(...),
