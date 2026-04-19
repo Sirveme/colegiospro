@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comunicados · {{ org.nombre_organizacion or 'ColegiosPro' }}</title>
+<link rel="icon" type="image/png" href="/static/img/pwa/icon-192.png">
+<style>
+  :root {
+    --bg: #F4F3EE;
+    --fg: #1F2937;
+    --muted: #6B7280;
+    --border: #E3E6EF;
+    --accent: #0D7A60;
+    --card: #FFFFFF;
+    --shadow: 0 2px 14px rgba(15,52,96,0.06);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    min-height: 100vh;
+  }
+  .hero {
+    background: linear-gradient(135deg, #0F3460 0%, #0D7A60 100%);
+    color: #fff;
+    padding: 3rem 1.25rem 4rem;
+    text-align: center;
+  }
+  .hero h1 {
+    margin: 0 0 .35rem;
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    font-weight: 700;
+    letter-spacing: -.01em;
+  }
+  .hero p {
+    margin: 0;
+    opacity: .85;
+    font-size: .95rem;
+  }
+  .wrap {
+    max-width: 760px;
+    margin: -2.5rem auto 3rem;
+    padding: 0 1rem;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.1rem 1.25rem;
+    box-shadow: var(--shadow);
+    margin-bottom: 1rem;
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+  .card.is-urg { border-left: 4px solid #D13B3B; }
+  .card-img {
+    width: 88px; height: 88px;
+    border-radius: 10px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: #F3F0E8;
+  }
+  .card-body { flex: 1; min-width: 0; }
+  .meta {
+    font-size: .78rem;
+    color: var(--muted);
+    display: flex;
+    gap: .45rem;
+    flex-wrap: wrap;
+    margin-bottom: .35rem;
+  }
+  .meta .tag {
+    display: inline-block;
+    padding: 1px 7px;
+    background: rgba(209,59,59,0.1);
+    color: #D13B3B;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: .68rem;
+    letter-spacing: .5px;
+  }
+  .card h2 {
+    font-size: 1.05rem;
+    margin: 0 0 .25rem;
+    font-weight: 700;
+    color: var(--fg);
+    word-break: break-word;
+  }
+  .card p {
+    margin: 0;
+    color: var(--fg);
+    opacity: .85;
+    font-size: .92rem;
+    white-space: pre-wrap;
+  }
+  .empty {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--muted);
+    background: var(--card);
+    border: 2px dashed var(--border);
+    border-radius: 14px;
+  }
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: .82rem;
+    padding: 1.5rem 1rem 2rem;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+  @media (max-width: 520px) {
+    .card { flex-direction: column; }
+    .card-img { width: 100%; height: 160px; }
+  }
+</style>
+</head>
+<body>
+  <header class="hero">
+    <h1>📣 {{ org.nombre_organizacion or 'Comunicados institucionales' }}</h1>
+    <p>
+      {% if org.siglas %}{{ org.siglas }} · {% endif %}
+      {% if org.ciudad %}{{ org.ciudad }}{% endif %}
+    </p>
+  </header>
+
+  <main class="wrap">
+    {% if mensajes %}
+      {% for m in mensajes %}
+      <article class="card {% if m.urgente %}is-urg{% endif %}">
+        {% if m.imagen_url or m.gif_url %}
+        <img class="card-img" src="{{ m.imagen_url or m.gif_url }}"
+             alt="" onerror="this.style.display='none'">
+        {% endif %}
+        <div class="card-body">
+          <div class="meta">
+            {% if m.urgente %}<span class="tag">🔴 URGENTE</span>{% endif %}
+            <span>{{ m.creado_en.strftime('%d %b %Y · %H:%M') if m.creado_en else '' }}</span>
+          </div>
+          <h2>{{ (m.emoji_grande + ' ') if m.emoji_grande else '' }}{{ m.titulo }}</h2>
+          {% if m.cuerpo %}<p>{{ m.cuerpo }}</p>{% endif %}
+        </div>
+      </article>
+      {% endfor %}
+    {% else %}
+    <div class="empty">
+      <p>Aún no hay comunicados publicados.</p>
+    </div>
+    {% endif %}
+  </main>
+
+  <footer>
+    Publicado vía <a href="/" target="_blank">ColegiosPro</a> · SecretariaPro
+  </footer>
+</body>
+</html>
