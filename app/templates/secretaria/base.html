@@ -46,6 +46,14 @@
       <a href="/secretaria/" class="{% if modo_actual == 'dashboard' %}active{% endif %}">
         <span class="ic">●</span> Inicio
       </a>
+      <a href="/secretaria/solicitudes"
+         class="sp-nav-with-badge {% if modo_actual == 'solicitudes' %}active{% endif %}">
+        <span class="ic">📥</span>
+        <span>Solicitudes</span>
+        {% if pendientes and pendientes > 0 %}
+        <span class="sp-badge-count" aria-label="{{ pendientes }} pendientes">{{ pendientes }}</span>
+        {% endif %}
+      </a>
       <a href="/secretaria/redactor" class="{% if modo_actual == 'redactor' %}active{% endif %}">
         <span class="ic">✎</span> Redactor
       </a>

@@ -1,0 +1,182 @@
+{% extends "secretaria/base.html" %}
+{% block title %}Solicitudes{% endblock %}
+{% block content %}
+<header class="sp-header">
+  <h1>📥 Solicitudes</h1>
+  <p>Pedidos del jefe pendientes de atención.</p>
+</header>
+
+<style>
+.sp-sol-lista { display:flex; flex-direction:column; gap:.85rem; }
+.sp-sol-card {
+  background: #fff;
+  border: 1px solid var(--sp-border);
+  border-left: 4px solid var(--sp-muted);
+  border-radius: 10px;
+  padding: 1rem 1.15rem;
+  box-shadow: var(--sp-shadow);
+}
+.sp-sol-card.is-urgente { border-left-color: #D13B3B; }
+.sp-sol-card.is-vista   { opacity: .75; }
+.sp-sol-card.is-atendida{ opacity: .6; border-left-color: #2E8B57; }
+.sp-sol-head {
+  display:flex; gap:.5rem; align-items:center;
+  font-size:.78rem; color: var(--sp-muted);
+  margin-bottom:.35rem; flex-wrap:wrap;
+}
+.sp-sol-tag {
+  background:#D13B3B; color:#fff;
+  padding: 2px 8px; border-radius: 999px;
+  font-size:.7rem; font-weight:700; letter-spacing:.5px;
+}
+.sp-sol-tag.is-normal { background:#A69470; }
+.sp-sol-tag.is-verde  { background:#2E8B57; }
+.sp-sol-tipo {
+  font-weight:600; color: var(--sp-text); font-size:.8rem;
+}
+.sp-sol-title {
+  font-size: 1.05rem; font-weight: 600;
+  margin: .15rem 0 .2rem; color: var(--sp-text);
+}
+.sp-sol-cuerpo {
+  color: var(--sp-text); opacity: .85;
+  font-size:.94rem; line-height: 1.45;
+  margin-bottom:.7rem; white-space: pre-wrap;
+}
+.sp-sol-from {
+  font-size:.82rem; color: var(--sp-muted);
+  margin-bottom:.65rem;
+}
+.sp-sol-acciones { display:flex; gap:.45rem; flex-wrap:wrap; }
+.sp-sol-btn {
+  padding:.5rem .9rem; border:1.5px solid var(--sp-border);
+  background:#fff; color: var(--sp-text);
+  border-radius: 999px; cursor:pointer;
+  font-size:.88rem; text-decoration:none;
+  display:inline-flex; align-items:center; gap:.3rem;
+}
+.sp-sol-btn.is-primary {
+  background: var(--sp-accent, #0D7A60);
+  color:#fff; border-color: transparent;
+}
+.sp-sol-btn.is-primary:hover { filter: brightness(1.08); }
+.sp-sol-empty {
+  padding: 2rem 1rem; text-align:center;
+  color: var(--sp-muted);
+  border: 2px dashed var(--sp-border);
+  border-radius: 10px;
+}
+[data-tema="oscuro"] .sp-sol-card { background:#1a1f30; }
+[data-tema="oscuro"] .sp-sol-btn  { background:#232735; color:#e6e8f0; }
+</style>
+
+<section class="sp-col">
+  <h2 style="margin-top:0;">Pendientes
+    {% if pendientes_lista %}<small style="color:var(--sp-muted); font-weight:400;">· {{ pendientes_lista|length }}</small>{% endif %}
+  </h2>
+
+  {% if pendientes_lista %}
+  <div class="sp-sol-lista">
+    {% for sol in pendientes_lista %}
+    <article class="sp-sol-card {% if sol.urgente %}is-urgente{% endif %} {% if sol.estado == 'vista' %}is-vista{% endif %}"
+             id="sol-{{ sol.id }}">
+      <div class="sp-sol-head">
+        {% if sol.urgente %}
+          <span class="sp-sol-tag">🔴 URGENTE</span>
+        {% else %}
+          <span class="sp-sol-tag is-normal">🟡 Normal</span>
+        {% endif %}
+        <span>·</span>
+        <span>{{ sol.creado_en.strftime('%d/%m %H:%M') if sol.creado_en else '—' }}</span>
+        {% if sol.estado == 'vista' %}
+          <span>·</span><span>👁 vista</span>
+        {% endif %}
+        {% if sol.accion == 'corregir' %}
+          <span>·</span><span class="sp-sol-tipo">✏️ Corrección de doc #{{ sol.doc_referencia_id or '?' }}</span>
+        {% elif sol.tipo_documento %}
+          <span>·</span><span class="sp-sol-tipo">📝 {{ sol.tipo_documento }}</span>
+        {% endif %}
+      </div>
+
+      <div class="sp-sol-title">
+        {% if sol.accion == 'corregir' %}
+          Corregir documento
+        {% else %}
+          Redactar {{ sol.tipo_documento or 'documento' }}
+        {% endif %}
+      </div>
+
+      {% if sol.instruccion %}
+      <div class="sp-sol-cuerpo">{{ sol.instruccion }}</div>
+      {% endif %}
+
+      <div class="sp-sol-from">
+        {{ sol.solicitante_nombre or 'Jefe' }}{% if sol.solicitante_cargo %} · {{ sol.solicitante_cargo }}{% endif %}
+      </div>
+
+      <div class="sp-sol-acciones">
+        <a href="/secretaria/solicitudes/{{ sol.id }}/atender"
+           class="sp-sol-btn is-primary">Atender ahora →</a>
+        {% if sol.estado == 'pendiente' %}
+        <button type="button" class="sp-sol-btn"
+                onclick="spMarcarVista({{ sol.id }}, this)">Marcar como vista</button>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="sp-sol-empty">
+    ✅ No hay solicitudes pendientes. Buen trabajo.
+  </div>
+  {% endif %}
+</section>
+
+{% if atendidas %}
+<section class="sp-col" style="margin-top:1rem;">
+  <h2 style="margin-top:0;">Últimas atendidas</h2>
+  <div class="sp-sol-lista">
+    {% for sol in atendidas %}
+    <article class="sp-sol-card is-atendida">
+      <div class="sp-sol-head">
+        <span class="sp-sol-tag is-verde">✓ ATENDIDA</span>
+        <span>·</span>
+        <span>{{ sol.atendido_en.strftime('%d/%m %H:%M') if sol.atendido_en else '—' }}</span>
+        {% if sol.tipo_documento %}
+          <span>·</span><span class="sp-sol-tipo">{{ sol.tipo_documento }}</span>
+        {% endif %}
+      </div>
+      <div class="sp-sol-title">{{ sol.instruccion[:90] if sol.instruccion else 'Solicitud' }}{% if sol.instruccion and sol.instruccion|length > 90 %}…{% endif %}</div>
+      {% if sol.documento_id %}
+      <div class="sp-sol-acciones">
+        <a href="/secretaria/historial" class="sp-sol-btn">📄 Ver documento</a>
+      </div>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<script>
+async function spMarcarVista(id, btn) {
+  btn.disabled = true;
+  btn.textContent = '…';
+  try {
+    const r = await fetch('/secretaria/solicitudes/' + id + '/vista', { method:'POST' });
+    const d = await r.json();
+    if (d.ok) {
+      const card = document.getElementById('sol-' + id);
+      if (card) card.classList.add('is-vista');
+      btn.remove();
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Marcar como vista';
+    }
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = 'Marcar como vista';
+  }
+}
+</script>
+{% endblock %}

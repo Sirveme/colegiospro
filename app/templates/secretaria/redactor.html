@@ -105,6 +105,7 @@
     <input type="hidden" name="perfil_remitente_id" id="campo-remitente" value="">
     <input type="hidden" name="institucion_id" id="campo-destinatario" value="">
     <input type="hidden" name="tono" id="campo-tono" value="formal">
+    <input type="hidden" name="solicitud_id" id="campo-solicitud" value="">
 
     <!-- 7. BOTONES FINALES -->
     <div class="sp-botones-finales">
@@ -512,6 +513,44 @@
     var head = wrap && wrap.querySelector('.sp-redactor-head');
     if (head && head.parentNode) head.parentNode.insertBefore(badge, head.nextSibling);
   })();
+})();
+
+/* ─── Prefill desde /secretaria/solicitudes/{id}/atender ─── */
+(function spPrefillDesdeSolicitud() {
+  try {
+    var p = new URLSearchParams(window.location.search);
+    var solId = p.get('solicitud_id');
+    if (!solId) return;
+    function setField() {
+      var inp = document.getElementById('instruccion');
+      var tipo = p.get('tipo');
+      var texto = p.get('texto');
+      if (inp && texto && !inp.value) inp.value = texto;
+      var campoSol = document.getElementById('campo-solicitud');
+      if (campoSol) campoSol.value = solId;
+      if (tipo && typeof window.spSeleccionarTipo === 'function') {
+        try { window.spSeleccionarTipo(tipo); } catch (e) {}
+      }
+      var campoTipo = document.getElementById('campo-tipo');
+      if (campoTipo && tipo && !campoTipo.value) campoTipo.value = tipo;
+      // Badge de aviso
+      var wrap = document.getElementById('sp-redactor-wrap');
+      var head = wrap && wrap.querySelector('.sp-redactor-head');
+      if (head && head.parentNode) {
+        var badge = document.createElement('div');
+        badge.className = 'sp-alert ' + (p.get('urgente') === '1' ? 'sp-alert-error' : 'sp-alert-ok');
+        badge.style.cssText = 'margin-bottom:1rem; font-size:.92rem;';
+        badge.innerHTML = (p.get('urgente') === '1' ? '🔴 URGENTE · ' : '📥 ') +
+                          'Solicitud #' + solId + ' — instrucción y tipo pre-llenados';
+        head.parentNode.insertBefore(badge, head.nextSibling);
+      }
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setField);
+    } else {
+      setField();
+    }
+  } catch (e) {}
 })();
 </script>
 
