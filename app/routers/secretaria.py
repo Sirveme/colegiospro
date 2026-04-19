@@ -33,6 +33,7 @@ from app.models_secretaria import (
     PushMensaje,
     Comunicado,
     PostRedesImagen,
+    JefeSolicitud,
 )
 from app.services.auth_service import (
     hash_password,
@@ -140,7 +141,19 @@ def _user_or_redirect(request: Request):
 
 
 def _ctx(usuario: Optional[UsuarioSecretaria] = None, **extra):
-    base = {"usuario": usuario, "modo_actual": None}
+    base = {"usuario": usuario, "modo_actual": None, "pendientes": 0}
+    if usuario is not None and "pendientes" not in extra:
+        try:
+            db = _db()
+            try:
+                base["pendientes"] = db.query(JefeSolicitud).filter(
+                    JefeSolicitud.secretaria_id == usuario.id,
+                    JefeSolicitud.estado == "pendiente",
+                ).count()
+            finally:
+                db.close()
+        except Exception:
+            base["pendientes"] = 0
     base.update(extra)
     return base
 
@@ -677,6 +690,7 @@ async def redactor_generar(
     documento_referencia: Optional[UploadFile] = File(None),
     asunto_confirmado: Optional[str] = Form(None),
     respuestas_agente: Optional[str] = Form(None),
+    solicitud_id: Optional[int] = Form(None),
 ):
     usuario = _user_or_redirect(request)
     if not usuario:
@@ -802,6 +816,42 @@ async def redactor_generar(
         doc_id = doc.id
     finally:
         db.close()
+
+    # Si viene de una solicitud del jefe, marcarla atendida y notificar.
+    if solicitud_id:
+        db = _db()
+        solicitante_id_push = None
+        try:
+            sol = (
+                db.query(JefeSolicitud)
+                .filter(
+                    JefeSolicitud.id == solicitud_id,
+                    JefeSolicitud.secretaria_id == usuario.id,
+                )
+                .first()
+            )
+            if sol and sol.estado != "atendida":
+                sol.estado = "atendida"
+                sol.documento_id = doc_id
+                sol.atendido_en = datetime.now(timezone.utc)
+                db.commit()
+                solicitante_id_push = sol.solicitante_id
+        finally:
+            db.close()
+        if solicitante_id_push and solicitante_id_push != usuario.id:
+            try:
+                _push_a_solicitante(
+                    solicitante_id_push,
+                    {
+                        "titulo": "✅ Documento listo",
+                        "cuerpo": f"Tu solicitud de {tipo_norm} fue atendida",
+                        "url": "/secretaria/historial",
+                        "urgente": False,
+                        "icon": "/static/img/pwa/icon-192.png",
+                    },
+                )
+            except Exception:
+                pass
 
     return templates.TemplateResponse(
         request,
@@ -1921,6 +1971,135 @@ async def muro_view(request: Request):
     )
 
 
+# ─── Panel de Solicitudes del Jefe (vista de la secretaría) ───
+@router.get("/solicitudes", response_class=HTMLResponse)
+async def solicitudes_view(request: Request):
+    """Lista de solicitudes pendientes y atendidas para la secretaría actual."""
+    usuario = _user_or_redirect(request)
+    if not usuario:
+        return RedirectResponse("/secretaria/login", status_code=302)
+    db = _db()
+    try:
+        pendientes = (
+            db.query(JefeSolicitud)
+            .filter(
+                JefeSolicitud.secretaria_id == usuario.id,
+                JefeSolicitud.estado.in_(("pendiente", "vista")),
+            )
+            .order_by(
+                JefeSolicitud.urgente.desc(),
+                JefeSolicitud.creado_en.desc(),
+            )
+            .all()
+        )
+        atendidas = (
+            db.query(JefeSolicitud)
+            .filter(
+                JefeSolicitud.secretaria_id == usuario.id,
+                JefeSolicitud.estado == "atendida",
+            )
+            .order_by(JefeSolicitud.atendido_en.desc().nullslast())
+            .limit(15)
+            .all()
+        )
+    finally:
+        db.close()
+    return templates.TemplateResponse(
+        request,
+        "secretaria/solicitudes.html",
+        _ctx(
+            usuario=usuario,
+            modo_actual="solicitudes",
+            pendientes_lista=pendientes,
+            atendidas=atendidas,
+            pendientes=sum(1 for s in pendientes if s.estado == "pendiente"),
+        ),
+    )
+
+
+@router.get("/solicitudes/{sol_id}/atender")
+async def solicitud_atender(request: Request, sol_id: int):
+    """Marca la solicitud como 'vista' y redirige al Redactor con datos
+    pre-llenados. El estado 'atendida' se fija cuando se genera el documento."""
+    usuario = _user_or_redirect(request)
+    if not usuario:
+        return RedirectResponse("/secretaria/login", status_code=302)
+    db = _db()
+    try:
+        sol = (
+            db.query(JefeSolicitud)
+            .filter(
+                JefeSolicitud.id == sol_id,
+                JefeSolicitud.secretaria_id == usuario.id,
+            )
+            .first()
+        )
+        if not sol:
+            raise HTTPException(404, "Solicitud no encontrada")
+        if sol.estado == "pendiente":
+            sol.estado = "vista"
+            db.commit()
+        # Construir redirección al Redactor
+        if sol.accion == "corregir" and sol.doc_referencia_id:
+            target = f"/secretaria/historial/{sol.doc_referencia_id}/reabrir?solicitud_id={sol.id}"
+        else:
+            from urllib.parse import urlencode
+            qs = urlencode({
+                "solicitud_id": sol.id,
+                "tipo": sol.tipo_documento or "carta",
+                "texto": sol.instruccion or "",
+                "urgente": "1" if sol.urgente else "0",
+            })
+            target = f"/secretaria/redactor?{qs}"
+    finally:
+        db.close()
+    return RedirectResponse(target, status_code=302)
+
+
+@router.post("/solicitudes/{sol_id}/vista")
+async def solicitud_marcar_vista(request: Request, sol_id: int):
+    """Marca la solicitud como vista (sin generar documento)."""
+    usuario = _require_user(request)
+    db = _db()
+    try:
+        sol = (
+            db.query(JefeSolicitud)
+            .filter(
+                JefeSolicitud.id == sol_id,
+                JefeSolicitud.secretaria_id == usuario.id,
+            )
+            .first()
+        )
+        if not sol:
+            raise HTTPException(404, "Solicitud no encontrada")
+        if sol.estado == "pendiente":
+            sol.estado = "vista"
+            db.commit()
+        return JSONResponse({"ok": True, "estado": sol.estado})
+    finally:
+        db.close()
+
+
+def _push_a_solicitante(solicitante_id: int, payload: dict) -> dict:
+    """Envía un push a los dispositivos del solicitante (jefe). Best-effort."""
+    from app.services.push_service import enviar_push_multi
+    if not solicitante_id:
+        return {"enviados": 0, "fallidos": 0, "inactivos": 0}
+    db = _db()
+    try:
+        subs = (
+            db.query(PushSuscriptor)
+            .filter(
+                PushSuscriptor.secretaria_id == solicitante_id,
+                PushSuscriptor.activo == True,  # noqa: E712
+            )
+            .all()
+        )
+        return enviar_push_multi(subs, payload)
+    finally:
+        db.close()
+
+
 # ─── Panel del Jefe / Funcionario ───
 @router.get("/jefe", response_class=HTMLResponse)
 async def jefe_panel(request: Request):
@@ -2006,6 +2185,29 @@ async def jefe_solicitud(
             q = q.filter(PushSuscriptor.secretaria_id == usuario.id)
         suscriptores = q.all()
 
+        # Persistir como JefeSolicitud si aplica (solicitar_nuevo / corregir).
+        # La URL del push se reescribe para apuntar al panel de solicitudes
+        # así el clic lleva directo a "Atender ahora".
+        solicitud_id_creada = None
+        if accion in ("solicitar_nuevo", "corregir"):
+            sol = JefeSolicitud(
+                secretaria_id=usuario.id,
+                solicitante_id=usuario.id,
+                solicitante_nombre=(usuario.nombre or "").strip()[:100],
+                solicitante_cargo="Jefe",
+                accion=accion,
+                tipo_documento=(tipo_doc or "carta").strip()[:50] if accion == "solicitar_nuevo" else "",
+                instruccion=(instruccion or nota or "").strip(),
+                doc_referencia_id=doc_id if accion == "corregir" else None,
+                urgente=urg,
+                estado="pendiente",
+            )
+            db.add(sol)
+            db.commit()
+            db.refresh(sol)
+            solicitud_id_creada = sol.id
+            url = f"/secretaria/solicitudes#sol-{sol.id}"
+
         payload = {"titulo": titulo, "cuerpo": cuerpo, "url": url, "urgente": urg}
         resultado = enviar_push_multi(suscriptores, payload)
 
@@ -2019,6 +2221,7 @@ async def jefe_solicitud(
             "ok": True,
             "resultado": resultado,
             "total": len(suscriptores),
+            "solicitud_id": solicitud_id_creada,
         })
     finally:
         db.close()
