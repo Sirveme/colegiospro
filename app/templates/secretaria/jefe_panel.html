@@ -15,6 +15,29 @@
   {% endif %}
 </div>
 
+<!-- Botón de diagnóstico -->
+<div style="margin-bottom:1rem;">
+  <button type="button" class="sp-btn" onclick="spEnviarPushTest()">🧪 Enviar push de prueba</button>
+  <small style="color:var(--sp-muted); margin-left:.5rem;">
+    Envía a tus suscriptores activos y muestra diagnóstico.
+  </small>
+  <pre id="push-test-out" style="display:none; margin-top:.5rem; padding:.75rem; background:rgba(0,0,0,0.05); border-radius:8px; font-size:.8rem; white-space:pre-wrap; max-height:260px; overflow:auto;"></pre>
+</div>
+<script>
+async function spEnviarPushTest() {
+  var out = document.getElementById('push-test-out');
+  out.style.display = 'block';
+  out.textContent = '⏳ Enviando…';
+  try {
+    var r = await fetch('/push/test', { method:'POST' });
+    var data = await r.json();
+    out.textContent = 'Status: ' + r.status + '\n\n' + JSON.stringify(data, null, 2);
+  } catch (e) {
+    out.textContent = '⚠ ' + e.message;
+  }
+}
+</script>
+
 <div class="sp-jefe-grid">
 
   <!-- 📝 Solicitar documento nuevo -->
