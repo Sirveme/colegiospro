@@ -415,6 +415,44 @@ class DocumentoRevision(Base):
     respondido_en = Column(DateTime, nullable=True)
 
 
+# ─── jefe_solicitudes ───
+# Solicitudes que el jefe/funcionario envía a su secretaria: redactar un
+# documento nuevo, corregir uno existente, etc. Se persisten para que
+# aparezcan en el panel "Solicitudes" aun cuando el push ya fue leído.
+class JefeSolicitud(Base):
+    __tablename__ = "jefe_solicitudes"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    # Secretaría que debe atender la solicitud
+    secretaria_id = Column(
+        Integer, ForeignKey("usuarios_secretaria.id"), index=True, nullable=False
+    )
+    # Usuario que la originó (opcional — el jefe puede no tener cuenta)
+    solicitante_id = Column(
+        Integer, ForeignKey("usuarios_secretaria.id"), nullable=True
+    )
+    solicitante_nombre = Column(String(100), default="")
+    solicitante_cargo = Column(String(100), default="")
+
+    accion = Column(String(30), default="solicitar_nuevo")
+    # solicitar_nuevo / corregir / comunicado
+    tipo_documento = Column(String(50), default="carta")
+    instruccion = Column(Text, default="")
+    doc_referencia_id = Column(
+        Integer, ForeignKey("documentos_secretaria.id"), nullable=True
+    )
+    urgente = Column(Boolean, default=False)
+
+    estado = Column(String(20), default="pendiente", index=True)
+    # pendiente / vista / atendida / descartada
+    documento_id = Column(
+        Integer, ForeignKey("documentos_secretaria.id"), nullable=True
+    )
+
+    creado_en = Column(DateTime, default=_utcnow, index=True)
+    atendido_en = Column(DateTime, nullable=True)
+
+
 # ─── CREATE TABLES ───
 # create_all es idempotente: solo crea las tablas que faltan.
 # Las tablas existentes (leads, visits, chat_messages) no se tocan.
