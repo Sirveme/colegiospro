@@ -19,3 +19,5 @@ python-dotenv
 pydub
 # ─── Email Engine — scheduler en background ───
 apscheduler>=3.10,<4
+# ─── Push Notifications (Web Push + VAPID) ───
+pywebpush>=1.14
