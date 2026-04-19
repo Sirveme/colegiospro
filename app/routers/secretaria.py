@@ -1747,6 +1747,11 @@ async def comunicado_enviar(
 ):
     """Envía el comunicado. Hoy solo el canal 'push' está operativo."""
     usuario = _require_user(request)
+    import logging as _lg0
+    _lg0.getLogger("secretaria.push").info(
+        "form recibido → btn1_label=%r btn2_label=%r icon_url=%r url_destino=%r url_custom=%r",
+        btn1_label, btn2_label, icon_url, url_destino, url_custom,
+    )
     titulo = (titulo or "").strip()[:200]
     cuerpo = (cuerpo or "").strip()[:5000]
     canal = (canal or "push").strip().lower()
