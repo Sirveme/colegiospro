@@ -437,6 +437,7 @@ class JefeSolicitud(Base):
     )
     solicitante_nombre = Column(String(100), default="")
     solicitante_cargo = Column(String(100), default="")
+    area_solicitante = Column(String(150), default="")
 
     accion = Column(String(30), default="solicitar_nuevo")
     # solicitar_nuevo / corregir / comunicado
@@ -538,6 +539,19 @@ def _migrar_columnas():
                 with engine.begin() as conn:
                     conn.execute(text(
                         "ALTER TABLE config_organizacion ADD COLUMN token_publico VARCHAR(16)"
+                    ))
+            except Exception:
+                pass
+
+    # area_solicitante en jefe_solicitudes — gerencia / área del solicitante
+    if insp.has_table("jefe_solicitudes"):
+        cols = {c["name"] for c in insp.get_columns("jefe_solicitudes")}
+        if "area_solicitante" not in cols:
+            try:
+                with engine.begin() as conn:
+                    conn.execute(text(
+                        "ALTER TABLE jefe_solicitudes "
+                        "ADD COLUMN area_solicitante VARCHAR(150) DEFAULT ''"
                     ))
             except Exception:
                 pass
