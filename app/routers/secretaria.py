@@ -1793,7 +1793,7 @@ async def comunicado_enviar(
         if url_sel == "custom":
             url_sel = (url_custom or "").strip()
         if not url_sel:
-            url_sel = "/secretaria/"
+            url_sel = "/secretaria/muro"
         url_sel = url_sel[:500]
 
         icon_final = (icon_url or "").strip() or "/static/img/pwa/icon-192.png"
@@ -1806,10 +1806,14 @@ async def comunicado_enviar(
             "url": url_sel,
             "urgente": urg,
             "imagen_url": (imagen_url or "").strip(),
+            "image": (imagen_url or "").strip() or (gif_url or "").strip(),
             "gif_url": (gif_url or "").strip(),
             "audio_url": (audio_url or "").strip(),
             "emoji_grande": (emoji_grande or "").strip()[:10],
             "categoria": (categoria or "general").strip()[:30],
+            # Ícono: "icon" es la clave que lee el SW (estándar Notification API).
+            # Mantenemos "icon_url" como alias para compatibilidad.
+            "icon": icon_final,
             "icon_url": icon_final,
             "btn1_label": btn1,
             "btn2_label": btn2,
