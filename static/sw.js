@@ -86,8 +86,8 @@ self.addEventListener('push', (event) => {
   let titulo = 'ColegiosPro';
   let opciones = {
     body: 'Tiene un nuevo mensaje',
-    icon: '/static/img/icon-192.png',
-    badge: '/static/img/icon-192.png',
+    icon: '/static/img/pwa/icon-192.png',
+    badge: '/static/img/sp-badge-72.png',
     vibrate: [200, 100, 200],
     tag: 'general',
     renotify: true,
@@ -106,10 +106,11 @@ self.addEventListener('push', (event) => {
       const urgente = !!payload.urgente;
       opciones = {
         body: payload.body || payload.cuerpo || opciones.body,
-        icon: payload.icon || payload.imagen_url || opciones.icon,
-        // image: imagen grande en la notificación (Android)
+        // icon: logo institucional fijo (siempre SecretariaPro)
+        icon: '/static/img/pwa/icon-192.png',
+        // image: imagen grande dinámica del comunicado (Android)
         image: payload.imagen_url || payload.gif_url || undefined,
-        badge: '/static/img/icon-192.png',
+        badge: '/static/img/sp-badge-72.png',
         vibrate: urgente ? [300,100,300,100,300] : [200,100,200],
         tag: payload.categoria || payload.tag || 'general',
         renotify: true,
