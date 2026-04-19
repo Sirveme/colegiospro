@@ -272,9 +272,12 @@
 
   {% if usuario and vapid_public_key %}
   <script>
-  // ─── Auto-registro de Push (best-effort) ───
+  // ─── Auto-registro de Push (con reintento y re-suscripción) ───
   (function() {
     var VAPID_PUB = {{ vapid_public_key|tojson }};
+    var USR_NOMBRE = {{ (usuario.nombre or '')|tojson }};
+    var ENVIADO_EN_ESTA_SESION = false;
+
     function b64urlToUint8Array(base64) {
       if (!base64) return new Uint8Array();
       var padding = '='.repeat((4 - base64.length % 4) % 4);
@@ -284,47 +287,93 @@
       for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
       return out;
     }
+
+    async function postSuscribir(sub) {
+      var sj = sub.toJSON();
+      var body = JSON.stringify({
+        endpoint: sj.endpoint,
+        keys: sj.keys || {},
+        nombre: USR_NOMBRE,
+        cargo: 'Secretaria',
+      });
+      // Reintento simple con backoff — cubre el caso "404 temporal" al deploy
+      var intentos = [0, 2000, 8000];
+      for (var i = 0; i < intentos.length; i++) {
+        if (intentos[i]) await new Promise(function(r){ setTimeout(r, intentos[i]); });
+        try {
+          var r = await fetch('/push/suscribir', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: body,
+            credentials: 'same-origin',
+          });
+          if (r.ok) {
+            try { console.log('[SP] push/suscribir OK'); } catch (e) {}
+            return true;
+          }
+          try { console.warn('[SP] push/suscribir status', r.status, '— reintentando'); } catch (e) {}
+        } catch (e) {
+          try { console.warn('[SP] push/suscribir error', e, '— reintentando'); } catch (err) {}
+        }
+      }
+      try { console.error('[SP] push/suscribir falló tras reintentos'); } catch (e) {}
+      return false;
+    }
+
+    async function suscribirYEnviar(reg) {
+      var sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: b64urlToUint8Array(VAPID_PUB),
+      });
+      return await postSuscribir(sub);
+    }
+
     async function registrarPush() {
       try {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-        // Evitar molestar si el usuario ya negó
         if (Notification.permission === 'denied') return;
+
         var reg = await navigator.serviceWorker.register('/static/sw.js');
         var existing = await reg.pushManager.getSubscription();
+
         if (existing) {
-          // Revalidar con el servidor (idempotente)
-          var sj = existing.toJSON();
-          fetch('/push/suscribir', {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({endpoint: sj.endpoint, keys: sj.keys || {}}),
-          }).catch(function(){});
+          // Idempotente: revalida en cada pageload. Si el server lo perdió
+          // (p.ej. borrado de DB o deploy con 404), esto lo re-crea.
+          if (!ENVIADO_EN_ESTA_SESION) {
+            ENVIADO_EN_ESTA_SESION = true;
+            await postSuscribir(existing);
+          }
           return;
         }
-        // Solo pedir permiso si el usuario interactúa — usamos un listener único
+
+        // Sin subscription local. Si el permiso ya fue concedido antes,
+        // re-suscribir automáticamente (caso típico: aceptó permisos pero
+        // el navegador invalidó la subscription anterior).
+        if (Notification.permission === 'granted') {
+          try {
+            await suscribirYEnviar(reg);
+            return;
+          } catch (e) {
+            try { console.warn('[SP] auto-resuscribe falló', e); } catch (err) {}
+          }
+        }
+
+        // Primera vez: pedir permiso tras la primera interacción del usuario.
         var unaVez = false;
         function pedir() {
           if (unaVez) return; unaVez = true;
           Notification.requestPermission().then(async function(perm) {
             if (perm !== 'granted') return;
-            try {
-              var sub = await reg.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: b64urlToUint8Array(VAPID_PUB),
-              });
-              var sj = sub.toJSON();
-              await fetch('/push/suscribir', {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({
-                  endpoint: sj.endpoint, keys: sj.keys || {},
-                  nombre: {{ (usuario.nombre or '')|tojson }}, cargo: 'Secretaria',
-                }),
-              });
-            } catch(e) {}
+            try { await suscribirYEnviar(reg); } catch (e) {}
           });
         }
-        document.addEventListener('click', pedir, {once:true, passive:true});
-      } catch (e) {}
+        document.addEventListener('click', pedir, {once: true, passive: true});
+        document.addEventListener('touchstart', pedir, {once: true, passive: true});
+      } catch (e) {
+        try { console.error('[SP] registrarPush error', e); } catch (err) {}
+      }
     }
+
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', registrarPush);
     } else {
