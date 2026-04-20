@@ -3,7 +3,7 @@
 // Served from /static/sw.js
 // ══════════════════════════════════════════════
 
-const CACHE_NAME = 'secretariapro-v5';
+const CACHE_NAME = 'secretariapro-v6';
 const PRECACHE = [
   '/',
   '/demo',
@@ -158,7 +158,7 @@ self.addEventListener('notificationclick', (event) => {
   } catch (e) {}
   if (event.action === 'ok') return; // confirma y cierra
   let url = dta.url || '/secretaria/muro';
-  try { console.log('[SW] Navegando a URL:', url); } catch (e) {}
+
   // Si hay audio, pasarlo como ?play=<url> para que base.html lo reproduzca
   if (dta.audio_url) {
     try {
@@ -166,6 +166,17 @@ self.addEventListener('notificationclick', (event) => {
       url = url + sep + 'play=' + encodeURIComponent(dta.audio_url);
     } catch (e) {}
   }
+
+  // URLs externas: algunos navegadores bloquean clients.openWindow() hacia
+  // orígenes distintos. Las enviamos por /redirect?url= (same-origin) que
+  // hace un 302 del lado del servidor.
+  const origin = self.location.origin;
+  const esExterna = /^https?:\/\//i.test(url) && !url.startsWith(origin);
+  const urlFinal = esExterna
+    ? '/redirect?url=' + encodeURIComponent(url)
+    : url;
+  try { console.log('[SW] Navegando a URL:', urlFinal, '(externa:', esExterna, ')'); } catch (e) {}
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
       for (const client of windowClients) {
@@ -173,7 +184,7 @@ self.addEventListener('notificationclick', (event) => {
           // Navegar la ventana existente a la URL del comunicado.
           const goto = () => {
             if (typeof client.navigate === 'function') {
-              return client.navigate(url).catch(() => null);
+              return client.navigate(urlFinal).catch(() => null);
             }
             return null;
           };
@@ -188,7 +199,7 @@ self.addEventListener('notificationclick', (event) => {
           });
         }
       }
-      return clients.openWindow(url);
+      return clients.openWindow(urlFinal);
     })
   );
 });
