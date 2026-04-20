@@ -358,18 +358,33 @@ def crear_envios_para_campana(db: Session, campana: EmailCampana) -> int:
         EmailContacto.segmento.ilike(patron),
     ).scalar() or 0
 
-    contactos = db.query(EmailContacto).filter(
+    q = db.query(EmailContacto).filter(
         EmailContacto.segmento.ilike(patron),
         EmailContacto.activo == True,  # noqa: E712
         EmailContacto.baja == False,  # noqa: E712
-    ).all()
+    )
+
+    if campana.excluir_campana_id:
+        from sqlalchemy import select
+        excluidos_stmt = select(EmailEnvio.contacto_id).where(
+            EmailEnvio.campana_id == campana.excluir_campana_id
+        )
+        q = q.filter(~EmailContacto.id.in_(excluidos_stmt))
+
+    contactos = q.all()
+
+    excluir_count = 0
+    if campana.excluir_campana_id:
+        excluir_count = db.query(func.count(EmailEnvio.contacto_id)).filter(
+            EmailEnvio.campana_id == campana.excluir_campana_id
+        ).scalar() or 0
 
     logger.info(
-        "crear_envios_para_campana(campana_id=%s, segmento=%r, patron=%r): "
-        "total_contactos_db=%s, total_en_segmento=%s, "
-        "elegibles_activos_no_baja=%s",
-        campana.id, seg_camp, patron, total_contactos_db,
-        total_segmento, len(contactos),
+        "crear_envios_para_campana(campana_id=%s, segmento=%r, patron=%r, "
+        "excluir_campana_id=%s): total_contactos_db=%s, total_en_segmento=%s, "
+        "excluidos_por_otra_campana=%s, elegibles_activos_no_baja=%s",
+        campana.id, seg_camp, patron, campana.excluir_campana_id,
+        total_contactos_db, total_segmento, excluir_count, len(contactos),
     )
 
     creados = 0

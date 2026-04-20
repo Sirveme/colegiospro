@@ -159,12 +159,20 @@ async def nueva_campana_form(request: Request):
         configs = db.query(EmailConfig).filter(
             EmailConfig.activo == True  # noqa: E712
         ).all()
+        campanas_previas = db.query(EmailCampana).order_by(
+            EmailCampana.id.desc()
+        ).all()
     finally:
         db.close()
     return templates.TemplateResponse(
         request,
         "email_engine/campana_nueva.html",
-        {"request": request, "configs": configs, "plantillas": PLANTILLAS},
+        {
+            "request": request,
+            "configs": configs,
+            "plantillas": PLANTILLAS,
+            "campanas_previas": campanas_previas,
+        },
     )
 
 
@@ -177,10 +185,18 @@ async def nueva_campana_submit(
     config_id: int = Form(...),
     plantilla: str = Form("muni_sec_A1_base"),
     html_custom: Optional[str] = Form(None),
+    excluir_campana_id: Optional[str] = Form(None),
 ):
     html = (html_custom or "").strip()
     if not html and plantilla in PLANTILLAS:
         html = PLANTILLAS[plantilla]["html"]
+
+    excluir_id: Optional[int] = None
+    if excluir_campana_id and excluir_campana_id.strip():
+        try:
+            excluir_id = int(excluir_campana_id)
+        except ValueError:
+            excluir_id = None
 
     db = _db()
     try:
@@ -191,6 +207,7 @@ async def nueva_campana_submit(
             html_template=html,
             config_id=config_id,
             segmento=segmento.strip(),
+            excluir_campana_id=excluir_id,
             estado="borrador",
         )
         db.add(c)

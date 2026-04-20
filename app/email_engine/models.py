@@ -46,6 +46,9 @@ class EmailCampana(Base):
     config_id = Column(Integer, ForeignKey("email_configs.id"))
     segmento = Column(String(30))
     # "A_secretaria" / "B_alcalde" / "seguimiento"
+    excluir_campana_id = Column(
+        Integer, ForeignKey("email_campanas.id"), nullable=True
+    )
     estado = Column(String(15), default="borrador")
     # borrador / activa / pausada / completada
     total_contactos = Column(Integer, default=0)
