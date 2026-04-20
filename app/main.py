@@ -255,6 +255,25 @@ async def comunicados_publicos(token: str, request: Request):
     )
 
 
+@app.get("/redirect")
+async def redirect_externo(url: str = ""):
+    """Proxy de redirección usado por el SW para abrir URLs externas.
+
+    Algunos navegadores bloquean clients.openWindow() hacia orígenes distintos
+    al del SW. Esta ruta es same-origin y emite un 302 al destino, por lo que
+    el navegador la acepta sin problemas.
+
+    Validaciones:
+    - Solo se aceptan URLs con esquema http(s).
+    - No se aceptan rutas relativas ni javascript:/data:.
+    - Si la URL es inválida, se redirige al home de secretaría.
+    """
+    u = (url or "").strip()
+    if not u or not (u.startswith("http://") or u.startswith("https://")):
+        return RedirectResponse(url="/secretaria/", status_code=302)
+    return RedirectResponse(url=u, status_code=302)
+
+
 @app.get("/offline.html", response_class=HTMLResponse)
 async def offline_page(request: Request):
     """Página mostrada por el SW cuando no hay red."""
