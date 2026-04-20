@@ -51,6 +51,20 @@
       <span>HTML personalizado (opcional, sobrescribe la plantilla)</span>
       <textarea name="html_custom" placeholder="Deja vacío para usar la plantilla seleccionada"></textarea>
     </label>
+    <label>
+      <span>Excluir contactos de campaña (opcional)</span>
+      <select name="excluir_campana_id">
+        <option value="">— no excluir —</option>
+        {% for cp in campanas_previas %}
+        <option value="{{ cp.id }}">
+          #{{ cp.id }} · {{ cp.nombre }} ({{ cp.segmento }}, {{ cp.total_contactos or 0 }} contactos)
+        </option>
+        {% endfor %}
+      </select>
+      <small style="color:#666">
+        No se crearán envíos para contactos que ya tienen un envío en la campaña seleccionada.
+      </small>
+    </label>
     <button type="submit" class="ee-btn">Crear campaña</button>
   </form>
 </div>
