@@ -102,5 +102,24 @@
   </main>
 </div>
 {% block scripts %}{% endblock %}
+<script>
+// Auto-heartbeat cada 5 min mientras una pestaña admin esté abierta.
+// Backup del APScheduler interno por si Railway lo deja dormido.
+if (window.location.pathname.startsWith('/admin/emails')) {
+  const HEARTBEAT_MS = 5 * 60 * 1000;
+  async function _ee_heartbeat() {
+    try {
+      const r = await fetch('/admin/emails/heartbeat', { cache: 'no-store' });
+      const d = await r.json();
+      if ((d.enviados || 0) > 0 || (d.fallidos || 0) > 0) {
+        console.log('[email-heartbeat]', d);
+      }
+    } catch (e) { /* silencioso */ }
+  }
+  // Disparar uno al cargar (cubre el "primer envío" tras boot) y luego cada 5 min.
+  setTimeout(_ee_heartbeat, 3000);
+  setInterval(_ee_heartbeat, HEARTBEAT_MS);
+}
+</script>
 </body>
 </html>
