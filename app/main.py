@@ -6,7 +6,9 @@
 import asyncio
 import logging
 import os
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+import httpx
 from fastapi import FastAPI, Request, Form, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -27,10 +29,84 @@ from app.email_engine.sender import procesar_cola as _procesar_cola_email
 
 logger = logging.getLogger("colegiospro.main")
 
+
+# ─── Scheduler en background: heartbeat email cada 5 min ──────
+_scheduler = None
+
+
+async def heartbeat_email_background():
+    """Procesa hasta 25 correos pendientes de la cola de email_engine.
+    Corre en thread para no bloquear el event loop (procesar_cola es sync)."""
+    def _run():
+        db = SessionLocal()
+        try:
+            return _procesar_cola_email(db, max_envios=25)
+        finally:
+            db.close()
+    try:
+        resultado = await asyncio.to_thread(_run)
+        if (resultado.get("enviados") or 0) > 0 or (resultado.get("fallidos") or 0) > 0:
+            logger.info("Heartbeat email: %s", resultado)
+    except Exception as e:
+        logger.exception("Heartbeat email falló: %s", e)
+
+
+async def self_ping():
+    """Mantiene el worker activo en Railway y procesa la cola de email
+    haciendo un GET interno a /admin/emails/heartbeat cada 5 min."""
+    await asyncio.sleep(60)  # esperar arranque completo
+    port = int(os.environ.get("PORT", 8080))
+    url = f"http://127.0.0.1:{port}/admin/emails/heartbeat"
+    while True:
+        try:
+            async with httpx.AsyncClient() as client:
+                r = await client.get(url, timeout=30)
+                data = r.json()
+                if (data.get("enviados") or 0) > 0:
+                    logger.info("Self-ping heartbeat: %s", data)
+        except Exception as e:
+            logger.debug("Self-ping error: %s", e)
+        await asyncio.sleep(300)  # cada 5 minutos
+
+
+@asynccontextmanager
+async def lifespan(app: "FastAPI"):
+    # ─── STARTUP ───
+    global _scheduler
+    if os.environ.get("DISABLE_EMAIL_SCHEDULER") == "1":
+        logger.info("Email scheduler deshabilitado por env var.")
+    else:
+        try:
+            from apscheduler.schedulers.asyncio import AsyncIOScheduler
+            _scheduler = AsyncIOScheduler()
+            _scheduler.add_job(
+                heartbeat_email_background,
+                "interval",
+                minutes=5,
+                id="email_heartbeat",
+                max_instances=1,
+                coalesce=True,
+            )
+            _scheduler.start()
+            asyncio.create_task(self_ping())
+            logger.info("Scheduler iniciado.")
+        except Exception as e:
+            logger.exception("Error scheduler: %s", e)
+    yield
+    # ─── SHUTDOWN ───
+    if _scheduler is not None:
+        try:
+            _scheduler.shutdown(wait=False)
+            logger.info("Email scheduler detenido.")
+        except Exception as e:
+            logger.warning("Error al detener email scheduler: %s", e)
+
+
 app = FastAPI(
     title="ColegiosPro",
     description="Plataforma Digital para Colegios Profesionales del Peru",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 
@@ -303,64 +379,6 @@ async def debug_db():
 async def secretariapro(request: Request):
     """Página estática /SecretariaPro — sin autenticación, sin base de datos."""
     return templates.TemplateResponse(request, "secretariapro.html")
-
-
-# ─── Scheduler en background: heartbeat email cada 5 min ──────
-_scheduler = None
-
-
-async def heartbeat_email_background():
-    """Procesa hasta 5 correos pendientes de la cola de email_engine.
-    Corre en thread para no bloquear el event loop (procesar_cola es sync)."""
-    def _run():
-        db = SessionLocal()
-        try:
-            return _procesar_cola_email(db, max_envios=5)
-        finally:
-            db.close()
-    try:
-        resultado = await asyncio.to_thread(_run)
-        if (resultado.get("enviados") or 0) > 0 or (resultado.get("fallidos") or 0) > 0:
-            logger.info("Heartbeat email: %s", resultado)
-    except Exception as e:
-        logger.exception("Heartbeat email falló: %s", e)
-
-
-@app.on_event("startup")
-async def startup():
-    global _scheduler
-    # Solo arrancar en el proceso real, no en imports de tests/scripts.
-    # Y permitir desactivar con DISABLE_EMAIL_SCHEDULER=1 (útil en CI).
-    if os.environ.get("DISABLE_EMAIL_SCHEDULER") == "1":
-        logger.info("Email scheduler deshabilitado por env var.")
-        return
-    try:
-        from apscheduler.schedulers.asyncio import AsyncIOScheduler
-        _scheduler = AsyncIOScheduler()
-        _scheduler.add_job(
-            heartbeat_email_background,
-            "interval",
-            minutes=5,
-            id="email_heartbeat",
-            max_instances=1,
-            coalesce=True,
-            next_run_time=None,
-        )
-        _scheduler.start()
-        logger.info("Email scheduler iniciado: heartbeat cada 5 min.")
-    except Exception as e:
-        logger.exception("No se pudo iniciar el email scheduler: %s", e)
-
-
-@app.on_event("shutdown")
-async def shutdown():
-    global _scheduler
-    if _scheduler is not None:
-        try:
-            _scheduler.shutdown(wait=False)
-            logger.info("Email scheduler detenido.")
-        except Exception as e:
-            logger.warning("Error al detener email scheduler: %s", e)
 
 
 if __name__ == "__main__":
