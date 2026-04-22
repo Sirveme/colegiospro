@@ -775,11 +775,11 @@ async def config_test(config_id: int):
 # ─── Heartbeat ─────────────────────────────────────────────────
 @router.get("/heartbeat")
 async def heartbeat():
-    """Procesa hasta 5 correos de la cola. Llamar cada 5 min desde el cliente
+    """Procesa hasta 25 correos de la cola. Llamar cada 5 min desde el cliente
     o desde un cron externo (Railway cron job)."""
     db = _db()
     try:
-        resultado = procesar_cola(db, max_envios=5)
+        resultado = procesar_cola(db, max_envios=25)
     finally:
         db.close()
     return JSONResponse(resultado)
@@ -790,7 +790,7 @@ async def heartbeat_post():
     """Mismo heartbeat, vía POST — para botón manual 'Procesar cola ahora'."""
     db = _db()
     try:
-        resultado = procesar_cola(db, max_envios=5)
+        resultado = procesar_cola(db, max_envios=25)
     finally:
         db.close()
     return JSONResponse(resultado)
