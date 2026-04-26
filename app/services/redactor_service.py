@@ -191,9 +191,26 @@ TIPOS = {
         "icono": "📊",
         "descripcion": "Informe técnico o de gestión",
         "estructura": "Reporte técnico o de gestión con datos, resultados y análisis. Suele incluir tablas comparativas, listas de hallazgos y recomendaciones.",
-        "partes": "INFORME N° / A: / DE: / ASUNTO: / FECHA: / I. ANTECEDENTES / II. ANÁLISIS (con tablas y/o listas) / III. CONCLUSIONES / IV. RECOMENDACIONES / Firma",
+        "partes": "INFORME N° / A: / DE: / ASUNTO: / FECHA: / I. OBJETO / II. ANTECEDENTES / III. ANÁLISIS (con tablas y/o listas) / IV. CONCLUSIONES / V. RECOMENDACIONES / Firma",
         "persona": "primera_singular",
         "audiencia": "interno_o_jerarquico",
+        "instrucciones_extra": (
+            "REGLAS ESPECÍFICAS DEL INFORME — OBLIGATORIAS:\n"
+            "- Secciones numeradas en romano EXACTAMENTE así, en este orden:\n"
+            "  I. OBJETO\n"
+            "  II. ANTECEDENTES\n"
+            "  III. ANÁLISIS\n"
+            "  IV. CONCLUSIONES\n"
+            "  V. RECOMENDACIONES\n"
+            "- DATOS NUMÉRICOS → SIEMPRE en tabla Markdown:\n"
+            "  | Mes     | Casos | Variación |\n"
+            "  |---------|-------|-----------|\n"
+            "  | Enero   |  145  |    +12%   |\n"
+            "- ENUMERACIONES (causas, hallazgos, recomendaciones) → SIEMPRE lista Markdown:\n"
+            "  1. Primera causa\n"
+            "  2. Segunda causa\n"
+            "- NO uses párrafos para datos que van en tabla."
+        ),
     },
 }
 
@@ -322,6 +339,7 @@ TIPO DE DOCUMENTO: {tipo['label'].upper()}
 
 Estructura obligatoria de partes:
 {tipo['partes']}
+{("\n" + tipo["instrucciones_extra"]) if tipo.get("instrucciones_extra") else ""}
 
 ================================================================
 TONO OBLIGATORIO: {cfg['etiqueta'].upper()}
