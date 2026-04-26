@@ -11,6 +11,22 @@ from html import escape
 from typing import Optional
 from datetime import datetime
 
+try:
+    from bs4 import BeautifulSoup, NavigableString
+    _HAS_BS4 = True
+except Exception:
+    _HAS_BS4 = False
+
+
+_HTML_HINT_RE = re.compile(r'<\s*(p|div|table|ul|ol|li|tr|td|th|strong|b|em|i|br|h[1-6])\b', re.I)
+
+
+def es_contenido_html(texto: str) -> bool:
+    """Heurística: el cuerpo es HTML (vino del editor Quill) y no Markdown."""
+    if not texto:
+        return False
+    return bool(_HTML_HINT_RE.search(texto))
+
 
 def _limpiar_delimitadores(texto: str) -> str:
     """Quita delimitadores ''' o ``` que a veces quedan al inicio/fin del texto."""
@@ -244,6 +260,145 @@ def _es_linea_negrita(linea: str, tipo_documento: str) -> bool:
     return False
 
 
+def _inline_html_a_reportlab(nodo) -> str:
+    """Convierte el contenido inline de un nodo BeautifulSoup a markup ReportLab."""
+    if not _HAS_BS4:
+        return ""
+    out = []
+    for hijo in getattr(nodo, "children", []):
+        if isinstance(hijo, NavigableString):
+            out.append(escape(str(hijo), quote=False))
+            continue
+        nm = (hijo.name or "").lower()
+        inner = _inline_html_a_reportlab(hijo)
+        if nm in ("strong", "b"):
+            out.append(f"<b>{inner}</b>")
+        elif nm in ("em", "i"):
+            out.append(f"<i>{inner}</i>")
+        elif nm == "u":
+            out.append(f"<u>{inner}</u>")
+        elif nm == "br":
+            out.append("<br/>")
+        elif nm == "a":
+            href = hijo.get("href", "")
+            if href:
+                out.append(f'<a href="{escape(href, quote=True)}" color="#0563C1">{inner}</a>')
+            else:
+                out.append(inner)
+        elif nm == "code":
+            out.append(f'<font face="Courier">{inner}</font>')
+        else:
+            out.append(inner)
+    return "".join(out)
+
+
+def html_a_elementos_reportlab(html: str, estilo: dict) -> list:
+    """Convierte HTML del editor Quill a Flowables ReportLab."""
+    if not _HAS_REPORTLAB:
+        return []
+    if not html or not _HAS_BS4:
+        return []
+
+    style_body = ParagraphStyle(
+        "html_body", fontName=estilo["font"], fontSize=11, leading=15,
+        textColor=estilo["color_text"], alignment=TA_JUSTIFY, spaceAfter=4,
+    )
+    style_bold = ParagraphStyle(
+        "html_bold", fontName=estilo["font_bold"], fontSize=11, leading=15,
+        textColor=estilo["color_text"], spaceAfter=4,
+    )
+    style_bullet = ParagraphStyle(
+        "html_bullet", fontName=estilo["font"], fontSize=11, leading=15,
+        textColor=estilo["color_text"], leftIndent=18, bulletIndent=6, spaceAfter=2,
+    )
+
+    soup = BeautifulSoup(html, "html.parser")
+    elementos = []
+
+    def render_lista(elem, ordenada: bool):
+        items = elem.find_all("li", recursive=False)
+        for idx, li in enumerate(items, start=1):
+            inner = _inline_html_a_reportlab(li)
+            marca = f"{idx}." if ordenada else "&bull;"
+            elementos.append(Paragraph(f"{marca}&nbsp;&nbsp;{inner}", style_bullet))
+
+    def render_tabla(tbl):
+        filas = []
+        for tr in tbl.find_all("tr"):
+            celdas = tr.find_all(["th", "td"])
+            if not celdas:
+                continue
+            filas.append([
+                Paragraph(_inline_html_a_reportlab(c), style_body) for c in celdas
+            ])
+        if not filas:
+            return
+        cols = max(len(f) for f in filas)
+        for f in filas:
+            while len(f) < cols:
+                f.append(Paragraph("", style_body))
+        es_header = bool(tbl.find("th"))
+        t = Table(filas, repeatRows=1 if es_header else 0)
+        estilo_tbl = [
+            ('FONTSIZE',   (0, 0), (-1, -1), 10),
+            ('GRID',       (0, 0), (-1, -1), 0.5, colors.HexColor('#cccccc')),
+            ('ROWBACKGROUNDS', (0, 1 if es_header else 0), (-1, -1),
+             [colors.white, colors.HexColor('#f5f5f5')]),
+            ('PADDING',    (0, 0), (-1, -1), 6),
+            ('VALIGN',     (0, 0), (-1, -1), 'MIDDLE'),
+        ]
+        if es_header:
+            estilo_tbl = [
+                ('BACKGROUND', (0, 0), (-1, 0), estilo["color_header"]),
+                ('TEXTCOLOR',  (0, 0), (-1, 0), colors.white),
+                ('FONTNAME',   (0, 0), (-1, 0), estilo["font_bold"]),
+                ('FONTNAME',   (0, 1), (-1, -1), estilo["font"]),
+            ] + estilo_tbl
+        else:
+            estilo_tbl = [('FONTNAME', (0, 0), (-1, -1), estilo["font"])] + estilo_tbl
+        t.setStyle(TableStyle(estilo_tbl))
+        elementos.append(t)
+        elementos.append(Spacer(1, 0.3 * cm))
+
+    def walk(nodes):
+        for elem in nodes:
+            if isinstance(elem, NavigableString):
+                txt = str(elem).strip()
+                if txt:
+                    elementos.append(Paragraph(escape(txt, quote=False), style_body))
+                continue
+            nm = (elem.name or "").lower()
+            if nm in ("p", "div"):
+                inner = _inline_html_a_reportlab(elem).strip()
+                if inner:
+                    elementos.append(Paragraph(inner, style_body))
+                else:
+                    elementos.append(Spacer(1, 0.2 * cm))
+            elif nm in ("h1", "h2", "h3", "h4", "h5", "h6"):
+                inner = _inline_html_a_reportlab(elem).strip()
+                if inner:
+                    elementos.append(Paragraph(f"<b>{inner}</b>", style_bold))
+            elif nm == "ul":
+                render_lista(elem, ordenada=False)
+            elif nm == "ol":
+                render_lista(elem, ordenada=True)
+            elif nm == "table":
+                render_tabla(elem)
+            elif nm == "br":
+                elementos.append(Spacer(1, 0.15 * cm))
+            elif nm == "hr":
+                elementos.append(Spacer(1, 0.3 * cm))
+            else:
+                # Elemento raíz no reconocido: tratarlo como párrafo
+                inner = _inline_html_a_reportlab(elem).strip()
+                if inner:
+                    elementos.append(Paragraph(inner, style_body))
+
+    raiz = soup.body or soup
+    walk(list(raiz.children))
+    return elementos
+
+
 _MD_BOLD_RE   = re.compile(r'\*\*(.+?)\*\*')
 _MD_ITALIC_RE = re.compile(r'(?<!\w)_([^_\n]+)_(?!\w)')
 _MD_LINK_RE   = re.compile(r'\[([^\]]+)\]\(([^)]+)\)')
@@ -436,8 +591,11 @@ def _generar_pdf_reportlab(
             )
         )
 
-    # Renderizar cuerpo con soporte Markdown (tablas, listas, **negrita**)
-    story.extend(markdown_a_elementos_reportlab(texto, estilo))
+    # Renderizar cuerpo: HTML del editor Quill o Markdown de la IA
+    if es_contenido_html(texto):
+        story.extend(html_a_elementos_reportlab(texto, estilo))
+    else:
+        story.extend(markdown_a_elementos_reportlab(texto, estilo))
 
     # Alertas de completitud al final del PDF
     if alertas:

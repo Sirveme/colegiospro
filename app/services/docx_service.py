@@ -22,6 +22,19 @@ URL_RE = re.compile(r'(https?://[^\s]+)')
 _MD_BOLD_RE    = re.compile(r'\*\*(.+?)\*\*')
 _MD_OL_RE      = re.compile(r'^\s*\d+\.\s+')
 _MD_TBL_SEP_RE = re.compile(r'^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$')
+_HTML_HINT_RE  = re.compile(r'<\s*(p|div|table|ul|ol|li|tr|td|th|strong|b|em|i|br|h[1-6])\b', re.I)
+
+try:
+    from bs4 import BeautifulSoup, NavigableString
+    _HAS_BS4 = True
+except Exception:
+    _HAS_BS4 = False
+
+
+def es_contenido_html(texto: str) -> bool:
+    if not texto:
+        return False
+    return bool(_HTML_HINT_RE.search(texto))
 
 
 def _limpiar_delimitadores(texto: str) -> str:
@@ -124,6 +137,107 @@ def _agregar_runs_con_negrita(parrafo, texto: str):
             continue
         run = parrafo.add_run(parte)
         run.bold = (j % 2 == 1)
+
+
+def _emitir_inline_html(parrafo, nodo, hereda_bold=False, hereda_italic=False, hereda_under=False):
+    """Recorre un nodo bs4 inline y crea runs en el párrafo respetando estilos."""
+    if not _HAS_BS4 or nodo is None:
+        return
+    for hijo in getattr(nodo, "children", []):
+        if isinstance(hijo, NavigableString):
+            run = parrafo.add_run(str(hijo))
+            if hereda_bold:   run.bold = True
+            if hereda_italic: run.italic = True
+            if hereda_under:  run.underline = True
+            continue
+        nm = (hijo.name or "").lower()
+        if nm == "br":
+            parrafo.add_run().add_break()
+            continue
+        bold = hereda_bold or nm in ("strong", "b")
+        ital = hereda_italic or nm in ("em", "i")
+        under = hereda_under or nm == "u"
+        if nm == "a":
+            href = (hijo.get("href") or "").strip()
+            texto_link = hijo.get_text() or href
+            if href:
+                _agregar_hipervinculo(parrafo, href, texto_link)
+                continue
+        _emitir_inline_html(parrafo, hijo, bold, ital, under)
+
+
+def html_a_docx(doc, html: str):
+    """Convierte HTML del editor Quill a contenido Word."""
+    if not _HAS_DOCX or not _HAS_BS4 or not html:
+        return
+    soup = BeautifulSoup(html, "html.parser")
+    raiz = soup.body or soup
+
+    def render_lista(elem, ordenada: bool):
+        estilo = "List Number" if ordenada else "List Bullet"
+        for li in elem.find_all("li", recursive=False):
+            try:
+                p = doc.add_paragraph(style=estilo)
+            except KeyError:
+                p = doc.add_paragraph()
+            _emitir_inline_html(p, li)
+
+    def render_tabla(tbl):
+        filas_html = tbl.find_all("tr")
+        if not filas_html:
+            return
+        celdas_por_fila = [tr.find_all(["th", "td"]) for tr in filas_html]
+        cols = max((len(c) for c in celdas_por_fila), default=0)
+        if cols == 0:
+            return
+        tabla = doc.add_table(rows=len(filas_html), cols=cols)
+        try:
+            tabla.style = "Table Grid"
+        except KeyError:
+            pass
+        es_header_row = bool(filas_html[0].find("th"))
+        for r, celdas in enumerate(celdas_por_fila):
+            for c in range(cols):
+                cell = tabla.cell(r, c)
+                cell.text = ""
+                p = cell.paragraphs[0]
+                if c < len(celdas):
+                    _emitir_inline_html(p, celdas[c])
+                if r == 0 and es_header_row:
+                    for run in p.runs:
+                        run.bold = True
+        doc.add_paragraph()
+
+    for elem in raiz.children:
+        if isinstance(elem, NavigableString):
+            txt = str(elem).strip()
+            if txt:
+                doc.add_paragraph(txt)
+            continue
+        nm = (elem.name or "").lower()
+        if nm in ("p", "div"):
+            p = doc.add_paragraph()
+            p.paragraph_format.space_after = Pt(0)
+            p.paragraph_format.line_spacing = Pt(14)
+            _emitir_inline_html(p, elem)
+        elif nm in ("h1", "h2", "h3", "h4", "h5", "h6"):
+            p = doc.add_paragraph()
+            _emitir_inline_html(p, elem)
+            for run in p.runs:
+                run.bold = True
+        elif nm == "ul":
+            render_lista(elem, ordenada=False)
+        elif nm == "ol":
+            render_lista(elem, ordenada=True)
+        elif nm == "table":
+            render_tabla(elem)
+        elif nm == "br":
+            doc.add_paragraph()
+        elif nm == "hr":
+            doc.add_paragraph()
+        else:
+            p = doc.add_paragraph()
+            _emitir_inline_html(p, elem)
 
 
 def markdown_a_docx(doc, texto: str):
@@ -289,7 +403,10 @@ def generar_docx_bytes(
 
     # ─── CUERPO ───
     doc.add_paragraph("")
-    markdown_a_docx(doc, texto or "")
+    if es_contenido_html(texto):
+        html_a_docx(doc, texto)
+    else:
+        markdown_a_docx(doc, texto or "")
 
     # ─── PIE ───
     if nombre_org or ciudad:
