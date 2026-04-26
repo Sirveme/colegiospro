@@ -69,7 +69,7 @@
 
 <div id="sp-version-indicador-{{ documento_id }}" class="sp-version-badge" style="display:none;"></div>
 
-<link href="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.snow.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.snow.min.css">
 
 <article class="sp-doc sp-doc--{{ tono or 'formal' }}"
          data-doc-id="{{ documento_id }}"
@@ -77,19 +77,6 @@
          data-tipo="{{ tipo_documento or 'carta' }}">
   <pre class="sp-doc-texto" id="sp-doc-texto-{{ documento_id }}" hidden>{{ texto_salida }}</pre>
   <div class="sp-editor-wrap" id="sp-editor-wrap-{{ documento_id }}">
-    <div id="sp-toolbar-{{ documento_id }}" class="sp-toolbar">
-      <button type="button" class="ql-bold" title="Negrita"></button>
-      <button type="button" class="ql-italic" title="Cursiva"></button>
-      <button type="button" class="ql-underline" title="Subrayado"></button>
-      <span class="ql-separator"></span>
-      <button type="button" class="ql-list" value="ordered" title="Lista numerada"></button>
-      <button type="button" class="ql-list" value="bullet" title="Lista con viñetas"></button>
-      <span class="ql-separator"></span>
-      <button type="button" onclick="spInsertarTabla({{ documento_id }})" title="Insertar tabla">⊞</button>
-      <button type="button" class="ql-link" title="Hipervínculo"></button>
-      <span class="ql-separator"></span>
-      <button type="button" onclick="spLimpiarFormato({{ documento_id }})" title="Limpiar formato">✕</button>
-    </div>
     <div id="sp-editor-{{ documento_id }}" class="sp-editor"></div>
   </div>
 </article>
@@ -97,32 +84,67 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.min.js"></script>
 <script>
-(function(){
-  var docId      = {{ documento_id }};
-  var srcRaw     = {{ texto_salida | tojson }};
-  var pre        = document.getElementById('sp-doc-texto-' + docId);
-  var editorEl   = document.getElementById('sp-editor-' + docId);
+(function init() {
+  if (typeof Quill === 'undefined') {
+    return setTimeout(init, 50);  // esperar a que cargue Quill
+  }
+  var docId    = {{ documento_id }};
+  var srcRaw   = {{ texto_salida | tojson }};
+  var pre      = document.getElementById('sp-doc-texto-' + docId);
+  var editorEl = document.getElementById('sp-editor-' + docId);
+  if (!editorEl) return;
   if (pre) pre.textContent = srcRaw;
 
   window.spTextosOriginales = window.spTextosOriginales || {};
   window.spTextosOriginales[docId] = srcRaw;
   window.spQuills = window.spQuills || {};
 
-  function srcAHtml(src) {
-    if (window.marked && typeof marked.parse === 'function') {
-      return marked.parse(src || '');
-    }
-    return '<p>' + (src || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\n/g,'<br>') + '</p>';
-  }
-
-  if (!editorEl || typeof Quill === 'undefined') return;
-
+  // Toolbar nativo de Quill — íconos SVG correctos
   var quill = new Quill('#sp-editor-' + docId, {
     theme: 'snow',
-    modules: { toolbar: '#sp-toolbar-' + docId },
+    modules: {
+      toolbar: [
+        ['bold', 'italic', 'underline'],
+        [{ list: 'ordered' }, { list: 'bullet' }],
+        ['link'],
+        ['clean'],
+      ],
+    },
   });
   window.spQuills[docId] = quill;
-  quill.clipboard.dangerouslyPasteHTML(0, srcAHtml(srcRaw));
+
+  // Cargar el texto generado por la IA. Preferimos marked.js
+  // (preserva tablas/listas Markdown) si está disponible; de lo contrario
+  // setText + iteración de **negritas**.
+  if (srcRaw && srcRaw.trim()) {
+    if (window.marked && typeof marked.parse === 'function') {
+      quill.clipboard.dangerouslyPasteHTML(0, marked.parse(srcRaw));
+    } else {
+      quill.setText(srcRaw);
+      var regex = /\*\*(.+?)\*\*/g, match, offset = 0;
+      while ((match = regex.exec(srcRaw)) !== null) {
+        var inicio = match.index - offset;
+        quill.deleteText(inicio, match[0].length);
+        quill.insertText(inicio, match[1], { bold: true });
+        offset += match[0].length - match[1].length;
+      }
+    }
+  }
+
+  // Botón Tabla anexo al toolbar de Quill
+  var qToolbar = editorEl.parentNode.querySelector('.ql-toolbar');
+  if (qToolbar && !qToolbar.querySelector('.sp-btn-tabla')) {
+    var sep = document.createElement('span');
+    sep.className = 'ql-formats';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'sp-btn-tabla';
+    btn.title = 'Insertar tabla';
+    btn.textContent = '⊞ Tabla';
+    btn.onclick = function() { window.spInsertarTabla(docId); };
+    sep.appendChild(btn);
+    qToolbar.appendChild(sep);
+  }
 })();
 
 window.spInsertarTabla = function(docId) {
