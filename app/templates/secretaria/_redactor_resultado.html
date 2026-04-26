@@ -153,22 +153,30 @@ window.spInsertarTabla = function(docId) {
   var cols  = parseInt(prompt('¿Cuántas columnas?', '3'), 10);
   var filas = parseInt(prompt('¿Cuántas filas (sin encabezado)?', '3'), 10);
   if (!cols || !filas) return;
-  var html = '<table border="1" style="width:100%;border-collapse:collapse">';
+
+  var range = q.getSelection(true);
+  // Borrar la selección antes de insertar la tabla
+  if (range && range.length > 0) {
+    q.deleteText(range.index, range.length);
+  }
+
+  var html = '<table border="1" style="width:100%;border-collapse:collapse;margin:12px 0">';
   html += '<tr>';
   for (var c = 0; c < cols; c++) {
-    html += '<th style="padding:6px;background:#162845;color:white">Columna ' + (c+1) + '</th>';
+    html += '<th contenteditable="true" style="padding:8px;background:#162845;color:white;border:1px solid #ccc">Encabezado ' + (c+1) + '</th>';
   }
   html += '</tr>';
   for (var r = 0; r < filas; r++) {
     html += '<tr>';
     for (var c2 = 0; c2 < cols; c2++) {
-      html += '<td style="padding:6px;border:1px solid #ccc">&nbsp;</td>';
+      html += '<td contenteditable="true" style="padding:8px;border:1px solid #ccc">&nbsp;</td>';
     }
     html += '</tr>';
   }
   html += '</table><p><br></p>';
-  var range = q.getSelection(true) || { index: q.getLength() - 1, length: 0 };
-  q.clipboard.dangerouslyPasteHTML(range.index, html);
+
+  var insertAt = range ? range.index : q.getLength();
+  q.clipboard.dangerouslyPasteHTML(insertAt, html);
 };
 
 window.spLimpiarFormato = function(docId) {

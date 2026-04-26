@@ -118,6 +118,21 @@
   {% endif %}
 
   <main class="sp-main {% if not usuario %}sp-main-full{% else %}{% block main_class %}{% endblock %}{% endif %}">
+    {% if usuario %}
+    <div class="sp-productividad-banner" id="sp-banner-prod">
+      <span class="sp-prod-icono">⏱</span>
+      <span class="sp-prod-texto">
+        Tiempo ahorrado hoy:
+        <strong id="sp-horas-hoy">0 min</strong>
+      </span>
+      <span class="sp-prod-sep">·</span>
+      <span class="sp-prod-texto">
+        Documentos generados:
+        <strong id="sp-docs-hoy">0</strong> hoy
+        / <strong id="sp-docs-total">0</strong> total
+      </span>
+    </div>
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
 
@@ -269,6 +284,30 @@
     }
   })();
   </script>
+
+  {% if usuario %}
+  <script>
+  // ─── Banner de productividad (tiempo ahorrado + docs hoy/total) ───
+  (function() {
+    async function spCargarProductividad() {
+      try {
+        var r = await fetch('/secretaria/stats/productividad', {credentials: 'same-origin'});
+        if (!r.ok) return;
+        var d = await r.json();
+        var th = document.getElementById('sp-horas-hoy');
+        var dh = document.getElementById('sp-docs-hoy');
+        var dt = document.getElementById('sp-docs-total');
+        if (th) th.textContent = d.tiempo_hoy;
+        if (dh) dh.textContent = d.docs_hoy;
+        if (dt) dt.textContent = d.docs_total;
+      } catch (e) {}
+    }
+    window.spCargarProductividad = spCargarProductividad;
+    spCargarProductividad();
+    setInterval(spCargarProductividad, 5 * 60 * 1000);
+  })();
+  </script>
+  {% endif %}
 
   {% if usuario and vapid_public_key %}
   <script>
