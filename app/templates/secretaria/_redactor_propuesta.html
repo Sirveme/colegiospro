@@ -6,9 +6,15 @@
   <div class="sp-propuesta-items">
     <div class="sp-prop-item">
       <span class="sp-prop-label">Tipo</span>
-      <span class="sp-prop-valor">{{ tipo_label }}</span>
+      <span class="sp-prop-valor">{{ tipo_label }} ✓</span>
       <button type="button" onclick="spAbrirTab('tipo')" class="sp-prop-edit">cambiar</button>
     </div>
+    {% if tipo_sugerido == 'informe' %}
+    <div class="sp-prop-estructura">
+      <span class="sp-prop-estructura-label">Estructura:</span>
+      PARA / DE / ASUNTO / FECHA + secciones I-V en romano (OBJETO, ANTECEDENTES, ANÁLISIS, CONCLUSIONES, RECOMENDACIONES)
+    </div>
+    {% endif %}
     <div class="sp-prop-item">
       <span class="sp-prop-label">Asunto</span>
       <input class="sp-prop-input" name="asunto_confirmado" id="asunto-confirmado"

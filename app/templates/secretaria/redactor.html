@@ -211,7 +211,7 @@
   // ── Tipos disponibles (desde el servidor) ──
   var SP_TIPOS = [
     {% for t in tipos %}
-    {val:{{ t.id|tojson }}, label:{{ t.label|tojson }}, icono:{{ (t.icono or '📄')|tojson }}}{{ "," if not loop.last else "" }}
+    {val:{{ t.id|tojson }}, label:{{ t.label|tojson }}, icono:{{ (t.icono or '📄')|tojson }}, desc:{{ (t.descripcion or '')|tojson }}}{{ "," if not loop.last else "" }}
     {% endfor %}
   ];
 
@@ -263,10 +263,12 @@
     return '<div class="sp-tipos-grid">' +
       SP_TIPOS.map(function(t){
         var sel = estado.tipo === t.val ? 'seleccionado' : '';
+        var desc = t.desc ? '<span class="sp-tipo-desc">' + escapeAttr(t.desc) + '</span>' : '';
         return '<button type="button" class="sp-tipo-btn ' + sel + '"' +
           ' onclick="spSelTipo(\'' + escapeAttr(t.val) + '\',\'' + escapeAttr(t.label) + '\',\'' + escapeAttr(t.icono) + '\')">' +
           '<span class="sp-tipo-icono">' + t.icono + '</span>' +
           '<span class="sp-tipo-label">' + t.label + '</span>' +
+          desc +
           '</button>';
       }).join('') +
       '</div>';
