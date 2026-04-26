@@ -19,6 +19,9 @@ except Exception:
 
 
 URL_RE = re.compile(r'(https?://[^\s]+)')
+_MD_BOLD_RE    = re.compile(r'\*\*(.+?)\*\*')
+_MD_OL_RE      = re.compile(r'^\s*\d+\.\s+')
+_MD_TBL_SEP_RE = re.compile(r'^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$')
 
 
 def _limpiar_delimitadores(texto: str) -> str:
@@ -100,6 +103,106 @@ MARGENES_POR_TIPO = {
 
 def docx_disponible() -> bool:
     return _HAS_DOCX
+
+
+def _parsear_celdas_md(linea: str) -> list:
+    s = (linea or '').strip()
+    if s.startswith('|'):
+        s = s[1:]
+    if s.endswith('|'):
+        s = s[:-1]
+    return [c.strip() for c in s.split('|')]
+
+
+def _agregar_runs_con_negrita(parrafo, texto: str):
+    """Divide el texto por **...** y agrega runs alternando bold."""
+    if not texto:
+        return
+    partes = _MD_BOLD_RE.split(texto)
+    for j, parte in enumerate(partes):
+        if not parte:
+            continue
+        run = parrafo.add_run(parte)
+        run.bold = (j % 2 == 1)
+
+
+def markdown_a_docx(doc, texto: str):
+    """Convierte Markdown del documento (tablas, listas, **negrita**) a Word."""
+    if not _HAS_DOCX:
+        return
+    lineas = (texto or '').split('\n')
+    i = 0
+    n = len(lineas)
+    while i < n:
+        linea = lineas[i]
+        stripped = linea.strip()
+
+        # Tabla Markdown: cabecera + separador |---|
+        if stripped.startswith('|') and i + 1 < n and _MD_TBL_SEP_RE.match(lineas[i+1]):
+            cabecera = _parsear_celdas_md(lineas[i])
+            i += 2
+            filas = [cabecera]
+            while i < n and lineas[i].strip().startswith('|'):
+                filas.append(_parsear_celdas_md(lineas[i]))
+                i += 1
+            cols = max(len(f) for f in filas)
+            for f in filas:
+                while len(f) < cols:
+                    f.append('')
+            tabla = doc.add_table(rows=len(filas), cols=cols)
+            try:
+                tabla.style = 'Table Grid'
+            except KeyError:
+                pass
+            for r, fila in enumerate(filas):
+                for c, celda in enumerate(fila):
+                    cell = tabla.cell(r, c)
+                    cell.text = ''
+                    p = cell.paragraphs[0]
+                    _agregar_runs_con_negrita(p, celda)
+                    if r == 0:
+                        for run in p.runs:
+                            run.bold = True
+            doc.add_paragraph()
+            continue
+
+        # Lista numerada
+        if _MD_OL_RE.match(linea):
+            cuerpo = _MD_OL_RE.sub('', linea, count=1)
+            try:
+                p = doc.add_paragraph(style='List Number')
+            except KeyError:
+                p = doc.add_paragraph()
+            _agregar_runs_con_negrita(p, cuerpo)
+            i += 1
+            continue
+
+        # Lista con viñetas
+        if stripped.startswith('- ') or stripped.startswith('* '):
+            cuerpo = stripped[2:]
+            try:
+                p = doc.add_paragraph(style='List Bullet')
+            except KeyError:
+                p = doc.add_paragraph()
+            _agregar_runs_con_negrita(p, cuerpo)
+            i += 1
+            continue
+
+        # Línea vacía
+        if not stripped:
+            doc.add_paragraph()
+            i += 1
+            continue
+
+        # Texto normal: respetar URLs activas + negrita inline
+        if URL_RE.search(linea):
+            p = _agregar_parrafo_con_links(doc, linea)
+        else:
+            p = doc.add_paragraph()
+            p.paragraph_format.space_after = Pt(0)
+            p.paragraph_format.line_spacing = Pt(14)
+            _agregar_runs_con_negrita(p, linea)
+        i += 1
 
 
 def generar_docx_bytes(
@@ -186,8 +289,7 @@ def generar_docx_bytes(
 
     # ─── CUERPO ───
     doc.add_paragraph("")
-    for linea in (texto or "").split("\n"):
-        _agregar_parrafo_con_links(doc, linea)
+    markdown_a_docx(doc, texto or "")
 
     # ─── PIE ───
     if nombre_org or ciudad:

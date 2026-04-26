@@ -5,6 +5,7 @@
 # Cae a HTML imprimible si ninguna lib de PDF está instalada.
 # ══════════════════════════════════════════════════════════
 
+import re
 from io import BytesIO
 from html import escape
 from typing import Optional
@@ -243,6 +244,132 @@ def _es_linea_negrita(linea: str, tipo_documento: str) -> bool:
     return False
 
 
+_MD_BOLD_RE   = re.compile(r'\*\*(.+?)\*\*')
+_MD_ITALIC_RE = re.compile(r'(?<!\w)_([^_\n]+)_(?!\w)')
+_MD_LINK_RE   = re.compile(r'\[([^\]]+)\]\(([^)]+)\)')
+_MD_CODE_RE   = re.compile(r'`([^`\n]+)`')
+_MD_OL_RE     = re.compile(r'^\s*\d+\.\s+')
+_MD_TBL_SEP_RE = re.compile(r'^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$')
+
+
+def _limpiar_markdown_inline(texto: str) -> str:
+    """Convierte negrita/itálica/links/code Markdown a tags ReportLab."""
+    if not texto:
+        return ""
+    s = escape(texto, quote=False)
+    s = _MD_BOLD_RE.sub(r'<b>\1</b>', s)
+    s = _MD_ITALIC_RE.sub(r'<i>\1</i>', s)
+    s = _MD_CODE_RE.sub(r'<font face="Courier">\1</font>', s)
+    s = _MD_LINK_RE.sub(r'\1', s)
+    return s
+
+
+def _es_separador_md(linea: str) -> bool:
+    return bool(_MD_TBL_SEP_RE.match(linea or ''))
+
+
+def _parsear_celdas_md(linea: str) -> list:
+    s = (linea or '').strip()
+    if s.startswith('|'):
+        s = s[1:]
+    if s.endswith('|'):
+        s = s[:-1]
+    return [c.strip() for c in s.split('|')]
+
+
+def markdown_a_elementos_reportlab(texto: str, estilo: dict) -> list:
+    """Convierte Markdown del documento a lista de Flowables ReportLab."""
+    if not _HAS_REPORTLAB:
+        return []
+
+    style_body = ParagraphStyle(
+        "md_body", fontName=estilo["font"], fontSize=11, leading=15,
+        textColor=estilo["color_text"], alignment=TA_JUSTIFY, spaceAfter=4,
+    )
+    style_bold = ParagraphStyle(
+        "md_bold", fontName=estilo["font_bold"], fontSize=11, leading=15,
+        textColor=estilo["color_text"], spaceAfter=4,
+    )
+    style_bullet = ParagraphStyle(
+        "md_bullet", fontName=estilo["font"], fontSize=11, leading=15,
+        textColor=estilo["color_text"], leftIndent=18, bulletIndent=6, spaceAfter=2,
+    )
+
+    elementos = []
+    lineas = (texto or '').split('\n')
+    i = 0
+    n = len(lineas)
+    while i < n:
+        linea = lineas[i]
+        stripped = linea.strip()
+
+        # Tabla Markdown: cabecera | --- | + filas
+        if stripped.startswith('|') and i + 1 < n and _es_separador_md(lineas[i+1]):
+            cabecera = _parsear_celdas_md(lineas[i])
+            i += 2  # saltar cabecera + separador
+            filas = [cabecera]
+            while i < n and lineas[i].strip().startswith('|'):
+                filas.append(_parsear_celdas_md(lineas[i]))
+                i += 1
+            max_cols = max(len(f) for f in filas)
+            for f in filas:
+                while len(f) < max_cols:
+                    f.append('')
+            datos = [[Paragraph(_limpiar_markdown_inline(c), style_body) for c in f]
+                     for f in filas]
+            t = Table(datos, repeatRows=1)
+            t.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), estilo["color_header"]),
+                ('TEXTCOLOR',  (0, 0), (-1, 0), colors.white),
+                ('FONTNAME',   (0, 0), (-1, 0), estilo["font_bold"]),
+                ('FONTNAME',   (0, 1), (-1, -1), estilo["font"]),
+                ('FONTSIZE',   (0, 0), (-1, -1), 10),
+                ('GRID',       (0, 0), (-1, -1), 0.5, colors.HexColor('#cccccc')),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1),
+                 [colors.white, colors.HexColor('#f5f5f5')]),
+                ('PADDING',    (0, 0), (-1, -1), 6),
+                ('VALIGN',     (0, 0), (-1, -1), 'MIDDLE'),
+            ]))
+            elementos.append(t)
+            elementos.append(Spacer(1, 0.3 * cm))
+            continue
+
+        # Lista numerada
+        if _MD_OL_RE.match(linea):
+            cuerpo = _MD_OL_RE.sub('', linea, count=1)
+            elementos.append(Paragraph(
+                f"&bull;&nbsp;&nbsp;{_limpiar_markdown_inline(cuerpo)}",
+                style_bullet,
+            ))
+            i += 1
+            continue
+
+        # Lista con viñetas
+        if stripped.startswith('- ') or stripped.startswith('* '):
+            cuerpo = stripped[2:]
+            elementos.append(Paragraph(
+                f"&bull;&nbsp;&nbsp;{_limpiar_markdown_inline(cuerpo)}",
+                style_bullet,
+            ))
+            i += 1
+            continue
+
+        # Línea vacía
+        if not stripped:
+            elementos.append(Spacer(1, 0.2 * cm))
+            i += 1
+            continue
+
+        # Línea totalmente en mayúsculas (títulos como MEMORÁNDUM N° ...)
+        if stripped == linea.strip() and stripped.isupper() and len(stripped) < 80:
+            elementos.append(Paragraph(_limpiar_markdown_inline(stripped), style_bold))
+        else:
+            elementos.append(Paragraph(_limpiar_markdown_inline(linea), style_body))
+        i += 1
+
+    return elementos
+
+
 def _generar_pdf_reportlab(
     texto: str,
     titulo: str,
@@ -309,95 +436,8 @@ def _generar_pdf_reportlab(
             )
         )
 
-    # Estilos de párrafo
-    style_body = ParagraphStyle(
-        "body",
-        fontName=estilo["font"],
-        fontSize=11,
-        leading=16,
-        textColor=estilo["color_text"],
-        alignment=TA_JUSTIFY,
-        spaceAfter=8,
-    )
-    style_bold = ParagraphStyle(
-        "bold",
-        fontName=estilo["font_bold"],
-        fontSize=11,
-        leading=16,
-        textColor=estilo["color_text"],
-        alignment=TA_LEFT,
-        spaceAfter=8,
-        spaceBefore=12,
-    )
-    style_bullet = ParagraphStyle(
-        "bullet",
-        fontName=estilo["font"],
-        fontSize=11,
-        leading=15,
-        leftIndent=20,
-        bulletIndent=10,
-        spaceAfter=4,
-        textColor=estilo["color_text"],
-    )
-    style_center = ParagraphStyle(
-        "center",
-        fontName=estilo["font"],
-        fontSize=10,
-        leading=14,
-        textColor=estilo["color_text"],
-        alignment=TA_CENTER,
-        spaceAfter=10,
-    )
-
-    # Renderizar texto con detección de tablas y viñetas
-    lineas = texto.split("\n")
-    tabla_data = []
-    i = 0
-    while i < len(lineas):
-        linea = lineas[i]
-        linea_strip = linea.strip()
-
-        # Detectar tablas
-        if _es_linea_tabla(linea):
-            # Líneas de borde (solo ─-+) se ignoran
-            if all(c in '─-+| \t' for c in linea_strip):
-                i += 1
-                continue
-            celdas = [
-                c.strip()
-                for c in linea_strip.replace('│', '|').split('|')
-                if c.strip()
-            ]
-            if celdas:
-                tabla_data.append(celdas)
-            i += 1
-            continue
-
-        # Si acumulamos tabla, renderizarla
-        if tabla_data:
-            _flush_tabla(tabla_data, story, estilo)
-            tabla_data = []
-
-        if not linea_strip:
-            story.append(Spacer(1, 0.25 * cm))
-        elif linea_strip.startswith('•') or linea_strip.startswith('- '):
-            texto_bullet = linea_strip.lstrip('•- ').strip()
-            safe = escape(texto_bullet)
-            story.append(
-                Paragraph(f"&bull;&nbsp;&nbsp;{safe}", style_bullet)
-            )
-        elif _es_linea_negrita(linea, tipo_documento):
-            safe = escape(linea_strip)
-            story.append(Paragraph(safe, style_bold))
-        else:
-            safe = escape(linea_strip).replace("&amp;amp;", "&amp;")
-            story.append(Paragraph(safe, style_body))
-
-        i += 1
-
-    # Flush tabla final si quedó
-    if tabla_data:
-        _flush_tabla(tabla_data, story, estilo)
+    # Renderizar cuerpo con soporte Markdown (tablas, listas, **negrita**)
+    story.extend(markdown_a_elementos_reportlab(texto, estilo))
 
     # Alertas de completitud al final del PDF
     if alertas:

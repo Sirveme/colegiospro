@@ -339,7 +339,23 @@ REGLAS ADICIONALES
 - Si algún dato del firmante está vacío, deja el espacio con guiones bajos.
 - Si no hay destinatario, usa "Señor(a):" y "Presente.-".
 - Si se te entrega un "Documento de referencia", úsalo SOLO como contexto (antecedentes, números de oficio, fechas). NO lo copies dentro del documento nuevo. Referéncialo con tus propias palabras.
-- Responde EXCLUSIVAMENTE con el texto del documento, sin explicaciones, sin markdown, sin comillas envolventes."""
+
+================================================================
+FORMATO DE SALIDA — OBLIGATORIO
+================================================================
+- Usa Markdown para estructurar el documento.
+- Tablas: cuando haya 2+ filas de datos comparativos, usa tabla Markdown con encabezado:
+  | Columna 1 | Columna 2 |
+  |-----------|-----------|
+  | Dato 1    | Dato 2    |
+- Listas: cuando haya 3+ elementos enumerados, usa lista numerada (1. 2. 3.) o con viñetas (-).
+- Negritas con **doble asterisco** para números de normas legales y conceptos clave.
+- NO uses # ## ### headers — la numeración de secciones (I., II., 1., 1.1.) va en el texto plano.
+- NO uses HTML.
+- Comienza directamente con el documento, sin explicaciones ni comillas envolventes.
+
+TONO: Formal, técnico, sin coloquialismos ni anglicismos.
+NORMA: El documento debe poder presentarse a Contraloría."""
 
 
 def _build_user_prompt(
