@@ -69,17 +69,116 @@
 
 <div id="sp-version-indicador-{{ documento_id }}" class="sp-version-badge" style="display:none;"></div>
 
+<link href="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.snow.css" rel="stylesheet">
+
 <article class="sp-doc sp-doc--{{ tono or 'formal' }}"
          data-doc-id="{{ documento_id }}"
          data-tono="{{ tono or 'formal' }}"
          data-tipo="{{ tipo_documento or 'carta' }}">
-  <pre class="sp-doc-texto" id="sp-doc-texto-{{ documento_id }}">{{ texto_salida }}</pre>
+  <pre class="sp-doc-texto" id="sp-doc-texto-{{ documento_id }}" hidden>{{ texto_salida }}</pre>
+  <div class="sp-editor-wrap" id="sp-editor-wrap-{{ documento_id }}">
+    <div id="sp-toolbar-{{ documento_id }}" class="sp-toolbar">
+      <button type="button" class="ql-bold" title="Negrita"></button>
+      <button type="button" class="ql-italic" title="Cursiva"></button>
+      <button type="button" class="ql-underline" title="Subrayado"></button>
+      <span class="ql-separator"></span>
+      <button type="button" class="ql-list" value="ordered" title="Lista numerada"></button>
+      <button type="button" class="ql-list" value="bullet" title="Lista con viñetas"></button>
+      <span class="ql-separator"></span>
+      <button type="button" onclick="spInsertarTabla({{ documento_id }})" title="Insertar tabla">⊞</button>
+      <button type="button" class="ql-link" title="Hipervínculo"></button>
+      <span class="ql-separator"></span>
+      <button type="button" onclick="spLimpiarFormato({{ documento_id }})" title="Limpiar formato">✕</button>
+    </div>
+    <div id="sp-editor-{{ documento_id }}" class="sp-editor"></div>
+  </div>
 </article>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.min.js"></script>
+<script>
+(function(){
+  var docId      = {{ documento_id }};
+  var srcRaw     = {{ texto_salida | tojson }};
+  var pre        = document.getElementById('sp-doc-texto-' + docId);
+  var editorEl   = document.getElementById('sp-editor-' + docId);
+  if (pre) pre.textContent = srcRaw;
+
+  window.spTextosOriginales = window.spTextosOriginales || {};
+  window.spTextosOriginales[docId] = srcRaw;
+  window.spQuills = window.spQuills || {};
+
+  function srcAHtml(src) {
+    if (window.marked && typeof marked.parse === 'function') {
+      return marked.parse(src || '');
+    }
+    return '<p>' + (src || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\n/g,'<br>') + '</p>';
+  }
+
+  if (!editorEl || typeof Quill === 'undefined') return;
+
+  var quill = new Quill('#sp-editor-' + docId, {
+    theme: 'snow',
+    modules: { toolbar: '#sp-toolbar-' + docId },
+  });
+  window.spQuills[docId] = quill;
+  quill.clipboard.dangerouslyPasteHTML(0, srcAHtml(srcRaw));
+})();
+
+window.spInsertarTabla = function(docId) {
+  var q = window.spQuills && window.spQuills[docId];
+  if (!q) return;
+  var cols  = parseInt(prompt('¿Cuántas columnas?', '3'), 10);
+  var filas = parseInt(prompt('¿Cuántas filas (sin encabezado)?', '3'), 10);
+  if (!cols || !filas) return;
+  var html = '<table border="1" style="width:100%;border-collapse:collapse">';
+  html += '<tr>';
+  for (var c = 0; c < cols; c++) {
+    html += '<th style="padding:6px;background:#162845;color:white">Columna ' + (c+1) + '</th>';
+  }
+  html += '</tr>';
+  for (var r = 0; r < filas; r++) {
+    html += '<tr>';
+    for (var c2 = 0; c2 < cols; c2++) {
+      html += '<td style="padding:6px;border:1px solid #ccc">&nbsp;</td>';
+    }
+    html += '</tr>';
+  }
+  html += '</table><p><br></p>';
+  var range = q.getSelection(true) || { index: q.getLength() - 1, length: 0 };
+  q.clipboard.dangerouslyPasteHTML(range.index, html);
+};
+
+window.spLimpiarFormato = function(docId) {
+  var q = window.spQuills && window.spQuills[docId];
+  if (!q) return;
+  var range = q.getSelection();
+  if (range && range.length) q.removeFormat(range.index, range.length);
+};
+
+window.spObtenerContenido = function(docId) {
+  var q = window.spQuills && window.spQuills[docId];
+  return q ? q.root.innerHTML : '';
+};
+
+async function spFlushEditor(docId) {
+  var html = window.spObtenerContenido(docId);
+  if (!html) return;
+  try {
+    await fetch('/secretaria/documento/' + docId + '/guardar', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ html: html, marcar_guardado: false })
+    });
+  } catch (e) {}
+}
+window.spFlushEditor = spFlushEditor;
+</script>
+
 <div class="sp-acciones">
-  <a class="sp-btn" href="/secretaria/documento/{{ documento_id }}/pdf" target="_blank" rel="noopener">
+  <button class="sp-btn" type="button" onclick="spDescargarPdf({{ documento_id }})">
     📄 Descargar PDF
-  </a>
+  </button>
   <button class="sp-btn" type="button" onclick="spDescargarDocx({{ documento_id }})">
     📝 Descargar Word (.docx)
   </button>
@@ -89,13 +188,10 @@
   <button class="sp-btn" type="button" onclick="spCopiar({{ documento_id }})">
     📋 Copiar texto
   </button>
-  <button
-    class="sp-btn sp-btn-primary"
-    type="button"
-    hx-post="/secretaria/documento/{{ documento_id }}/guardar"
-    hx-swap="none"
-    onclick="this.textContent='✓ Guardado'"
-  >💾 Guardar en historial</button>
+  <button class="sp-btn sp-btn-primary" type="button"
+          onclick="spGuardarHistorial({{ documento_id }}, this)">
+    💾 Guardar en historial
+  </button>
   <button class="sp-btn" type="button" onclick="spAbrirModalRevision({{ documento_id }})">
     👁 Pedir revisión
   </button>
@@ -182,38 +278,45 @@ function spActualizarBotonesVersion(docId, activa) {
   });
 }
 
+function spPintarEnEditor(docId, texto, esMarkdown) {
+  var q = window.spQuills && window.spQuills[docId];
+  if (!q) return;
+  if (esMarkdown && window.marked && typeof marked.parse === 'function') {
+    q.setContents([]);
+    q.clipboard.dangerouslyPasteHTML(0, marked.parse(texto || ''));
+  } else {
+    q.setText(texto || '');
+  }
+}
+
 window.spVerVersion = async function(docId, ajuste, label) {
-  var pre = document.getElementById('sp-doc-texto-' + docId);
   var badge = document.getElementById('sp-version-indicador-' + docId);
+  var pre   = document.getElementById('sp-doc-texto-' + docId);
   if (!pre) return;
 
-  // Guardar el original la primera vez
   if (!window.spTextosOriginales[docId]) {
-    window.spTextosOriginales[docId] = pre.innerText;
+    window.spTextosOriginales[docId] = pre.textContent;
   }
 
-  // Volver a original
+  // Volver a original (Markdown renderizado en el editor)
   if (ajuste === 'original') {
-    pre.innerText = window.spTextosOriginales[docId];
+    spPintarEnEditor(docId, window.spTextosOriginales[docId], true);
     if (badge) badge.style.display = 'none';
     spActualizarBotonesVersion(docId, 'original');
     return;
   }
 
-  // Normalizar la clave de versión (quitar prefijo)
   var key = ajuste.replace('version_', '');  // whatsapp / email
 
-  // Cache hit
   if (!window.spVersionesCache[docId]) window.spVersionesCache[docId] = {};
   if (window.spVersionesCache[docId][ajuste]) {
-    pre.innerText = window.spVersionesCache[docId][ajuste];
+    spPintarEnEditor(docId, window.spVersionesCache[docId][ajuste], false);
     badge.style.display = 'inline-block';
     badge.textContent = '📌 Viendo: ' + label + ' — no reemplaza el documento guardado';
     spActualizarBotonesVersion(docId, key);
     return;
   }
 
-  // Fetch al backend
   var btnsVersion = document.querySelectorAll('.sp-versiones-bar .sp-version-btn');
   btnsVersion.forEach(function(b){ b.disabled = true; });
   badge.style.display = 'inline-block';
@@ -230,7 +333,7 @@ window.spVerVersion = async function(docId, ajuste, label) {
       return;
     }
     window.spVersionesCache[docId][ajuste] = data.texto || '';
-    pre.innerText = data.texto || '';
+    spPintarEnEditor(docId, data.texto || '', false);
     badge.textContent = '📌 Viendo: ' + label + ' — no reemplaza el documento guardado';
     spActualizarBotonesVersion(docId, key);
   } catch (e) {
@@ -240,17 +343,48 @@ window.spVerVersion = async function(docId, ajuste, label) {
   }
 };
 
+// Override spCopiar: copiar el texto plano del editor
+window.spCopiar = function(docId) {
+  var q = window.spQuills && window.spQuills[docId];
+  var t = q ? q.getText() : '';
+  if (navigator.clipboard) navigator.clipboard.writeText(t);
+};
+
+window.spDescargarPdf = async function(docId) {
+  await window.spFlushEditor(docId);
+  window.open('/secretaria/documento/' + docId + '/pdf', '_blank', 'noopener');
+};
+
 window.spDescargarDocx = async function(docId) {
-  const resp = await fetch(`/secretaria/documento/${docId}/docx`);
-  const blob = await resp.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `documento_${docId}.docx`;
+  await window.spFlushEditor(docId);
+  var resp = await fetch('/secretaria/documento/' + docId + '/docx');
+  var blob = await resp.blob();
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href   = url;
+  a.download = 'documento_' + docId + '.docx';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 };
+
+window.spGuardarHistorial = async function(docId, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando…'; }
+  var html = window.spObtenerContenido(docId);
+  try {
+    var r = await fetch('/secretaria/documento/' + docId + '/guardar', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ html: html, marcar_guardado: true })
+    });
+    if (btn) btn.textContent = r.ok ? '✓ Guardado' : '⚠ Error';
+  } catch (e) {
+    if (btn) btn.textContent = '⚠ Error';
+  } finally {
+    if (btn) setTimeout(function(){ btn.disabled = false; }, 2000);
+  }
+};
+
 spStopSpinner();
 </script>
