@@ -189,7 +189,7 @@ TIPOS = {
     "informe": {
         "label": "Informe",
         "icono": "📊",
-        "descripcion": "Informe técnico o de gestión",
+        "descripcion": "Reporte técnico o de gestión · Estructura: PARA / DE / ASUNTO",
         "estructura": "Reporte técnico o de gestión con datos, resultados y análisis. Suele incluir tablas comparativas, listas de hallazgos y recomendaciones.",
         "partes": "INFORME N° / A: / DE: / ASUNTO: / FECHA: / I. OBJETO / II. ANTECEDENTES / III. ANÁLISIS (con tablas y/o listas) / IV. CONCLUSIONES / V. RECOMENDACIONES / Firma",
         "persona": "primera_singular",
@@ -221,7 +221,12 @@ def _tipo_cfg(tipo: str) -> dict:
 
 def listar_tipos() -> list:
     return [
-        {"id": k, "label": v["label"], "icono": v["icono"]}
+        {
+            "id": k,
+            "label": v["label"],
+            "icono": v["icono"],
+            "descripcion": v.get("descripcion", ""),
+        }
         for k, v in TIPOS.items()
     ]
 
@@ -314,7 +319,61 @@ def _fecha_lima_legible() -> str:
     return f"{ahora.day} de {meses[ahora.month - 1]} de {ahora.year}"
 
 
+def _build_informe_prompt() -> str:
+    """Prompt específico para INFORME oficial — ignora saludos/despedidas del tono."""
+    return """Eres un experto en redacción oficial peruana.
+Redacta un INFORME oficial del Estado peruano.
+
+ESTRUCTURA OBLIGATORIA — exactamente en este orden:
+
+INFORME N° {numero}-{año}-{siglas}
+
+PARA  : {destinatario y cargo}
+DE    : {remitente y cargo}
+ASUNTO: {tema del informe}
+FECHA : {ciudad}, {fecha completa}
+
+─────────────────────────────────────────────
+
+I.   OBJETO
+[Explicar brevemente el propósito del informe]
+
+II.  ANTECEDENTES
+[Contexto previo relevante]
+
+III. ANÁLISIS
+[Desarrollo del tema con datos — usar tablas
+ para datos numéricos, listas para enumeraciones]
+
+IV.  CONCLUSIONES
+[Síntesis de los hallazgos]
+
+V.   RECOMENDACIONES
+[Acciones sugeridas, con base legal si aplica]
+
+
+                   ___________________
+                   {nombre del remitente}
+                   {cargo}
+                   {institución}
+
+REGLAS — OBLIGATORIAS:
+- NO uses saludo "Señor(a):" ni "De mi mayor consideración".
+- NO uses despedida "Sin otro particular...".
+- NO uses "Atentamente".
+- El número de informe va centrado y en MAYÚSCULAS.
+- Las secciones van numeradas en romano (I, II, III, IV, V) en ese orden.
+- Usa tablas Markdown (| col1 | col2 |) para TODOS los datos numéricos.
+- Usa listas numeradas (1., 2., 3.) para enumeraciones (causas, hallazgos, recomendaciones).
+- La firma va alineada a la derecha (espaciada con espacios).
+- Tono: técnico y objetivo, sin floreos ni fórmulas protocolares.
+- Cita normas legales en **negrita** (ej. **Ley N° 27444**).
+- Si falta un dato, usa [COMPLETAR: descripción] — NO inventes números, fechas ni nombres."""
+
+
 def _build_system_prompt(tono: str, tipo_documento: str = "carta") -> str:
+    if (tipo_documento or "").strip().lower() == "informe":
+        return _build_informe_prompt()
     cfg = _tono_cfg(tono)
     tipo = _tipo_cfg(tipo_documento)
     return f"""Eres un redactor oficial experto en documentos administrativos peruanos. Trabajas para secretarias de colegios profesionales (CCP, CIP, CMP, CAL, etc.) que reciben instrucciones verbales y necesitan convertirlas en documentos formales perfectos.
@@ -908,7 +967,24 @@ def generar_documento(
         if siglas:
             num_display += f"-{siglas}"
 
-    org_block = f"""
+    if tipo_norm == "informe":
+        org_block = f"""
+
+================================================================
+DATOS DE LA ORGANIZACIÓN
+================================================================
+- Año oficial: "{anno_oficial}"
+- Numeración: INFORME N° {num_display if num_display else '[___]'}
+- Remitente: {perfil.get('tratamiento_resuelto', perfil.get('tratamiento', ''))} {perfil.get('nombre', perfil.get('nombre_firmante', ''))} — {perfil.get('cargo_resuelto', perfil.get('cargo', ''))}
+- Organización: {org.get('nombre_organizacion', '')}
+- Siglas: {siglas}
+- Ciudad: {ciudad_org}
+
+Sustituye los placeholders entre llaves del template (numero, año, siglas, ciudad,
+nombre, cargo, institución, fecha, etc.) por estos valores reales.
+Incluye el año oficial centrado en la primera línea, antes del número de informe."""
+    else:
+        org_block = f"""
 
 ================================================================
 DATOS DE LA ORGANIZACIÓN
