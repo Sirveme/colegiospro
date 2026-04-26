@@ -186,6 +186,15 @@ TIPOS = {
         "audiencia": "publico_general",
         "sin_saludo": True,
     },
+    "informe": {
+        "label": "Informe",
+        "icono": "📊",
+        "descripcion": "Informe técnico o de gestión",
+        "estructura": "Reporte técnico o de gestión con datos, resultados y análisis. Suele incluir tablas comparativas, listas de hallazgos y recomendaciones.",
+        "partes": "INFORME N° / A: / DE: / ASUNTO: / FECHA: / I. ANTECEDENTES / II. ANÁLISIS (con tablas y/o listas) / III. CONCLUSIONES / IV. RECOMENDACIONES / Firma",
+        "persona": "primera_singular",
+        "audiencia": "interno_o_jerarquico",
+    },
 }
 
 
@@ -498,6 +507,29 @@ def clasificar_instruccion(
     prompt_system = """Eres un asistente administrativo experto en documentos
 oficiales peruanos. Tu tarea es ANALIZAR una instrucción coloquial y proponer
 los parámetros correctos para redactar el documento.
+
+TIPOS DISPONIBLES Y CUÁNDO USAR CADA UNO:
+- carta: comunicación externa entre personas o instituciones.
+- oficio: comunicación oficial entre entidades del Estado.
+- memorandum: comunicación interna dentro de una institución.
+- memorandum_multiple: memorando interno dirigido a varios destinatarios.
+- circular: comunicación masiva a múltiples destinatarios externos o colegiados.
+- oficio_multiple: oficio enviado simultáneamente a varias entidades externas.
+- informe: reporte técnico o de gestión con datos, resultados o análisis.
+  Úsalo cuando la instrucción mencione "informe", "reporte", "datos",
+  "atenciones", "resultados", "análisis", "estadísticas", "balance",
+  "rendición", "indicadores", "métricas" o cualquier comparativo numérico.
+- resolucion: acto administrativo con efectos legales (VISTOS / CONSIDERANDO / SE RESUELVE).
+- acta: registro formal de una reunión o asamblea.
+- invitacion: convocatoria formal a un evento institucional.
+- certificado: documento que certifica un hecho, cargo o condición.
+- orden_pedido: solicitud de bienes o servicios a un proveedor.
+- comunicado_general: anuncio institucional sin destinatario específico.
+
+REGLA FUERTE: si la instrucción menciona datos numéricos, resultados,
+estadísticas o análisis de gestión → tipo_sugerido = "informe".
+La justificación (razon) DEBE ser coherente con el tipo elegido — si vas a
+justificar un Informe, el tipo_sugerido tiene que ser "informe", no "carta".
 
 Responde ÚNICAMENTE con un JSON válido con esta estructura:
 {
