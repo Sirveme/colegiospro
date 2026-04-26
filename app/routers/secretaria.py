@@ -1027,6 +1027,44 @@ async def documento_guardar(doc_id: int, request: Request):
         db.close()
 
 
+@router.get("/stats/productividad")
+async def stats_productividad(request: Request):
+    """Documentos generados (hoy/total) y tiempo ahorrado estimado."""
+    from sqlalchemy import func
+    from datetime import date
+
+    usuario = _require_user(request)
+    hoy = date.today()
+    db = _db()
+    try:
+        docs_hoy = db.query(DocumentoSecretaria).filter(
+            DocumentoSecretaria.secretaria_id == usuario.id,
+            func.date(DocumentoSecretaria.creado_en) == hoy,
+        ).count()
+        docs_total = db.query(DocumentoSecretaria).filter(
+            DocumentoSecretaria.secretaria_id == usuario.id,
+        ).count()
+    finally:
+        db.close()
+
+    MINUTOS_POR_DOC = 35
+    minutos_hoy = docs_hoy * MINUTOS_POR_DOC
+    minutos_total = docs_total * MINUTOS_POR_DOC
+
+    def formato_tiempo(m: int) -> str:
+        if m < 60:
+            return f"{m} min"
+        h, mins = divmod(m, 60)
+        return f"{h}h" if mins == 0 else f"{h}h {mins}min"
+
+    return {
+        "docs_hoy": docs_hoy,
+        "docs_total": docs_total,
+        "tiempo_hoy": formato_tiempo(minutos_hoy),
+        "tiempo_total": formato_tiempo(minutos_total),
+    }
+
+
 @router.get("/documento/{doc_id}/pdf")
 async def documento_pdf(doc_id: int, request: Request):
     import re
