@@ -7,7 +7,7 @@
     <div class="sp-prop-item">
       <span class="sp-prop-label">Tipo</span>
       <span class="sp-prop-valor">{{ tipo_label }}</span>
-      <button type="button" onclick="spCambiarTipo('{{ tipo_sugerido }}')" class="sp-prop-edit">cambiar</button>
+      <button type="button" onclick="spAbrirTab('tipo')" class="sp-prop-edit">cambiar</button>
     </div>
     <div class="sp-prop-item">
       <span class="sp-prop-label">Asunto</span>
@@ -17,7 +17,7 @@
     <div class="sp-prop-item">
       <span class="sp-prop-label">Tono</span>
       <span class="sp-prop-valor">{{ tono_label }}</span>
-      <button type="button" onclick="spCambiarTono('{{ tono_sugerido }}')" class="sp-prop-edit">cambiar</button>
+      <button type="button" onclick="spAbrirTab('tono')" class="sp-prop-edit">cambiar</button>
     </div>
     <div class="sp-prop-item">
       <span class="sp-prop-label">Firma</span>
@@ -137,22 +137,5 @@
     }
   };
 
-  window.spCambiarTipo = function(current) {
-    var grid = document.getElementById('tipo-grid');
-    if (grid) {
-      grid.scrollIntoView({behavior:'smooth'});
-      grid.style.outline = '2px solid var(--sp-primary)';
-      setTimeout(function(){ grid.style.outline = ''; }, 2000);
-    }
-  };
-
-  window.spCambiarTono = function(current) {
-    var tonos = document.querySelector('.sp-tonos');
-    if (tonos) {
-      tonos.scrollIntoView({behavior:'smooth'});
-      tonos.style.outline = '2px solid var(--sp-primary)';
-      setTimeout(function(){ tonos.style.outline = ''; }, 2000);
-    }
-  };
 })();
 </script>
