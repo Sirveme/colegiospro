@@ -999,6 +999,16 @@ async def redactor_ajustar(
 @router.post("/documento/{doc_id}/guardar")
 async def documento_guardar(doc_id: int, request: Request):
     usuario = _require_user(request)
+    payload = {}
+    try:
+        ct = (request.headers.get("content-type") or "").lower()
+        if "application/json" in ct:
+            payload = await request.json() or {}
+    except Exception:
+        payload = {}
+    html_editor = (payload.get("html") or "").strip()
+    marcar_guardado = bool(payload.get("marcar_guardado", True))
+
     db = _db()
     try:
         doc = db.query(DocumentoSecretaria).filter(
@@ -1007,7 +1017,10 @@ async def documento_guardar(doc_id: int, request: Request):
         ).first()
         if not doc:
             raise HTTPException(404, "Documento no encontrado")
-        doc.guardado = True
+        if html_editor:
+            doc.texto_salida = html_editor
+        if marcar_guardado:
+            doc.guardado = True
         db.commit()
         return JSONResponse({"status": "ok"})
     finally:
