@@ -1,88 +1,145 @@
-{% extends "secretaria/base.html" %}
-{% block title %}Ingresar{% endblock %}
-{% block content %}
-<div class="sp-login-split">
-  <!-- Panel izquierdo: branding oscuro -->
-  <aside class="sp-login-brand">
-    <div class="sp-login-brand-content">
-      <div class="sp-login-logo-big">SP</div>
-      <h1 class="sp-login-titulo">SecretariaPro</h1>
-      <p class="sp-login-tagline">
-        Redacta documentos oficiales peruanos en segundos.
-        Asistente de IA para secretarias y colegios profesionales.
-      </p>
-      <ul class="sp-login-features">
-        <li>Redactor con agente clasificador</li>
-        <li>Numeración correlativa automática</li>
-        <li>PDF profesional con membrete</li>
-        <li>Directorio institucional integrado</li>
-      </ul>
-    </div>
-    <div class="sp-login-brand-foot">
-      colegiospro.org.pe
-    </div>
-  </aside>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ingresar · MiSecretaria.pro</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Jost:wght@200;300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{
+      background:#06060A;
+      min-height:100vh;
+      display:flex;flex-direction:column;
+      align-items:center;justify-content:center;
+      font-family:'Jost',sans-serif;
+      font-weight:300;
+      padding:24px;
+    }
+    body::before{
+      content:'';position:fixed;inset:0;
+      background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events:none;opacity:.35;
+    }
+    .auth-logo{
+      font-family:'Cormorant Garamond',serif;
+      font-size:24px;font-weight:400;letter-spacing:.05em;
+      color:#F2E8D5;text-decoration:none;
+      margin-bottom:48px;
+      position:relative;z-index:1;
+    }
+    .auth-logo span{color:#C49A3C}
+    .auth-card{
+      width:100%;max-width:420px;
+      background:#0E0E16;
+      border:1px solid rgba(196,154,60,.2);
+      padding:48px 40px;
+      position:relative;
+      z-index:1;
+    }
+    .auth-card::before{
+      content:'';position:absolute;
+      top:-1px;left:50%;transform:translateX(-50%);
+      width:80px;height:1px;background:#C49A3C;
+    }
+    .auth-titulo{
+      font-family:'Cormorant Garamond',serif;
+      font-size:32px;font-weight:300;
+      color:#F2E8D5;margin-bottom:8px;text-align:center;
+    }
+    .auth-sub{
+      font-size:11px;letter-spacing:.15em;text-transform:uppercase;
+      color:#6A6678;text-align:center;margin-bottom:36px;
+    }
+    .auth-alert-error{
+      background:rgba(139,26,26,.3);
+      border:1px solid rgba(220,50,50,.3);
+      color:#E88080;padding:12px 16px;
+      font-size:12px;margin-bottom:24px;
+      border-radius:2px;
+    }
+    .auth-alert-ok{
+      background:rgba(14,42,26,.4);
+      border:1px solid rgba(196,154,60,.3);
+      color:#A8D8A8;padding:12px 16px;
+      font-size:12px;margin-bottom:24px;
+      border-radius:2px;
+    }
+    .auth-field{margin-bottom:20px}
+    .auth-label{
+      display:block;font-size:10px;letter-spacing:.2em;
+      text-transform:uppercase;color:#B8B4C0;margin-bottom:8px;
+    }
+    .auth-input{
+      width:100%;background:#06060A;
+      border:1px solid rgba(196,154,60,.2);
+      border-radius:2px;padding:14px 16px;
+      color:#F2E8D5;font-family:'Jost',sans-serif;
+      font-size:14px;font-weight:300;outline:none;
+      transition:border-color .3s;
+    }
+    .auth-input:focus{border-color:#C49A3C}
+    .auth-input::placeholder{color:#3A3648}
+    .auth-btn{
+      width:100%;padding:16px;margin-top:8px;
+      background:linear-gradient(135deg,#7A5E24,#C49A3C);
+      color:#06060A;border:none;border-radius:2px;
+      font-family:'Jost',sans-serif;font-size:11px;
+      font-weight:500;letter-spacing:.25em;text-transform:uppercase;
+      cursor:pointer;
+      box-shadow:0 4px 24px rgba(196,154,60,.25);
+      transition:all .3s;
+    }
+    .auth-btn:hover{
+      box-shadow:0 8px 40px rgba(196,154,60,.45);
+      transform:translateY(-1px);
+    }
+    .auth-link{
+      text-align:center;margin-top:24px;
+      font-size:12px;color:#6A6678;
+    }
+    .auth-link a{color:#C49A3C;text-decoration:none}
+    .auth-link a:hover{color:#E8C46A}
+    .auth-footer{
+      margin-top:24px;font-size:10px;
+      color:#2A2838;letter-spacing:.1em;text-align:center;
+      position:relative;z-index:1;
+    }
+  </style>
+</head>
+<body>
+  <a href="/" class="auth-logo">Mi<span>Secretaria</span>.pro</a>
 
-  <!-- Panel derecho: formulario -->
-  <section class="sp-login-form-wrap">
-    <div class="sp-login-form-card">
-      <div class="sp-login-logo-sm">SP</div>
-      <h2 class="sp-login-h2">Entra a tu cuenta</h2>
-      <p class="sp-login-sub">Ingresa tus datos para continuar</p>
+  <div class="auth-card">
+    <h1 class="auth-titulo">Bienvenida</h1>
+    <p class="auth-sub">Ingresa a tu cuenta</p>
 
-      {% if error %}<div class="sp-alert sp-alert-error">{{ error }}</div>{% endif %}
-      {% if ok %}<div class="sp-alert sp-alert-ok">{{ ok }}</div>{% endif %}
+    {% if error %}
+    <div class="auth-alert-error">{{ error }}</div>
+    {% endif %}
+    {% if ok %}
+    <div class="auth-alert-ok">{{ ok }}</div>
+    {% endif %}
 
-      <form method="post" action="/secretaria/login" class="sp-form sp-login-form">
-        <label>
-          <span>Correo</span>
-          <input type="email" name="correo" required autofocus
-                 placeholder="tu@correo.com">
-        </label>
-        <label>
-          <span>Contraseña</span>
-          <div class="sp-pwd-wrap">
-            <input type="password" name="password" id="sp-pwd-input" required
-                   placeholder="Tu contraseña">
-            <button type="button" class="sp-pwd-toggle"
-                    onclick="spTogglePwd('sp-pwd-input', this)"
-                    aria-label="Mostrar contraseña">
-              <span class="sp-pwd-icon">👁</span>
-            </button>
-          </div>
-        </label>
+    <form method="post" action="/secretaria/login">
+      <div class="auth-field">
+        <label class="auth-label">Correo electrónico</label>
+        <input class="auth-input" type="email" name="correo"
+               placeholder="correo@institución.gob.pe" required autofocus>
+      </div>
+      <div class="auth-field">
+        <label class="auth-label">Contraseña</label>
+        <input class="auth-input" type="password" name="password"
+               placeholder="Tu contraseña" required>
+      </div>
+      <button class="auth-btn" type="submit">Ingresar</button>
+    </form>
 
-        <div class="sp-login-extras">
-          <a href="/secretaria/login" class="sp-login-forgot" onclick="alert('Función en desarrollo. Escríbenos si necesitas recuperar tu cuenta.'); return false;">
-            ¿Olvidaste tu contraseña?
-          </a>
-        </div>
+    <p class="auth-link">
+      ¿No tienes cuenta? <a href="/secretaria/registro">Crear una gratis</a>
+    </p>
+  </div>
 
-        <button type="submit" class="sp-btn sp-btn-primary sp-btn-block">
-          Ingresar
-        </button>
-      </form>
-
-      <p class="sp-auth-foot">
-        ¿No tienes cuenta? <a href="/secretaria/registro">Crear cuenta</a>
-      </p>
-    </div>
-  </section>
-</div>
-
-<script>
-function spTogglePwd(inputId, btn) {
-  var inp = document.getElementById(inputId);
-  if (!inp) return;
-  if (inp.type === "password") {
-    inp.type = "text";
-    btn.querySelector(".sp-pwd-icon").textContent = "🙈";
-    btn.setAttribute("aria-label", "Ocultar contraseña");
-  } else {
-    inp.type = "password";
-    btn.querySelector(".sp-pwd-icon").textContent = "👁";
-    btn.setAttribute("aria-label", "Mostrar contraseña");
-  }
-}
-</script>
-{% endblock %}
+  <p class="auth-footer">Perú Sistemas Pro E.I.R.L. · Iquitos, Loreto</p>
+</body>
+</html>
