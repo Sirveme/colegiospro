@@ -119,13 +119,13 @@ async def redirect_to_https(request: Request, call_next):
     return await call_next(request)
 
 
-# -- misecretaria.pro → /secretaria/ redirect --
+# -- misecretaria.pro → /misecretaria landing redirect --
 @app.middleware("http")
 async def redirect_misecretaria(request: Request, call_next):
     host = request.headers.get("host", "")
     if "misecretaria.pro" in host:
-        if request.url.path == "/" or request.url.path == "":
-            return RedirectResponse(url="/secretaria/", status_code=302)
+        if request.url.path in ["/", ""]:
+            return RedirectResponse(url="/misecretaria", status_code=302)
     return await call_next(request)
 
 
@@ -385,10 +385,16 @@ async def debug_db():
 
 # SECRETARIA PRO: rutas y lógica para el módulo de secretaria (documentos, plantillas, etc.)
 # Se implementa en app/routers/secretaria.py, pero se importa aquí para incluir
-@app.get("/secretariapro", response_class=HTMLResponse) 
+@app.get("/secretariapro", response_class=HTMLResponse)
 async def secretariapro(request: Request):
     """Página estática /SecretariaPro — sin autenticación, sin base de datos."""
     return templates.TemplateResponse(request, "secretariapro.html")
+
+
+@app.get("/misecretaria", response_class=HTMLResponse)
+async def landing_misecretaria(request: Request):
+    """Landing pública de misecretaria.pro — sin autenticación."""
+    return templates.TemplateResponse(request, "misecretaria/landing.html", {})
 
 
 if __name__ == "__main__":
