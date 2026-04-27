@@ -119,6 +119,16 @@ async def redirect_to_https(request: Request, call_next):
     return await call_next(request)
 
 
+# -- misecretaria.pro → /secretaria/ redirect --
+@app.middleware("http")
+async def redirect_misecretaria(request: Request, call_next):
+    host = request.headers.get("host", "")
+    if "misecretaria.pro" in host:
+        if request.url.path == "/" or request.url.path == "":
+            return RedirectResponse(url="/secretaria/", status_code=302)
+    return await call_next(request)
+
+
 # -- Static files --
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
