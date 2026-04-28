@@ -12,7 +12,9 @@ Para agregar una plantilla nueva:
 from .muni_sec_A1_base import MUNI_SEC_A1_BASE
 from .muni_sec_A2_botones import MUNI_SEC_A2_BOTONES
 from .muni_sec_A3_img1 import MUNI_SEC_A3_IMG1
+from .muni_sec_A4_misecretaria import MUNI_SEC_A4_MISECRETARIA
 from .muni_alc_B1_base import MUNI_ALC_B1_BASE
+from .muni_jefe_C1_base import MUNI_JEFE_C1_BASE
 
 
 PLANTILLAS = {
@@ -31,10 +33,20 @@ PLANTILLAS = {
         "label": "Municipalidades · Secretaria · Imagen vertical",
         "asunto_default": "Mira lo que SecretariaPro hace en su pantalla — {{ municipalidad }}",
     },
+    "muni_sec_A4_misecretaria": {
+        "html": MUNI_SEC_A4_MISECRETARIA,
+        "label": "Municipalidades · Secretaria · MiSecretaria",
+        "asunto_default": "Tu jefe pide un oficio urgente. ¿Lo entregas en 10 minutos?",
+    },
     "muni_alc_B1_base": {
         "html": MUNI_ALC_B1_BASE,
         "label": "Municipalidades · Alcalde · Base",
         "asunto_default": "Para la autoridad de {{ municipalidad }}: comunicación institucional a su altura",
+    },
+    "muni_jefe_C1_base": {
+        "html": MUNI_JEFE_C1_BASE,
+        "label": "Municipalidades · Jefe/Funcionario · Base",
+        "asunto_default": "¿Cuánto tarda su área en entregar un oficio urgente?",
     },
 }
 
@@ -44,5 +56,7 @@ __all__ = [
     "MUNI_SEC_A1_BASE",
     "MUNI_SEC_A2_BOTONES",
     "MUNI_SEC_A3_IMG1",
+    "MUNI_SEC_A4_MISECRETARIA",
     "MUNI_ALC_B1_BASE",
+    "MUNI_JEFE_C1_BASE",
 ]
