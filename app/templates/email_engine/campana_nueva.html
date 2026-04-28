@@ -20,10 +20,15 @@
     <label>
       <span>Segmento de contactos</span>
       <select name="segmento" required>
-        <option value="A_secretaria">A — Secretaria</option>
-        <option value="B_alcalde">B — Alcalde / Directivo</option>
-        <option value="seguimiento">Seguimiento</option>
+        {% for s in segmentos %}
+        <option value="{{ s.valor }}">{{ s.valor }} ({{ s.n }})</option>
+        {% endfor %}
       </select>
+      {% if not segmentos %}
+      <small style="color:#c1272d">
+        No hay segmentos registrados en email_contactos.
+      </small>
+      {% endif %}
     </label>
     <label>
       <span>Cuenta SMTP</span>
