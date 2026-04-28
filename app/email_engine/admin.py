@@ -154,6 +154,7 @@ async def lista_campanas(request: Request):
 
 @router.get("/campana/nueva", response_class=HTMLResponse)
 async def nueva_campana_form(request: Request):
+    from sqlalchemy import func
     db = _db()
     try:
         configs = db.query(EmailConfig).filter(
@@ -162,6 +163,23 @@ async def nueva_campana_form(request: Request):
         campanas_previas = db.query(EmailCampana).order_by(
             EmailCampana.id.desc()
         ).all()
+        # Todos los segmentos distintos presentes en email_contactos,
+        # con su conteo. Sin filtro de prefijo: cualquier segmento
+        # registrado aparece automáticamente en el <select>.
+        segmentos_rows = (
+            db.query(
+                EmailContacto.segmento,
+                func.count(EmailContacto.id),
+            )
+            .filter(EmailContacto.segmento.isnot(None))
+            .filter(EmailContacto.segmento != "")
+            .group_by(EmailContacto.segmento)
+            .order_by(EmailContacto.segmento.asc())
+            .all()
+        )
+        segmentos = [
+            {"valor": s, "n": n} for s, n in segmentos_rows
+        ]
     finally:
         db.close()
     return templates.TemplateResponse(
@@ -172,6 +190,7 @@ async def nueva_campana_form(request: Request):
             "configs": configs,
             "plantillas": PLANTILLAS,
             "campanas_previas": campanas_previas,
+            "segmentos": segmentos,
         },
     )
 
