@@ -253,13 +253,31 @@ async def detalle_campana(campana_id: int, request: Request):
         for e in envios:
             ct = db.get(EmailContacto, e.contacto_id)
             envios_data.append({"envio": e, "contacto": ct})
+        configs = db.query(EmailConfig).filter_by(activo=True).order_by(EmailConfig.id).all()
     finally:
         db.close()
     return templates.TemplateResponse(
         request,
         "email_engine/campana_detalle.html",
-        {"request": request, "c": c, "envios": envios_data},
+        {"request": request, "c": c, "envios": envios_data, "configs": configs},
     )
+
+
+@router.post("/campana/{campana_id}/editar-smtp")
+async def editar_smtp_campana(campana_id: int, config_id: int = Form(...)):
+    db = _db()
+    try:
+        c = db.get(EmailCampana, campana_id)
+        if not c:
+            raise HTTPException(404, "Campaña no encontrada")
+        cfg = db.query(EmailConfig).filter_by(id=config_id, activo=True).first()
+        if not cfg:
+            raise HTTPException(404, "Config SMTP no encontrada o inactiva")
+        c.config_id = config_id
+        db.commit()
+    finally:
+        db.close()
+    return RedirectResponse(f"/admin/emails/campana/{campana_id}", status_code=302)
 
 
 @router.post("/campana/{campana_id}/activar")
