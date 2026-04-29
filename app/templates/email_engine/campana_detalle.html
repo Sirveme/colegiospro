@@ -59,6 +59,24 @@
   {% endif %}
 </div>
 
+{% if configs %}
+<div class="ee-card">
+  <h3 style="margin-top:0">Cuenta SMTP</h3>
+  <form method="post" action="/admin/emails/campana/{{ c.id }}/editar-smtp"
+        style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+    <label for="ee-cfg-{{ c.id }}" class="ee-muted">Enviar desde:</label>
+    <select name="config_id" id="ee-cfg-{{ c.id }}" style="min-width:280px">
+      {% for cfg in configs %}
+      <option value="{{ cfg.id }}" {% if cfg.id == c.config_id %}selected{% endif %}>
+        {{ cfg.nombre }} — {{ cfg.smtp_user }}
+      </option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="ee-btn ee-btn-sec">Guardar</button>
+  </form>
+</div>
+{% endif %}
+
 <div class="ee-card">
   <h2 style="margin-top:0">Envíos recientes (máx. 100)</h2>
   {% if not envios %}
