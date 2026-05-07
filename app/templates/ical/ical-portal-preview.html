@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ilustre Colegio de Abogados de Loreto</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Source+Sans+3:wght@300;400;500;600;700&family=Cinzel:wght@500;600&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  /* Paleta ICAL — distinta del CCPL */
+  --ical-verde-900: #0A2818;        /* Verde botella profundo, casi negro */
+  --ical-verde-700: #14442A;        /* Verde botella medio */
+  --ical-verde-500: #1F6B42;        /* Verde botella vivo */
+  --ical-verde-50:  #EAF1ED;        /* Verde lavado */
+
+  --ical-dorado:    #B8923D;        /* Dorado bruñido (no brillante) */
+  --ical-dorado-h:  #8E6F2C;        /* Dorado oscuro */
+  --ical-dorado-l:  #D4B266;        /* Dorado claro para resaltes */
+
+  --ical-marfil:    #FBF8F1;        /* Marfil cálido — fondo principal */
+  --ical-superficie:#FFFFFF;
+  --ical-borde:     #DCD6C5;
+  --ical-borde-d:   #B8B097;        /* Borde más oscuro */
+
+  --ical-texto:     #1A1F1B;
+  --ical-texto-2:   #5A5852;
+  --ical-texto-3:   #8B8F8C;
+
+  /* Tipografía editorial-jurídica */
+  --font-display: 'Cormorant Garamond', 'Garamond', serif;
+  --font-roman:   'Cinzel', 'Trajan Pro', serif;          /* Para el lema y títulos clásicos */
+  --font-body:    'Source Sans 3', system-ui, sans-serif;
+
+  --r-sm: 4px;
+  --r-md: 8px;
+
+  --shadow-1: 0 1px 2px rgba(10, 40, 24, .08);
+  --shadow-2: 0 4px 16px rgba(10, 40, 24, .10);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; }
+
+body {
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: var(--ical-texto);
+  background: var(--ical-marfil);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ───────────────────────────────────────────────────────
+   NAVBAR
+   ─────────────────────────────────────────────────────── */
+.topbar {
+  background: var(--ical-verde-900);
+  color: rgba(255,255,255,.7);
+  font-size: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(184, 146, 61, .25);
+}
+.topbar-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  letter-spacing: .03em;
+}
+.topbar a { color: var(--ical-dorado-l); text-decoration: none; }
+.topbar a:hover { color: #fff; }
+
+.navbar {
+  background: var(--ical-verde-900);
+  border-bottom: 2px solid var(--ical-dorado);
+  padding: 18px 0;
+  position: relative;
+}
+.navbar::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, transparent, var(--ical-dorado) 30%, var(--ical-dorado) 70%, transparent);
+  opacity: .35;
+}
+.navbar-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  text-decoration: none;
+  color: #fff;
+}
+.brand-logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,.4));
+}
+.brand-text { display: flex; flex-direction: column; gap: 2px; }
+.brand-line1 {
+  font-family: var(--font-roman);
+  font-size: 11px;
+  letter-spacing: .25em;
+  color: var(--ical-dorado-l);
+  text-transform: uppercase;
+}
+.brand-line2 {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1;
+  letter-spacing: -.005em;
+}
+.brand-lema {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-style: italic;
+  color: var(--ical-dorado-l);
+  letter-spacing: .04em;
+  margin-top: 3px;
+}
+
+.nav-menu {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.nav-link {
+  color: rgba(255,255,255,.85);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  padding: 10px 14px;
+  border-radius: var(--r-sm);
+  transition: all .2s;
+  position: relative;
+}
+.nav-link:hover { color: var(--ical-dorado-l); background: rgba(255,255,255,.05); }
+.nav-link.cta {
+  background: var(--ical-dorado);
+  color: var(--ical-verde-900);
+  font-weight: 600;
+  margin-left: 8px;
+  padding: 10px 22px;
+  border-radius: 2px;
+}
+.nav-link.cta:hover { background: var(--ical-dorado-l); color: var(--ical-verde-900); }
+
+/* ───────────────────────────────────────────────────────
+   HERO — Editorial asimétrico
+   ─────────────────────────────────────────────────────── */
+.hero {
+  background: var(--ical-marfil);
+  padding: 0;
+  position: relative;
+}
+
+.hero-grid {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  min-height: 580px;
+}
+
+/* Lado izquierdo — Foto + cinta dorada inferior */
+.hero-foto {
+  position: relative;
+  overflow: hidden;
+  background: var(--ical-verde-900);
+}
+.hero-foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+}
+.hero-foto::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(10,40,24,.18) 0%, transparent 50%);
+  z-index: 1;
+}
+.hero-foto-cinta {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(180deg, transparent, rgba(10,40,24,.85) 60%, rgba(10,40,24,.95));
+  padding: 60px 40px 28px;
+  color: #fff;
+  z-index: 2;
+}
+.hero-foto-cinta-inner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.hero-foto-cinta-num {
+  font-family: var(--font-display);
+  font-size: 44px;
+  font-weight: 600;
+  color: var(--ical-dorado-l);
+  line-height: 1;
+}
+.hero-foto-cinta-text {
+  font-size: 13px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.85);
+  border-left: 2px solid var(--ical-dorado);
+  padding-left: 16px;
+}
+.hero-foto-cinta-text strong {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 2px;
+  letter-spacing: .02em;
+  text-transform: none;
+  font-family: var(--font-display);
+}
+
+/* Lado derecho — Texto editorial */
+.hero-text {
+  background: var(--ical-verde-900);
+  color: #fff;
+  padding: 80px 56px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+.hero-text::before {
+  /* Filigrana dorada de fondo — escudo en marca de agua */
+  content: '';
+  position: absolute;
+  bottom: -40px;
+  right: -40px;
+  width: 280px;
+  height: 280px;
+  background-image: url('img/logo-ical.jpg');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: .04;
+  filter: brightness(0) invert(1);
+  pointer-events: none;
+}
+
+.hero-eyebrow {
+  font-family: var(--font-roman);
+  font-size: 11px;
+  letter-spacing: .35em;
+  color: var(--ical-dorado-l);
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.hero-eyebrow::before {
+  content: '';
+  width: 32px;
+  height: 1px;
+  background: var(--ical-dorado);
+}
+
+.hero-title {
+  font-family: var(--font-display);
+  font-size: 42px;
+  font-weight: 500;
+  line-height: 1.15;
+  margin-bottom: 18px;
+  color: #fff;
+  letter-spacing: -.005em;
+}
+.hero-title em {
+  font-style: italic;
+  color: var(--ical-dorado-l);
+}
+
+.hero-lema {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-style: italic;
+  color: var(--ical-dorado-l);
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(184, 146, 61, .25);
+  letter-spacing: .02em;
+}
+.hero-lema span {
+  display: block;
+  font-style: normal;
+  font-size: 12px;
+  color: rgba(255,255,255,.55);
+  margin-top: 6px;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+}
+
+.hero-desc {
+  font-size: 15px;
+  line-height: 1.7;
+  color: rgba(255,255,255,.82);
+  margin-bottom: 36px;
+  max-width: 480px;
+}
+
+.hero-cta-group {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.btn-primary, .btn-ghost {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 14px 26px;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  transition: all .2s;
+}
+.btn-primary {
+  background: var(--ical-dorado);
+  color: var(--ical-verde-900);
+}
+.btn-primary:hover {
+  background: var(--ical-dorado-l);
+  transform: translateY(-1px);
+}
+.btn-ghost {
+  background: transparent;
+  color: #fff;
+  border: 1px solid rgba(255,255,255,.3);
+}
+.btn-ghost:hover {
+  background: rgba(255,255,255,.08);
+  border-color: var(--ical-dorado-l);
+}
+.btn-arrow {
+  font-size: 18px;
+  font-weight: normal;
+}
+
+/* ───────────────────────────────────────────────────────
+   Franja del Congreso — destacada inmediatamente debajo
+   ─────────────────────────────────────────────────────── */
+.congreso-strip {
+  background: var(--ical-verde-900);
+  border-top: 1px solid rgba(184,146,61,.2);
+  padding: 28px 0;
+  color: #fff;
+}
+.congreso-strip-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+.congreso-strip-left {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.congreso-strip-fechas {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--font-display);
+  color: var(--ical-dorado-l);
+  font-size: 36px;
+  font-weight: 600;
+  line-height: 1;
+}
+.congreso-strip-fechas .sep { color: var(--ical-dorado); margin: 0 4px; opacity: .5;}
+.congreso-strip-mes {
+  font-family: var(--font-roman);
+  font-size: 11px;
+  letter-spacing: .25em;
+  color: var(--ical-dorado);
+  text-transform: uppercase;
+  border-left: 2px solid var(--ical-dorado);
+  padding-left: 14px;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+.congreso-strip-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.congreso-strip-info-eyebrow {
+  font-family: var(--font-roman);
+  font-size: 10px;
+  letter-spacing: .3em;
+  color: rgba(255,255,255,.5);
+  text-transform: uppercase;
+}
+.congreso-strip-info-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+  color: #fff;
+  line-height: 1.2;
+}
+.congreso-strip-info-title em {
+  font-style: italic;
+  color: var(--ical-dorado-l);
+}
+
+.congreso-strip-cta {
+  background: var(--ical-dorado);
+  color: var(--ical-verde-900);
+  padding: 14px 26px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  transition: all .2s;
+}
+.congreso-strip-cta:hover { background: var(--ical-dorado-l); }
+
+/* ───────────────────────────────────────────────────────
+   Responsive
+   ─────────────────────────────────────────────────────── */
+@media (max-width: 968px) {
+  .nav-menu { display: none; }
+
+  .hero-grid { grid-template-columns: 1fr; min-height: auto; }
+  .hero-foto { min-height: 320px; max-height: 420px; }
+  .hero-text { padding: 56px 32px; }
+  .hero-title { font-size: 32px; }
+  .hero-foto-cinta { padding: 48px 24px 20px; }
+  .hero-foto-cinta-num { font-size: 32px; }
+
+  .congreso-strip-inner { flex-direction: column; align-items: flex-start; gap: 20px; }
+  .congreso-strip-cta { width: 100%; justify-content: center; }
+}
+
+@media (max-width: 480px) {
+  .topbar-inner { flex-direction: column; gap: 4px; padding: 4px 16px; }
+  .navbar-inner { padding: 0 16px; }
+  .brand { gap: 12px; }
+  .brand-logo { width: 48px; height: 48px; }
+  .brand-line2 { font-size: 18px; }
+  .brand-lema { display: none; }
+
+  .hero-text { padding: 48px 24px; }
+  .hero-title { font-size: 26px; }
+  .hero-lema { font-size: 16px; }
+
+  .congreso-strip-fechas { font-size: 28px; }
+  .congreso-strip-info-title { font-size: 17px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ TOPBAR ═══════════════ -->
+<div class="topbar">
+  <div class="topbar-inner">
+    <span>📍 Calle Echenique 390, Iquitos · Lun-Vie 9-13h / 16-19h · Sáb 8-13h</span>
+    <span>📞 +51 964 723 131 &nbsp;·&nbsp; ✉ <a href="mailto:informes@ical.org.pe">informes@ical.org.pe</a></span>
+  </div>
+</div>
+
+<!-- ═══════════════ NAVBAR ═══════════════ -->
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="/" class="brand">
+      <img src="img/logo-ical.jpg" alt="ICAL" class="brand-logo">
+      <div class="brand-text">
+        <span class="brand-line1">Ilustre Colegio de</span>
+        <span class="brand-line2">Abogados de Loreto</span>
+        <span class="brand-lema">Orabunt Causas Melius</span>
+      </div>
+    </a>
+    <div class="nav-menu">
+      <a href="#" class="nav-link">Institucional</a>
+      <a href="#" class="nav-link">Comunicados</a>
+      <a href="#congreso" class="nav-link">Congreso 2026</a>
+      <a href="#" class="nav-link">Servicios</a>
+      <a href="#" class="nav-link">Bolsa Trabajo</a>
+      <a href="#" class="nav-link cta">Acceso Colegiado</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════════════ HERO ═══════════════ -->
+<section class="hero">
+  <div class="hero-grid">
+
+    <!-- Lado izquierdo: Foto Junta Directiva con cinta inferior -->
+    <div class="hero-foto">
+      <img src="img/junta-directiva.jpeg" alt="Junta Directiva ICAL Gestión 2026-2027">
+      <div class="hero-foto-cinta">
+        <div class="hero-foto-cinta-inner">
+          <span class="hero-foto-cinta-num">2026<br>—27</span>
+          <div class="hero-foto-cinta-text">
+            <strong>Nueva Junta Directiva</strong>
+            Gestión institucional al servicio de la abogacía loretana
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lado derecho: Texto editorial -->
+    <div class="hero-text">
+      <div class="hero-eyebrow">Ilustre Colegio de Abogados de Loreto</div>
+      <h1 class="hero-title">
+        Tradición jurídica<br>
+        <em>al servicio de la</em><br>
+        Amazonía peruana.
+      </h1>
+      <div class="hero-lema">
+        Orabunt Causas Melius
+        <span>— Abogarán mejor las causas —</span>
+      </div>
+      <p class="hero-desc">
+        Institución decana del derecho en Loreto. Promovemos la formación
+        continua, la ética profesional y la defensa de los derechos de
+        nuestros agremiados desde nuestra fundación.
+      </p>
+      <div class="hero-cta-group">
+        <a href="#congreso" class="btn-primary">
+          Congreso 2026 <span class="btn-arrow">→</span>
+        </a>
+        <a href="#" class="btn-ghost">Verificar habilidad</a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════ FRANJA CONGRESO ═══════════════ -->
+<section class="congreso-strip" id="congreso">
+  <div class="congreso-strip-inner">
+    <div class="congreso-strip-left">
+      <div class="congreso-strip-fechas">
+        28<span class="sep">·</span>29<span class="sep">·</span>30
+      </div>
+      <div class="congreso-strip-mes">Mayo<br>2026</div>
+      <div class="congreso-strip-info">
+        <span class="congreso-strip-info-eyebrow">Próximo Evento Nacional</span>
+        <span class="congreso-strip-info-title">
+          Congreso Integral de Derecho Público <em>—</em> "Nuevos Retos"
+        </span>
+      </div>
+    </div>
+    <a href="#" class="congreso-strip-cta">
+      Ver programa <span>→</span>
+    </a>
+  </div>
+</section>
+
+</body>
+</html>
