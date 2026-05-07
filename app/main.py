@@ -12,7 +12,7 @@ import httpx
 from fastapi import FastAPI, Request, Form, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from pydantic import BaseModel
 from typing import Optional
 
@@ -395,6 +395,12 @@ async def secretariapro(request: Request):
 async def landing_misecretaria(request: Request):
     """Landing pública de misecretaria.pro — sin autenticación."""
     return templates.TemplateResponse(request, "misecretaria/landing.html", {})
+
+
+@app.get("/ical")
+async def ical_portal():
+    return FileResponse("app/templates/ical/index.html")
+
 
 
 if __name__ == "__main__":
