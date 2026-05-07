@@ -47,29 +47,62 @@
 html{font-size:16px;scroll-behavior:smooth}
 body{font-family:var(--font-body);font-size:16px;color:var(--ical-texto);background:var(--ical-marfil);line-height:1.6;-webkit-font-smoothing:antialiased}
 @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+@keyframes haloRotate{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+@keyframes haloPulse{0%,100%{opacity:.6;transform:scale(1)}50%{opacity:.9;transform:scale(1.08)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes modalIn{from{opacity:0;transform:translateY(20px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes overlayIn{from{opacity:0}to{opacity:1}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
-.topbar{background:var(--ical-verde-900);color:rgba(255,255,255,.7);font-size:12px;padding:6px 0;border-bottom:1px solid rgba(201,160,57,.25)}
-.topbar-inner{max-width:1280px;margin:0 auto;padding:0 24px;display:flex;justify-content:space-between;align-items:center;letter-spacing:.03em}
+/* Iconos SVG Lucide-style */
+.icon{display:inline-block;width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle;flex-shrink:0}
+
+/* TOPBAR */
+.topbar{background:var(--ical-verde-900);color:rgba(255,255,255,.7);font-size:12px;padding:8px 0;border-bottom:1px solid rgba(201,160,57,.25)}
+.topbar-inner{max-width:1280px;margin:0 auto;padding:0 24px;display:flex;justify-content:space-between;align-items:center;letter-spacing:.03em;gap:16px}
+.topbar-item{display:inline-flex;align-items:center;gap:8px}
+.topbar-item .icon{width:13px;height:13px;color:var(--ical-dorado-l);stroke-width:1.6}
 .topbar a{color:var(--ical-dorado-l);text-decoration:none}
 .topbar a:hover{color:#fff}
 
+/* NAVBAR */
 .navbar{background:var(--ical-verde-900);border-bottom:2px solid var(--ical-dorado);padding:18px 0;position:sticky;top:0;z-index:100}
 .navbar::after{content:'';position:absolute;bottom:-6px;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,var(--ical-dorado) 30%,var(--amz-naranja) 50%,var(--ical-dorado) 70%,transparent);opacity:.5}
 .navbar-inner{max-width:1280px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;gap:24px}
 .brand{display:flex;align-items:center;gap:18px;text-decoration:none;color:#fff}
-.brand-logo{width:56px;height:56px;object-fit:contain;filter:drop-shadow(0 2px 8px rgba(201,160,57,.35))}
+
+/* LOGO CON HALO ÉPICO */
+.brand-logo-wrap{position:relative;width:64px;height:64px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.brand-logo-wrap::before{
+  content:'';position:absolute;inset:-8px;
+  border-radius:50%;
+  background:radial-gradient(circle at center,rgba(245,216,122,.45) 0%,rgba(201,160,57,.25) 35%,transparent 65%);
+  animation:haloPulse 4s ease-in-out infinite;
+  z-index:0;
+}
+.brand-logo-wrap::after{
+  /* rayos sutiles tipo estrella */
+  content:'';position:absolute;inset:-12px;
+  background:conic-gradient(from 0deg,transparent 0deg,rgba(232,196,101,.18) 22deg,transparent 45deg,transparent 90deg,rgba(232,196,101,.12) 112deg,transparent 135deg,transparent 180deg,rgba(232,196,101,.18) 202deg,transparent 225deg,transparent 270deg,rgba(232,196,101,.12) 292deg,transparent 315deg);
+  border-radius:50%;
+  animation:haloRotate 32s linear infinite;
+  opacity:.65;
+  z-index:0;
+}
+.brand-logo{width:60px;height:60px;object-fit:contain;position:relative;z-index:1;filter:drop-shadow(0 0 8px rgba(245,216,122,.6)) drop-shadow(0 2px 4px rgba(0,0,0,.4))}
+
 .brand-text{display:flex;flex-direction:column;gap:2px}
 .brand-line1{font-family:var(--font-roman);font-size:11px;letter-spacing:.25em;color:var(--ical-dorado-l);text-transform:uppercase}
 .brand-line2{font-family:var(--font-display);font-size:24px;font-weight:600;color:#fff;line-height:1;letter-spacing:-.005em}
 .brand-lema{font-family:var(--font-display);font-size:12px;font-style:italic;color:var(--ical-dorado-l);letter-spacing:.04em;margin-top:3px}
 .nav-menu{display:flex;align-items:center;gap:4px}
-.nav-link{color:rgba(255,255,255,.85);text-decoration:none;font-size:13px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;padding:10px 14px;border-radius:var(--r-sm);transition:all .2s}
+.nav-link{color:rgba(255,255,255,.85);text-decoration:none;font-size:13px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;padding:10px 14px;border-radius:var(--r-sm);transition:all .2s;background:none;border:none;cursor:pointer;font-family:inherit}
 .nav-link:hover{color:var(--ical-dorado-l);background:rgba(255,255,255,.05)}
 .nav-link.cta{background:var(--ical-dorado);color:var(--ical-verde-900);font-weight:700;margin-left:8px;padding:10px 22px;border-radius:2px}
 .nav-link.cta:hover{background:var(--ical-dorado-l)}
 
-.hero{background:var(--ical-marfil)}
+/* HERO DESKTOP — sin cambios mayores */
+.hero{background:var(--ical-verde-900)}
 .hero-grid{max-width:1280px;margin:0 auto;display:grid;grid-template-columns:1.4fr 1fr;min-height:580px}
 .hero-foto{position:relative;overflow:hidden;background:var(--ical-verde-900)}
 .hero-foto img{width:100%;height:100%;object-fit:cover;object-position:center 30%}
@@ -91,14 +124,17 @@ body{font-family:var(--font-body);font-size:16px;color:var(--ical-texto);backgro
 .hero-desc{font-size:15px;line-height:1.7;color:rgba(255,255,255,.82);margin-bottom:36px;max-width:480px}
 .hero-cta-group{display:flex;gap:14px;flex-wrap:wrap}
 
-.btn-primary,.btn-ghost,.btn-outline,.btn-warm{font-family:var(--font-body);font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:14px 26px;border:none;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:10px;transition:all .2s}
+/* HERO MOBILE — versión WOW: foto sin texto + bloque verde con tipografía gigante */
+.hero-mobile{display:none}
+
+.btn-primary,.btn-ghost,.btn-warm{font-family:var(--font-body);font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:14px 26px;border:none;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:10px;transition:all .2s}
 .btn-primary{background:var(--ical-dorado);color:var(--ical-verde-900)}
 .btn-primary:hover{background:var(--ical-dorado-l);transform:translateY(-1px);box-shadow:var(--shadow-2)}
 .btn-ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.3)}
 .btn-ghost:hover{background:rgba(255,255,255,.08);border-color:var(--ical-dorado-l)}
 .btn-warm{background:var(--amz-naranja);color:#fff;box-shadow:var(--shadow-warm)}
 .btn-warm:hover{background:var(--amz-naranja-h);transform:translateY(-2px)}
-.btn-arrow{font-size:18px;font-weight:normal;line-height:1}
+.btn-arrow .icon{width:14px;height:14px;stroke-width:2.2}
 
 /* FRANJA ANUNCIADORA AMAZÓNICA */
 .congreso-strip{background:linear-gradient(135deg,rgba(10,40,24,.95) 0%,rgba(20,168,156,.85) 40%,rgba(226,125,45,.90) 100%);position:relative;padding:36px 0;color:#fff;overflow:hidden;border-top:3px solid var(--ical-dorado);border-bottom:3px solid var(--ical-dorado)}
@@ -106,16 +142,16 @@ body{font-family:var(--font-body);font-size:16px;color:var(--ical-texto);backgro
 .congreso-strip::after{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--ical-dorado-x),transparent);background-size:200% 100%;animation:shimmer 6s linear infinite;opacity:.6}
 .congreso-strip-inner{max-width:1280px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;gap:32px;flex-wrap:wrap;position:relative;z-index:1}
 .congreso-strip-anfitrion{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.15);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.25);padding:6px 14px;border-radius:20px;font-family:var(--font-roman);font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:#fff;margin-bottom:14px;font-weight:600}
-.congreso-strip-anfitrion::before{content:'★';color:var(--ical-dorado-x)}
+.congreso-strip-anfitrion .icon{width:11px;height:11px;color:var(--ical-dorado-x);stroke-width:2;fill:var(--ical-dorado-x)}
 .congreso-strip-left{display:flex;flex-direction:column}
 .congreso-strip-titulo{font-family:var(--font-display);font-size:30px;font-weight:600;color:#fff;line-height:1.1;margin-bottom:6px;letter-spacing:-.005em}
 .congreso-strip-titulo em{color:var(--ical-dorado-x);font-style:italic}
 .congreso-strip-subtitulo{font-size:14px;color:rgba(255,255,255,.85);font-weight:500}
 .congreso-strip-subtitulo strong{color:var(--ical-dorado-x)}
-.congreso-strip-cta{background:var(--ical-dorado);color:var(--ical-verde-900);padding:16px 28px;font-size:14px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;display:inline-flex;align-items:center;gap:12px;transition:all .2s;border-radius:4px;box-shadow:0 6px 20px rgba(0,0,0,.2)}
+.congreso-strip-cta{background:var(--ical-dorado);color:var(--ical-verde-900);padding:16px 28px;font-size:14px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;display:inline-flex;align-items:center;gap:12px;transition:all .2s;border-radius:4px;box-shadow:0 6px 20px rgba(0,0,0,.2);border:none;cursor:pointer;font-family:inherit}
 .congreso-strip-cta:hover{background:var(--ical-dorado-x);transform:translateY(-2px)}
-.congreso-strip-cta .arrow{display:inline-block;font-size:18px;transition:transform .2s}
-.congreso-strip-cta:hover .arrow{transform:translateX(4px)}
+.congreso-strip-cta .icon{width:16px;height:16px;stroke-width:2.2;transition:transform .2s}
+.congreso-strip-cta:hover .icon{transform:translateX(4px)}
 
 .section{padding:80px 0}
 .section-inner{max-width:1280px;margin:0 auto;padding:0 24px}
@@ -127,7 +163,7 @@ body{font-family:var(--font-body);font-size:16px;color:var(--ical-texto);backgro
 .section-sub{margin-top:12px;font-size:16px;color:var(--ical-texto-2);max-width:600px;margin-left:auto;margin-right:auto}
 
 .comunicados-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
-.comunicado-card{background:var(--ical-superficie);border:1px solid var(--ical-borde);border-top:3px solid var(--ical-dorado);padding:32px 28px;position:relative;transition:all .25s;display:flex;flex-direction:column;text-decoration:none;color:inherit}
+.comunicado-card{background:var(--ical-superficie);border:1px solid var(--ical-borde);border-top:3px solid var(--ical-dorado);padding:32px 28px;position:relative;transition:all .25s;display:flex;flex-direction:column;text-decoration:none;color:inherit;cursor:pointer;font-family:inherit;text-align:left;width:100%}
 .comunicado-card::before{content:'';position:absolute;top:24px;right:24px;width:48px;height:48px;background-image:url('/static/img/ical/solo-logo-ical.png');background-size:contain;background-repeat:no-repeat;background-position:center;opacity:.12;pointer-events:none}
 .comunicado-card:hover{border-top-color:var(--amz-naranja);box-shadow:var(--shadow-2);transform:translateY(-3px)}
 .comunicado-fecha{font-family:var(--font-roman);font-size:10px;letter-spacing:.3em;color:var(--ical-dorado-h);text-transform:uppercase;margin-bottom:14px}
@@ -138,12 +174,11 @@ body{font-family:var(--font-body);font-size:16px;color:var(--ical-texto);backgro
 .comunicado-titulo{font-family:var(--font-display);font-size:22px;font-weight:600;line-height:1.2;color:var(--ical-verde-900);margin-bottom:14px;min-height:56px}
 .comunicado-resumen{font-size:14px;line-height:1.65;color:var(--ical-texto-2);margin-bottom:24px;flex-grow:1}
 .comunicado-link{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ical-verde-700);display:inline-flex;align-items:center;gap:8px;border-top:1px solid var(--ical-borde);padding-top:16px}
-.comunicado-link::after{content:'→';transition:transform .2s}
-.comunicado-card:hover .comunicado-link::after{transform:translateX(4px)}
+.comunicado-link .icon{width:12px;height:12px;stroke-width:2.4;transition:transform .2s}
+.comunicado-card:hover .comunicado-link .icon{transform:translateX(4px)}
 
 .congreso-section{background:linear-gradient(135deg,var(--ical-verde-900) 0%,var(--ical-verde-700) 100%);color:#fff;position:relative;overflow:hidden}
 .congreso-section::before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle at 0% 0%,rgba(20,168,156,.10) 0%,transparent 40%),radial-gradient(circle at 100% 100%,rgba(226,125,45,.08) 0%,transparent 50%);pointer-events:none}
-
 .congreso-banner{max-width:1280px;margin:0 auto 48px;padding:0 24px;display:grid;grid-template-columns:1.1fr 1fr;gap:48px;align-items:center;position:relative;z-index:1}
 .congreso-fechas-block{text-align:left}
 .congreso-fechas-eyebrow{font-family:var(--font-roman);font-size:11px;letter-spacing:.3em;color:var(--ical-dorado-x);text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:10px}
@@ -156,8 +191,9 @@ body{font-family:var(--font-body);font-size:16px;color:var(--ical-texto);backgro
 .fecha-sep{font-family:var(--font-display);font-size:60px;color:var(--ical-dorado);opacity:.4;align-self:center;font-weight:300}
 .congreso-fechas-mes{font-family:var(--font-roman);font-size:16px;letter-spacing:.3em;color:#fff;text-transform:uppercase;margin-top:18px;font-weight:600}
 .congreso-fechas-mes span{color:var(--ical-dorado-x)}
-.congreso-fechas-sede{margin-top:24px;padding-top:20px;border-top:1px solid rgba(201,160,57,.25);display:flex;align-items:flex-start;gap:12px}
-.congreso-fechas-sede-icon{width:36px;height:36px;background:rgba(20,168,156,.15);border:1px solid var(--amz-turquesa);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:var(--amz-turquesa-l);font-size:16px;flex-shrink:0}
+.congreso-fechas-sede{margin-top:24px;padding-top:20px;border-top:1px solid rgba(201,160,57,.25);display:flex;align-items:flex-start;gap:14px}
+.congreso-fechas-sede-icon{width:42px;height:42px;background:rgba(20,168,156,.12);border:1.5px solid var(--amz-turquesa);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:var(--amz-turquesa-l);flex-shrink:0}
+.congreso-fechas-sede-icon .icon{width:18px;height:18px;stroke-width:1.8}
 .congreso-fechas-sede-text{font-size:14px;color:rgba(255,255,255,.85);line-height:1.5}
 .congreso-fechas-sede-text strong{color:#fff;display:block;font-size:15px}
 
@@ -197,15 +233,17 @@ body{font-family:var(--font-body);font-size:16px;color:var(--ical-texto);backgro
 
 .servicios{background:var(--ical-marfil-2)}
 .servicios-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;max-width:1000px;margin:0 auto}
-.servicio-card{background:var(--ical-superficie);padding:32px 22px;text-align:center;border:1px solid var(--ical-borde);text-decoration:none;color:inherit;transition:all .25s;display:flex;flex-direction:column;align-items:center;gap:14px;position:relative;overflow:hidden}
+.servicio-card{background:var(--ical-superficie);padding:32px 22px;text-align:center;border:1px solid var(--ical-borde);text-decoration:none;color:inherit;transition:all .25s;display:flex;flex-direction:column;align-items:center;gap:14px;position:relative;overflow:hidden;cursor:pointer;font-family:inherit;border-radius:0}
 .servicio-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--ical-dorado);transform:scaleX(0);transform-origin:left;transition:transform .3s}
 .servicio-card:hover::before{transform:scaleX(1)}
 .servicio-card:hover{box-shadow:var(--shadow-2);transform:translateY(-3px)}
-.servicio-icon{font-size:28px;width:56px;height:56px;border-radius:50%;background:var(--ical-verde-50);color:var(--ical-verde-700);display:flex;align-items:center;justify-content:center;transition:all .25s}
+.servicio-icon{width:56px;height:56px;border-radius:50%;background:var(--ical-verde-50);color:var(--ical-verde-700);display:flex;align-items:center;justify-content:center;transition:all .25s}
+.servicio-icon .icon{width:24px;height:24px;stroke-width:1.8}
 .servicio-card:hover .servicio-icon{background:linear-gradient(135deg,var(--amz-turquesa),var(--ical-verde-700));color:#fff}
 .servicio-titulo{font-family:var(--font-display);font-size:17px;font-weight:600;color:var(--ical-verde-900);line-height:1.2}
 .servicio-sub{font-size:12px;color:var(--ical-texto-3);margin-top:-8px}
 
+/* FOOTER */
 .footer{background:var(--ical-verde-900);color:rgba(255,255,255,.85);padding:72px 0 24px;position:relative}
 .footer::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--ical-dorado) 25%,var(--amz-naranja) 50%,var(--ical-dorado) 75%,transparent)}
 .footer-inner{max-width:1280px;margin:0 auto;padding:0 24px;display:grid;grid-template-columns:1.4fr 1fr 1fr 1.2fr;gap:48px}
@@ -219,25 +257,163 @@ body{font-family:var(--font-body);font-size:16px;color:var(--ical-texto);backgro
 .footer-col h4{font-family:var(--font-roman);font-size:11px;letter-spacing:.3em;color:var(--ical-dorado-l);text-transform:uppercase;margin-bottom:18px;font-weight:600}
 .footer-col p,.footer-col a{display:block;font-size:13px;color:rgba(255,255,255,.78);text-decoration:none;margin-bottom:8px;transition:color .2s}
 .footer-col a:hover{color:var(--ical-dorado-l)}
+.footer-col p{display:flex;align-items:flex-start;gap:8px}
+.footer-col p .icon{width:14px;height:14px;color:var(--ical-dorado-l);flex-shrink:0;margin-top:3px}
 .footer-col strong{color:#fff;font-weight:600}
 .footer-col-emails a{font-size:12px}
 .footer-wa{display:inline-flex;align-items:center;gap:12px;background:#1a8d52;color:#fff;padding:10px 16px;border-radius:4px;text-decoration:none;font-size:13px;margin-top:8px}
 .footer-wa:hover{background:#16703f}
+.footer-wa .icon{width:18px;height:18px}
 .footer-bottom{max-width:1280px;margin:56px auto 0;padding:24px 24px 0;border-top:1px solid rgba(201,160,57,.15);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;font-size:11px;color:rgba(255,255,255,.5)}
 .footer-credit{display:inline-flex;align-items:center;gap:8px}
 .footer-credit-tag{font-family:'Courier New',monospace;background:rgba(232,196,101,.12);color:var(--ical-dorado-l);padding:2px 8px;font-size:10px;font-weight:bold;letter-spacing:1px;border-radius:2px}
 .footer-credit a{color:var(--ical-dorado-l);text-decoration:none}
 .footer-credit a:hover{text-decoration:underline}
 
+/* ════════════════ MODALES PERSUASIVOS ════════════════ */
+.modal-backdrop{position:fixed;inset:0;background:rgba(10,40,24,.78);backdrop-filter:blur(8px);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;animation:overlayIn .25s ease}
+.modal-backdrop.active{display:flex}
+.modal{position:relative;max-width:520px;width:100%;background:var(--ical-superficie);border-radius:6px;overflow:hidden;animation:modalIn .35s cubic-bezier(.16,1,.3,1);box-shadow:0 20px 60px rgba(0,0,0,.4),0 0 0 1px rgba(201,160,57,.2)}
+.modal-close{position:absolute;top:14px;right:14px;width:36px;height:36px;background:rgba(255,255,255,.9);border:1px solid var(--ical-borde);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:5;transition:all .2s;color:var(--ical-texto-2)}
+.modal-close:hover{background:var(--ical-marfil);transform:rotate(90deg);color:var(--amz-rojo-tropical);border-color:var(--amz-rojo-tropical)}
+.modal-close .icon{width:18px;height:18px;stroke-width:2.5}
+
+/* ─── Modal 1: VERIFICAR HABILIDAD — practicidad, tono institucional confiable ─── */
+.modal.modal-verificar .modal-hero{background:linear-gradient(135deg,var(--ical-verde-700),var(--ical-verde-900));padding:40px 32px 32px;color:#fff;position:relative;overflow:hidden}
+.modal.modal-verificar .modal-hero::before{content:'';position:absolute;top:-40px;right:-40px;width:180px;height:180px;background-image:url('/static/img/ical/solo-logo-ical.png');background-size:contain;background-repeat:no-repeat;opacity:.06}
+.modal.modal-verificar .modal-icon-big{width:72px;height:72px;background:rgba(20,168,156,.18);border:2px solid var(--amz-turquesa);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:18px;color:var(--amz-turquesa-l)}
+.modal.modal-verificar .modal-icon-big .icon{width:34px;height:34px;stroke-width:1.8}
+.modal.modal-verificar .modal-eyebrow{font-family:var(--font-roman);font-size:10px;letter-spacing:.3em;color:var(--amz-turquesa-l);text-transform:uppercase;margin-bottom:8px}
+.modal.modal-verificar .modal-title{font-family:var(--font-display);font-size:30px;font-weight:600;line-height:1.15;color:#fff;margin-bottom:8px}
+.modal.modal-verificar .modal-title em{font-style:italic;color:var(--amz-turquesa-l)}
+.modal.modal-verificar .modal-body{padding:28px 32px 32px}
+.modal.modal-verificar .modal-text{font-size:15px;line-height:1.6;color:var(--ical-texto-2);margin-bottom:20px}
+.modal.modal-verificar .modal-list{list-style:none;display:flex;flex-direction:column;gap:12px;margin-bottom:24px}
+.modal.modal-verificar .modal-list li{display:flex;align-items:flex-start;gap:12px;font-size:14px;color:var(--ical-texto)}
+.modal.modal-verificar .modal-list li .icon{width:18px;height:18px;color:var(--amz-turquesa);stroke-width:2.5;flex-shrink:0;margin-top:2px}
+
+/* ─── Modal 2: BOLSA DE TRABAJO — oportunidad económica, energético ─── */
+.modal.modal-bolsa{background:var(--ical-marfil)}
+.modal.modal-bolsa .modal-hero{background:linear-gradient(135deg,var(--amz-naranja),var(--amz-naranja-h));padding:48px 32px 36px;color:#fff;position:relative;overflow:hidden;text-align:center}
+.modal.modal-bolsa .modal-hero::after{content:'';position:absolute;bottom:-20px;left:0;right:0;height:40px;background:linear-gradient(transparent,var(--ical-marfil))}
+.modal.modal-bolsa .modal-icon-big{width:80px;height:80px;background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.3);border-radius:18px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:18px;transform:rotate(-5deg)}
+.modal.modal-bolsa .modal-icon-big .icon{width:38px;height:38px;stroke-width:1.6;color:#fff}
+.modal.modal-bolsa .modal-title{font-family:var(--font-display);font-size:32px;font-weight:600;line-height:1.1;color:#fff;margin-bottom:10px}
+.modal.modal-bolsa .modal-title em{font-style:italic;color:var(--ical-dorado-x)}
+.modal.modal-bolsa .modal-tagline{font-size:14px;color:rgba(255,255,255,.9);letter-spacing:.04em}
+.modal.modal-bolsa .modal-body{padding:24px 32px 32px}
+.modal.modal-bolsa .modal-text{font-size:15px;line-height:1.7;color:var(--ical-texto-2);margin-bottom:22px;text-align:center}
+.modal.modal-bolsa .modal-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:24px;padding:18px;background:#fff;border:1px solid var(--ical-borde);border-radius:4px}
+.modal.modal-bolsa .modal-stat{text-align:center}
+.modal.modal-bolsa .modal-stat-num{font-family:var(--font-display);font-size:28px;font-weight:700;color:var(--amz-naranja);line-height:1}
+.modal.modal-bolsa .modal-stat-lbl{font-size:11px;color:var(--ical-texto-3);text-transform:uppercase;letter-spacing:.08em;margin-top:4px}
+
+/* ─── Modal 3: ACCESO COLEGIADO — empoderamiento, premium ─── */
+.modal.modal-acceso{max-width:560px;background:var(--ical-verde-900);color:#fff}
+.modal.modal-acceso .modal-close{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff}
+.modal.modal-acceso .modal-close:hover{background:rgba(255,255,255,.2);color:#fff;border-color:var(--ical-dorado-l)}
+.modal.modal-acceso .modal-body{padding:48px 36px;position:relative;overflow:hidden}
+.modal.modal-acceso .modal-body::before{content:'';position:absolute;top:-100px;right:-100px;width:400px;height:400px;background-image:url('/static/img/ical/solo-logo-ical.png');background-size:contain;background-repeat:no-repeat;opacity:.05}
+.modal.modal-acceso .modal-eyebrow{font-family:var(--font-roman);font-size:10px;letter-spacing:.4em;color:var(--ical-dorado-x);text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.modal.modal-acceso .modal-eyebrow::before{content:'';width:24px;height:1px;background:var(--ical-dorado)}
+.modal.modal-acceso .modal-title{font-family:var(--font-display);font-size:36px;font-weight:500;line-height:1.1;color:#fff;margin-bottom:16px;letter-spacing:-.005em}
+.modal.modal-acceso .modal-title em{font-style:italic;color:var(--ical-dorado-x)}
+.modal.modal-acceso .modal-text{font-size:15px;line-height:1.7;color:rgba(255,255,255,.85);margin-bottom:28px}
+.modal.modal-acceso .modal-features{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:28px}
+.modal.modal-acceso .modal-feature{padding:14px;background:rgba(255,255,255,.04);border:1px solid rgba(201,160,57,.2);border-radius:4px;display:flex;align-items:center;gap:10px}
+.modal.modal-acceso .modal-feature .icon{width:18px;height:18px;color:var(--ical-dorado-l);stroke-width:2;flex-shrink:0}
+.modal.modal-acceso .modal-feature span{font-size:13px;color:rgba(255,255,255,.9);font-weight:500}
+
+/* ─── Modal 4: INSCRIBIRME CONGRESO — ahorro de trabajo manual, eficiencia ─── */
+.modal.modal-inscripcion{max-width:580px}
+.modal.modal-inscripcion .modal-hero{background:linear-gradient(135deg,var(--ical-verde-900) 0%,var(--amz-turquesa) 100%);padding:36px 36px 28px;color:#fff;position:relative;overflow:hidden}
+.modal.modal-inscripcion .modal-hero::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--ical-dorado-x),transparent);background-size:200% 100%;animation:shimmer 6s linear infinite}
+.modal.modal-inscripcion .modal-eyebrow{font-family:var(--font-roman);font-size:10px;letter-spacing:.3em;color:var(--ical-dorado-x);text-transform:uppercase;margin-bottom:8px}
+.modal.modal-inscripcion .modal-title{font-family:var(--font-display);font-size:28px;font-weight:600;line-height:1.15;color:#fff;margin-bottom:6px}
+.modal.modal-inscripcion .modal-tagline{font-size:13px;color:rgba(255,255,255,.85)}
+.modal.modal-inscripcion .modal-body{padding:32px 36px}
+.modal.modal-inscripcion .modal-comparativa{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+.modal.modal-inscripcion .modal-col{padding:18px;border-radius:4px}
+.modal.modal-inscripcion .modal-col-old{background:rgba(200,75,63,.05);border:1px solid rgba(200,75,63,.2)}
+.modal.modal-inscripcion .modal-col-new{background:rgba(20,168,156,.08);border:1px solid var(--amz-turquesa)}
+.modal.modal-inscripcion .modal-col-label{font-family:var(--font-roman);font-size:9px;letter-spacing:.25em;text-transform:uppercase;margin-bottom:10px;font-weight:700}
+.modal.modal-inscripcion .modal-col-old .modal-col-label{color:var(--amz-rojo-tropical)}
+.modal.modal-inscripcion .modal-col-new .modal-col-label{color:var(--amz-turquesa)}
+.modal.modal-inscripcion .modal-col ul{list-style:none;display:flex;flex-direction:column;gap:8px}
+.modal.modal-inscripcion .modal-col li{font-size:13px;color:var(--ical-texto-2);display:flex;align-items:flex-start;gap:8px;line-height:1.4}
+.modal.modal-inscripcion .modal-col li .icon{width:14px;height:14px;flex-shrink:0;margin-top:2px;stroke-width:2.4}
+.modal.modal-inscripcion .modal-col-old li .icon{color:var(--amz-rojo-tropical)}
+.modal.modal-inscripcion .modal-col-new li .icon{color:var(--amz-turquesa)}
+
+/* ─── Modal 5: COMUNICADO — orden documental, sobrio ─── */
+.modal.modal-comunicado{max-width:540px}
+.modal.modal-comunicado .modal-body{padding:40px 36px;background:var(--ical-marfil);border-top:4px solid var(--ical-dorado);position:relative}
+.modal.modal-comunicado .modal-body::before{content:'';position:absolute;top:36px;right:36px;width:60px;height:60px;background-image:url('/static/img/ical/solo-logo-ical.png');background-size:contain;background-repeat:no-repeat;opacity:.15}
+.modal.modal-comunicado .modal-eyebrow{font-family:var(--font-roman);font-size:10px;letter-spacing:.3em;color:var(--ical-dorado-h);text-transform:uppercase;margin-bottom:12px}
+.modal.modal-comunicado .modal-title{font-family:var(--font-display);font-size:28px;font-weight:600;line-height:1.2;color:var(--ical-verde-900);margin-bottom:14px;max-width:88%}
+.modal.modal-comunicado .modal-title em{font-style:italic;color:var(--ical-dorado-h)}
+.modal.modal-comunicado .modal-divider{width:48px;height:2px;background:var(--ical-dorado);margin:0 0 18px}
+.modal.modal-comunicado .modal-text{font-size:15px;line-height:1.7;color:var(--ical-texto-2);margin-bottom:22px}
+.modal.modal-comunicado .modal-quote{font-family:var(--font-display);font-style:italic;font-size:17px;color:var(--ical-verde-700);padding:16px 20px;border-left:3px solid var(--ical-dorado);background:rgba(201,160,57,.06);margin-bottom:24px;line-height:1.5}
+
+/* ─── Modal 6: WHATSAPP / CONTACTO — cercanía, conversacional ─── */
+.modal.modal-contacto{max-width:480px;border-radius:14px}
+.modal.modal-contacto .modal-body{padding:32px;text-align:center;background:#fff}
+.modal.modal-contacto .modal-icon-big{width:80px;height:80px;background:linear-gradient(135deg,#25D366,#128C7E);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:18px;color:#fff;box-shadow:0 8px 20px rgba(37,211,102,.35)}
+.modal.modal-contacto .modal-icon-big .icon{width:38px;height:38px}
+.modal.modal-contacto .modal-title{font-family:var(--font-display);font-size:26px;font-weight:600;color:var(--ical-verde-900);margin-bottom:8px;line-height:1.2}
+.modal.modal-contacto .modal-text{font-size:15px;color:var(--ical-texto-2);margin-bottom:24px;line-height:1.6}
+.modal.modal-contacto .modal-options{display:flex;flex-direction:column;gap:10px;margin-bottom:8px}
+.modal.modal-contacto .modal-option{display:flex;align-items:center;gap:14px;padding:14px 18px;background:var(--ical-marfil);border:1px solid var(--ical-borde);border-radius:8px;text-decoration:none;color:inherit;transition:all .2s;text-align:left}
+.modal.modal-contacto .modal-option:hover{border-color:var(--ical-dorado);background:rgba(201,160,57,.05);transform:translateY(-1px)}
+.modal.modal-contacto .modal-option-icon{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.modal.modal-contacto .modal-option-wa{background:rgba(37,211,102,.1);color:#1a8d52}
+.modal.modal-contacto .modal-option-tel{background:rgba(20,168,156,.1);color:var(--amz-turquesa)}
+.modal.modal-contacto .modal-option-mail{background:rgba(201,160,57,.1);color:var(--ical-dorado-h)}
+.modal.modal-contacto .modal-option-icon .icon{width:20px;height:20px}
+.modal.modal-contacto .modal-option-text{flex-grow:1}
+.modal.modal-contacto .modal-option-label{font-weight:600;font-size:14px;color:var(--ical-texto);margin-bottom:2px}
+.modal.modal-contacto .modal-option-detail{font-size:12px;color:var(--ical-texto-3)}
+.modal.modal-contacto .modal-option-arrow{color:var(--ical-texto-3);transition:transform .2s}
+.modal.modal-contacto .modal-option:hover .modal-option-arrow{transform:translateX(3px);color:var(--ical-dorado)}
+.modal.modal-contacto .modal-option-arrow .icon{width:18px;height:18px}
+
+/* CTAs comunes en modales */
+.modal-ctas{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+.modal-cta-primary,.modal-cta-secondary{padding:12px 20px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border:none;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .2s;font-family:inherit;border-radius:4px}
+.modal-cta-primary{background:var(--ical-dorado);color:var(--ical-verde-900);flex-grow:1;justify-content:center}
+.modal-cta-primary:hover{background:var(--ical-dorado-l)}
+.modal-cta-secondary{background:transparent;color:var(--ical-texto-2);border:1px solid var(--ical-borde)}
+.modal-cta-secondary:hover{background:var(--ical-marfil)}
+
+/* RESPONSIVE */
 @media (max-width:968px){
   .nav-menu{display:none}
-  .hero-grid{grid-template-columns:1fr;min-height:auto}
-  .hero-foto{min-height:300px;max-height:380px}
-  .hero-text{padding:48px 28px}
-  .hero-title{font-size:30px;line-height:1.15}
-  .hero-desc{display:none}
-  .hero-lema{font-size:16px;margin-bottom:24px;padding-bottom:18px}
-  .hero-lema span{font-size:10px}
+
+  /* HERO MOBILE WOW: oculta hero desktop, muestra hero-mobile */
+  .hero{display:none}
+  .hero-mobile{display:block}
+
+  .hero-mobile-foto{position:relative;height:340px;overflow:hidden;background:var(--ical-verde-900)}
+  .hero-mobile-foto img{width:100%;height:100%;object-fit:cover;object-position:center 28%}
+  .hero-mobile-foto::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,40,24,0) 50%,rgba(10,40,24,.6) 100%);z-index:1}
+
+  .hero-mobile-cinta{position:absolute;bottom:0;left:0;right:0;padding:20px 22px;color:#fff;z-index:2;display:flex;align-items:flex-end;gap:14px}
+  .hero-mobile-cinta-num{font-family:var(--font-display);font-weight:600;color:var(--ical-dorado-l);line-height:.9;font-size:38px;text-shadow:0 2px 8px rgba(0,0,0,.4)}
+  .hero-mobile-cinta-txt{flex-grow:1;font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.85);border-left:2px solid var(--ical-dorado);padding-left:12px;line-height:1.4}
+  .hero-mobile-cinta-txt strong{display:block;font-family:var(--font-display);font-size:14px;font-weight:600;color:#fff;text-transform:none;letter-spacing:0;margin-bottom:2px}
+
+  .hero-mobile-block{background:linear-gradient(180deg,var(--ical-verde-900),var(--ical-verde-800));color:#fff;padding:40px 22px 36px;position:relative;overflow:hidden}
+  .hero-mobile-block::before{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;background-image:url('/static/img/ical/solo-logo-ical.png');background-size:contain;background-repeat:no-repeat;opacity:.06;pointer-events:none}
+  .hero-mobile-eyebrow{font-family:var(--font-roman);font-size:10px;letter-spacing:.35em;color:var(--ical-dorado-l);text-transform:uppercase;margin-bottom:18px;display:flex;align-items:center;gap:10px}
+  .hero-mobile-eyebrow::before{content:'';width:24px;height:1px;background:var(--ical-dorado)}
+  .hero-mobile-title{font-family:var(--font-display);font-size:38px;font-weight:500;line-height:1.05;margin-bottom:18px;color:#fff;letter-spacing:-.01em}
+  .hero-mobile-title em{font-style:italic;color:var(--ical-dorado-x);display:block}
+  .hero-mobile-lema{font-family:var(--font-display);font-size:16px;font-style:italic;color:var(--ical-dorado-l);padding:16px 0;border-top:1px solid rgba(201,160,57,.25);border-bottom:1px solid rgba(201,160,57,.25);margin-bottom:24px;text-align:center}
+  .hero-mobile-lema span{display:block;font-style:normal;font-size:9px;color:rgba(255,255,255,.5);margin-top:4px;letter-spacing:.2em;text-transform:uppercase}
+  .hero-mobile-ctas{display:flex;flex-direction:column;gap:10px}
+  .hero-mobile-ctas .btn-primary,.hero-mobile-ctas .btn-ghost{justify-content:center;padding:14px 22px}
+
   .congreso-strip-inner{flex-direction:column;align-items:flex-start;gap:18px}
   .congreso-strip-titulo{font-size:24px}
   .congreso-strip-cta{width:100%;justify-content:center;padding:14px 24px}
@@ -253,19 +429,30 @@ body{font-family:var(--font-body);font-size:16px;color:var(--ical-texto);backgro
   .footer-brand-block{grid-column:1 / -1}
   .section{padding:56px 0}
   .section-title{font-size:28px}
+
+  /* Modales en mobile */
+  .modal.modal-acceso .modal-features{grid-template-columns:1fr}
+  .modal.modal-inscripcion .modal-comparativa{grid-template-columns:1fr}
+  .modal.modal-bolsa .modal-stats{padding:14px}
+  .modal.modal-bolsa .modal-stat-num{font-size:24px}
 }
 @media (max-width:480px){
-  .topbar-inner{flex-direction:column;gap:4px;padding:4px 16px;text-align:center}
+  .topbar-inner{flex-direction:column;gap:6px;padding:6px 16px;text-align:center;font-size:11px}
   .navbar{padding:14px 0}
   .navbar-inner{padding:0 16px}
-  .brand{gap:12px}
-  .brand-logo{width:44px;height:44px}
-  .brand-line2{font-size:17px}
+
+  /* LOGO ÉPICO en mobile — más grande */
+  .brand{gap:14px}
+  .brand-logo-wrap{width:56px;height:56px}
+  .brand-logo{width:54px;height:54px}
+  .brand-line2{font-size:18px}
   .brand-lema{display:none}
-  .hero-text{padding:40px 22px}
-  .hero-title{font-size:26px}
-  .hero-foto-cinta{padding:40px 20px 18px}
-  .hero-foto-cinta-num{font-size:28px}
+
+  .hero-mobile-foto{height:280px}
+  .hero-mobile-block{padding:32px 20px 32px}
+  .hero-mobile-title{font-size:32px}
+  .hero-mobile-cinta-num{font-size:32px}
+
   .congreso-strip{padding:28px 0}
   .congreso-strip-titulo{font-size:22px}
   .fecha-num{font-size:64px}
@@ -273,22 +460,60 @@ body{font-family:var(--font-body);font-size:16px;color:var(--ical-texto);backgro
   .servicios-grid{grid-template-columns:1fr 1fr}
   .footer-inner{grid-template-columns:1fr;gap:32px}
   .congreso-precios-grid{grid-template-columns:1fr}
+
+  .modal{max-width:100%}
+  .modal.modal-acceso .modal-body,.modal.modal-comunicado .modal-body,.modal.modal-contacto .modal-body{padding:32px 22px}
+  .modal.modal-verificar .modal-hero,.modal.modal-bolsa .modal-hero,.modal.modal-inscripcion .modal-hero{padding:32px 22px 26px}
+  .modal.modal-verificar .modal-body,.modal.modal-bolsa .modal-body,.modal.modal-inscripcion .modal-body{padding:24px 22px 28px}
+  .modal-title{font-size:24px !important}
 }
 </style>
 </head>
 <body>
 
+<!-- ════════ ICONOS LUCIDE INLINE — referenciables por <use href> ════════ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92Z"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2 15.09 8.26 22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></symbol>
+    <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+    <symbol id="i-arrow-up-right" viewBox="0 0 24 24"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="i-shield-check" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-briefcase" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></symbol>
+    <symbol id="i-scale" viewBox="0 0 24 24"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></symbol>
+    <symbol id="i-newspaper" viewBox="0 0 24 24"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></symbol>
+    <symbol id="i-message-circle" viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-check-circle" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></symbol>
+    <symbol id="i-x-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></symbol>
+    <symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></symbol>
+    <symbol id="i-credit-card" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></symbol>
+    <symbol id="i-qr" viewBox="0 0 24 24"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></symbol>
+    <symbol id="i-file-text" viewBox="0 0 24 24"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-trending" viewBox="0 0 24 24"><path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></symbol>
+  </defs>
+</svg>
+
 <div class="topbar">
   <div class="topbar-inner">
-    <span>📍 Calle Echenique 390, Iquitos · Lun-Vie 9-13h / 16-19h · Sáb 8-13h</span>
-    <span>📞 +51 964 723 131 &nbsp;·&nbsp; ✉ <a href="mailto:informes@ical.org.pe">informes@ical.org.pe</a></span>
+    <span class="topbar-item"><svg class="icon"><use href="#i-pin"/></svg> Calle Echenique 390, Iquitos · Lun-Vie 9-13h / 16-19h · Sáb 8-13h</span>
+    <span class="topbar-item"><svg class="icon"><use href="#i-phone"/></svg> +51 964 723 131 &nbsp;·&nbsp; <svg class="icon"><use href="#i-mail"/></svg> <a href="mailto:informes@ical.org.pe">informes@ical.org.pe</a></span>
   </div>
 </div>
 
 <nav class="navbar">
   <div class="navbar-inner">
     <a href="/" class="brand">
-      <img src="/static/img/ical/solo-logo-ical.png" alt="ICAL" class="brand-logo">
+      <div class="brand-logo-wrap">
+        <img src="/static/img/ical/solo-logo-ical.png" alt="ICAL" class="brand-logo">
+      </div>
       <div class="brand-text">
         <span class="brand-line1">Ilustre Colegio de</span>
         <span class="brand-line2">Abogados de Loreto</span>
@@ -300,12 +525,13 @@ body{font-family:var(--font-body);font-size:16px;color:var(--ical-texto);backgro
       <a href="#comunicados" class="nav-link">Comunicados</a>
       <a href="#congreso" class="nav-link">Congreso 2026</a>
       <a href="#servicios" class="nav-link">Servicios</a>
-      <a href="#" class="nav-link">Bolsa Trabajo</a>
-      <a href="#" class="nav-link cta">Acceso Colegiado</a>
+      <button type="button" class="nav-link" onclick="openModal('bolsa')">Bolsa Trabajo</button>
+      <button type="button" class="nav-link cta" onclick="openModal('acceso')">Acceso Colegiado</button>
     </div>
   </div>
 </nav>
 
+<!-- HERO DESKTOP -->
 <section class="hero">
   <div class="hero-grid">
     <div class="hero-foto">
@@ -323,19 +549,35 @@ body{font-family:var(--font-body);font-size:16px;color:var(--ical-texto);backgro
     <div class="hero-text">
       <div class="hero-eyebrow">Ilustre Colegio de Abogados de Loreto</div>
       <h1 class="hero-title">Tradición jurídica<br><em>al servicio de la</em><br>Amazonía peruana.</h1>
-      <div class="hero-lema">
-        Orabunt Causas Melius
-        <span>— Abogarán mejor las causas —</span>
-      </div>
-      <p class="hero-desc">
-        Institución decana del derecho en Loreto. Promovemos la formación
-        continua, la ética profesional y la defensa de los derechos de
-        nuestros agremiados desde nuestra fundación.
-      </p>
+      <div class="hero-lema">Orabunt Causas Melius<span>— Abogarán mejor las causas —</span></div>
+      <p class="hero-desc">Institución decana del derecho en Loreto. Promovemos la formación continua, la ética profesional y la defensa de los derechos de nuestros agremiados desde nuestra fundación.</p>
       <div class="hero-cta-group">
-        <a href="#congreso" class="btn-primary">Congreso 2026 <span class="btn-arrow">→</span></a>
-        <a href="#" class="btn-ghost">Verificar habilidad</a>
+        <a href="#congreso" class="btn-primary">Congreso 2026 <span class="btn-arrow"><svg class="icon"><use href="#i-arrow-right"/></svg></span></a>
+        <button type="button" class="btn-ghost" onclick="openModal('verificar')">Verificar habilidad</button>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- HERO MOBILE WOW -->
+<section class="hero-mobile">
+  <div class="hero-mobile-foto">
+    <img src="/static/img/ical/junta-directiva.jpeg" alt="Junta Directiva ICAL Gestión 2026-2027">
+    <div class="hero-mobile-cinta">
+      <span class="hero-mobile-cinta-num">2026<br>—27</span>
+      <div class="hero-mobile-cinta-txt">
+        <strong>Nueva Junta Directiva</strong>
+        Gestión 2026-2027
+      </div>
+    </div>
+  </div>
+  <div class="hero-mobile-block">
+    <div class="hero-mobile-eyebrow">Ilustre Colegio de Abogados</div>
+    <h1 class="hero-mobile-title">Tradición jurídica <em>al servicio de la Amazonía.</em></h1>
+    <div class="hero-mobile-lema">Orabunt Causas Melius<span>Abogarán mejor las causas</span></div>
+    <div class="hero-mobile-ctas">
+      <a href="#congreso" class="btn-primary">Congreso 2026 <span class="btn-arrow"><svg class="icon"><use href="#i-arrow-right"/></svg></span></a>
+      <button type="button" class="btn-ghost" onclick="openModal('verificar')">Verificar habilidad</button>
     </div>
   </div>
 </section>
@@ -343,13 +585,11 @@ body{font-family:var(--font-body);font-size:16px;color:var(--ical-texto);backgro
 <section class="congreso-strip">
   <div class="congreso-strip-inner">
     <div class="congreso-strip-left">
-      <span class="congreso-strip-anfitrion">ICAL · Anfitrión Nacional</span>
+      <span class="congreso-strip-anfitrion"><svg class="icon"><use href="#i-star"/></svg> ICAL · Anfitrión Nacional</span>
       <h2 class="congreso-strip-titulo">Congreso Integral de <em>Derecho Público</em></h2>
       <span class="congreso-strip-subtitulo">"Nuevos Retos" · <strong>28, 29 y 30 Mayo 2026</strong> · Iquitos</span>
     </div>
-    <a href="#congreso" class="congreso-strip-cta">
-      Ver programa <span class="arrow">→</span>
-    </a>
+    <a href="#congreso" class="congreso-strip-cta">Ver programa <svg class="icon"><use href="#i-arrow-right"/></svg></a>
   </div>
 </section>
 
@@ -361,27 +601,27 @@ body{font-family:var(--font-body);font-size:16px;color:var(--ical-texto);backgro
       <p class="section-sub">Avisos, comunicados oficiales y disposiciones de la Decanatura para nuestros agremiados.</p>
     </div>
     <div class="comunicados-grid">
-      <a href="#" class="comunicado-card">
+      <button type="button" class="comunicado-card" onclick="openModal('comunicado')">
         <div class="comunicado-fecha">11 · Abril · 2026</div>
         <span class="comunicado-cat cat-aviso">Aviso Importante</span>
         <h3 class="comunicado-titulo">Publicación de Lista de Abogados Hábiles 2026</h3>
         <p class="comunicado-resumen">Con el objetivo de garantizar el ejercicio legal y transparente de la profesión, se procederá a la publicación de la Lista de Abogados Hábiles actualizada hasta el 30 de abril.</p>
-        <span class="comunicado-link">Ver comunicado completo</span>
-      </a>
-      <a href="#" class="comunicado-card">
+        <span class="comunicado-link">Ver comunicado completo <svg class="icon"><use href="#i-arrow-right"/></svg></span>
+      </button>
+      <button type="button" class="comunicado-card" onclick="openModal('comunicado')">
         <div class="comunicado-fecha">08 · Abril · 2026</div>
         <span class="comunicado-cat cat-importante">Comunicado Importante</span>
         <h3 class="comunicado-titulo">Ampliación: Campaña de Fraccionamiento de Deudas</h3>
         <p class="comunicado-resumen">Se amplía la campaña de fraccionamiento para obligaciones pendientes hasta diciembre de 2025. Cuota inicial 20%, saldo en cuotas mensuales mínimas de S/ 200, hasta 12 cuotas. Vigente al jueves 30 de abril.</p>
-        <span class="comunicado-link">Ver condiciones</span>
-      </a>
-      <a href="#" class="comunicado-card">
+        <span class="comunicado-link">Ver condiciones <svg class="icon"><use href="#i-arrow-right"/></svg></span>
+      </button>
+      <button type="button" class="comunicado-card" onclick="openModal('comunicado')">
         <div class="comunicado-fecha">02 · Abril · 2026</div>
         <span class="comunicado-cat cat-evento">Convocatoria</span>
         <h3 class="comunicado-titulo">Campaña de Segunda Colegiatura 2026</h3>
         <p class="comunicado-resumen">Cierre de inscripciones: 30 de abril y 28 de mayo de 2026. Costo de colegiatura: S/ 700.00. Solicitud dirigida al Decano Abg. Erick Salas Barrera.</p>
-        <span class="comunicado-link">Ver requisitos</span>
-      </a>
+        <span class="comunicado-link">Ver requisitos <svg class="icon"><use href="#i-arrow-right"/></svg></span>
+      </button>
     </div>
   </div>
 </section>
@@ -408,7 +648,7 @@ body{font-family:var(--font-body);font-size:16px;color:var(--ical-texto);backgro
       </div>
       <div class="congreso-fechas-mes">Mayo · <span>2026</span></div>
       <div class="congreso-fechas-sede">
-        <span class="congreso-fechas-sede-icon">📍</span>
+        <span class="congreso-fechas-sede-icon"><svg class="icon"><use href="#i-pin"/></svg></span>
         <span class="congreso-fechas-sede-text">
           <strong>Sede ICAL — Calle Echenique 390</strong>
           Plaza Sargento Lores, Iquitos · Loreto
@@ -422,18 +662,9 @@ body{font-family:var(--font-body);font-size:16px;color:var(--ical-texto);backgro
   </div>
 
   <div class="congreso-meta">
-    <div class="congreso-meta-item">
-      <span class="congreso-meta-icon">Modalidad</span>
-      <span class="congreso-meta-val">Presencial</span>
-    </div>
-    <div class="congreso-meta-item">
-      <span class="congreso-meta-icon">Expositores</span>
-      <span class="congreso-meta-val">+45 ponentes</span>
-    </div>
-    <div class="congreso-meta-item">
-      <span class="congreso-meta-icon">Temas</span>
-      <span class="congreso-meta-val">6 ejes especializados</span>
-    </div>
+    <div class="congreso-meta-item"><span class="congreso-meta-icon">Modalidad</span><span class="congreso-meta-val">Presencial</span></div>
+    <div class="congreso-meta-item"><span class="congreso-meta-icon">Expositores</span><span class="congreso-meta-val">+45 ponentes</span></div>
+    <div class="congreso-meta-item"><span class="congreso-meta-icon">Temas</span><span class="congreso-meta-val">6 ejes especializados</span></div>
   </div>
 
   <div class="congreso-dias">
@@ -441,76 +672,40 @@ body{font-family:var(--font-body);font-size:16px;color:var(--ical-texto);backgro
       <span class="dia-num">28</span>
       <span class="dia-mes">Miércoles · Mayo</span>
       <div class="dia-temas">
-        <div class="dia-tema">
-          <span class="dia-tema-hora">09:00 — 13:00</span>
-          <span class="dia-tema-titulo">Ecocidio</span>
-          <span class="dia-tema-expos">7 expositores · Juan C. del Águila, Bismarck Seminario y otros</span>
-        </div>
-        <div class="dia-tema">
-          <span class="dia-tema-hora">15:00 — 19:00</span>
-          <span class="dia-tema-titulo">REINFO</span>
-          <span class="dia-tema-expos">8 expositores · Henry Coronado, Rafael Aldave y otros</span>
-        </div>
+        <div class="dia-tema"><span class="dia-tema-hora">09:00 — 13:00</span><span class="dia-tema-titulo">Ecocidio</span><span class="dia-tema-expos">7 expositores · Juan C. del Águila, Bismarck Seminario y otros</span></div>
+        <div class="dia-tema"><span class="dia-tema-hora">15:00 — 19:00</span><span class="dia-tema-titulo">REINFO</span><span class="dia-tema-expos">8 expositores · Henry Coronado, Rafael Aldave y otros</span></div>
       </div>
     </div>
     <div class="dia-card">
       <span class="dia-num">29</span>
       <span class="dia-mes">Jueves · Mayo</span>
       <div class="dia-temas">
-        <div class="dia-tema">
-          <span class="dia-tema-hora">09:00 — 13:00</span>
-          <span class="dia-tema-titulo">Leyes Pro-Crimen</span>
-          <span class="dia-tema-expos">8 expositores · Arturo Matos, J. Carlos Raymundo y otros</span>
-        </div>
-        <div class="dia-tema">
-          <span class="dia-tema-hora">15:00 — 19:00</span>
-          <span class="dia-tema-titulo">Derecho Disciplinario</span>
-          <span class="dia-tema-expos">8 expositores · Gilmar Ramos, Giovanni Ricalde y otros</span>
-        </div>
+        <div class="dia-tema"><span class="dia-tema-hora">09:00 — 13:00</span><span class="dia-tema-titulo">Leyes Pro-Crimen</span><span class="dia-tema-expos">8 expositores · Arturo Matos, J. Carlos Raymundo y otros</span></div>
+        <div class="dia-tema"><span class="dia-tema-hora">15:00 — 19:00</span><span class="dia-tema-titulo">Derecho Disciplinario</span><span class="dia-tema-expos">8 expositores · Gilmar Ramos, Giovanni Ricalde y otros</span></div>
       </div>
     </div>
     <div class="dia-card">
       <span class="dia-num">30</span>
       <span class="dia-mes">Viernes · Mayo</span>
       <div class="dia-temas">
-        <div class="dia-tema">
-          <span class="dia-tema-hora">09:00 — 13:00</span>
-          <span class="dia-tema-titulo">Paternalismo Estatal y DDHH</span>
-          <span class="dia-tema-expos">6 expositores · Christian Salas, Juan Castañeda y otros</span>
-        </div>
-        <div class="dia-tema">
-          <span class="dia-tema-hora">15:00 — 19:00</span>
-          <span class="dia-tema-titulo">Particulares en Obras Públicas</span>
-          <span class="dia-tema-expos">8 expositores · Jhoel Chipana, Erick Salas y otros</span>
-        </div>
+        <div class="dia-tema"><span class="dia-tema-hora">09:00 — 13:00</span><span class="dia-tema-titulo">Paternalismo Estatal y DDHH</span><span class="dia-tema-expos">6 expositores · Christian Salas, Juan Castañeda y otros</span></div>
+        <div class="dia-tema"><span class="dia-tema-hora">15:00 — 19:00</span><span class="dia-tema-titulo">Particulares en Obras Públicas</span><span class="dia-tema-expos">8 expositores · Jhoel Chipana, Erick Salas y otros</span></div>
       </div>
     </div>
   </div>
 
   <div class="section-inner">
     <div class="congreso-precios">
-      <div class="congreso-precios-head">
-        <span class="congreso-precios-eyebrow">Inversión</span>
-        <h3 class="congreso-precios-title">Precios de Inscripción</h3>
-      </div>
+      <div class="congreso-precios-head"><span class="congreso-precios-eyebrow">Inversión</span><h3 class="congreso-precios-title">Precios de Inscripción</h3></div>
       <div class="congreso-precios-grid">
-        <div class="precio-item">
-          <div class="precio-tipo">Profesional</div>
-          <div class="precio-monto"><small>S/</small>100</div>
-        </div>
-        <div class="precio-item">
-          <div class="precio-tipo">Corporativo</div>
-          <div class="precio-monto"><small>S/</small>80</div>
-        </div>
-        <div class="precio-item">
-          <div class="precio-tipo">Estudiante</div>
-          <div class="precio-monto"><small>S/</small>50</div>
-        </div>
+        <div class="precio-item"><div class="precio-tipo">Profesional</div><div class="precio-monto"><small>S/</small>100</div></div>
+        <div class="precio-item"><div class="precio-tipo">Corporativo</div><div class="precio-monto"><small>S/</small>80</div></div>
+        <div class="precio-item"><div class="precio-tipo">Estudiante</div><div class="precio-monto"><small>S/</small>50</div></div>
       </div>
     </div>
     <div class="congreso-cta-final">
-      <a href="congreso.html" class="btn-primary">Ver programa completo <span class="btn-arrow">→</span></a>
-      <a href="#" class="btn-warm">Inscribirme ahora <span class="btn-arrow">→</span></a>
+      <a href="congreso.html" class="btn-primary">Ver programa completo <svg class="icon"><use href="#i-arrow-right"/></svg></a>
+      <button type="button" class="btn-warm" onclick="openModal('inscripcion')">Inscribirme ahora <svg class="icon"><use href="#i-arrow-right"/></svg></button>
     </div>
   </div>
 </section>
@@ -523,23 +718,23 @@ body{font-family:var(--font-body);font-size:16px;color:var(--ical-texto);backgro
       <p class="section-sub">Accesos directos a las herramientas y servicios institucionales más consultados.</p>
     </div>
     <div class="servicios-grid">
-      <a href="#" class="servicio-card">
-        <div class="servicio-icon">📋</div>
+      <button type="button" class="servicio-card" onclick="openModal('verificar')">
+        <div class="servicio-icon"><svg class="icon"><use href="#i-shield-check"/></svg></div>
         <span class="servicio-titulo">Verificar Habilidad</span>
         <span class="servicio-sub">Consulta en línea</span>
-      </a>
-      <a href="#" class="servicio-card">
-        <div class="servicio-icon">💼</div>
+      </button>
+      <button type="button" class="servicio-card" onclick="openModal('bolsa')">
+        <div class="servicio-icon"><svg class="icon"><use href="#i-briefcase"/></svg></div>
         <span class="servicio-titulo">Bolsa de Trabajo</span>
         <span class="servicio-sub">Ofertas vigentes</span>
-      </a>
+      </button>
       <a href="https://www.bn.com.pe/tramites-entidades-publicas/tupa/poder-judicial.pdf" target="_blank" rel="noopener" class="servicio-card">
-        <div class="servicio-icon">⚖</div>
+        <div class="servicio-icon"><svg class="icon"><use href="#i-scale"/></svg></div>
         <span class="servicio-titulo">Aranceles Judiciales</span>
         <span class="servicio-sub">Cuadro oficial</span>
       </a>
       <a href="https://diariooficial.elperuano.pe/Normas" target="_blank" rel="noopener" class="servicio-card">
-        <div class="servicio-icon">📰</div>
+        <div class="servicio-icon"><svg class="icon"><use href="#i-newspaper"/></svg></div>
         <span class="servicio-titulo">Normas Legales</span>
         <span class="servicio-sub">El Peruano</span>
       </a>
@@ -553,33 +748,25 @@ body{font-family:var(--font-body);font-size:16px;color:var(--ical-texto);backgro
       <div class="footer-brand-row">
         <img src="/static/img/ical/solo-logo-ical.png" alt="ICAL" class="footer-brand-logo">
         <div>
-          <div class="footer-brand-name">
-            <small>Ilustre Colegio de</small>
-            Abogados de Loreto
-          </div>
+          <div class="footer-brand-name"><small>Ilustre Colegio de</small>Abogados de Loreto</div>
         </div>
       </div>
-      <div class="footer-lema">
-        Orabunt Causas Melius
-        <span>— Abogarán mejor las causas —</span>
-      </div>
-      <a href="https://wa.me/51964723131?text=Hola%2C%20escribo%20desde%20la%20web%20del%20ICAL" class="footer-wa" target="_blank" rel="noopener">
-        💬 <span><strong>WhatsApp</strong> · 964 723 131</span>
-      </a>
+      <div class="footer-lema">Orabunt Causas Melius<span>— Abogarán mejor las causas —</span></div>
+      <a href="https://wa.me/51964723131?text=Hola%2C%20escribo%20desde%20la%20web%20del%20ICAL" class="footer-wa" target="_blank" rel="noopener"><svg class="icon"><use href="#i-message-circle"/></svg> <span><strong>WhatsApp</strong> · 964 723 131</span></a>
     </div>
     <div class="footer-col">
       <h4>Contacto</h4>
-      <p><strong>📍 Calle Echenique 390</strong><br>Iquitos — Loreto</p>
-      <p>📞 +51 964 723 131</p>
-      <p>Lun-Vie 9-13h / 16-19h<br>Sáb 8-13h</p>
+      <p><svg class="icon"><use href="#i-pin"/></svg><span><strong>Calle Echenique 390</strong><br>Iquitos — Loreto</span></p>
+      <p><svg class="icon"><use href="#i-phone"/></svg><span>+51 964 723 131</span></p>
+      <p><svg class="icon"><use href="#i-clock"/></svg><span>Lun-Vie 9-13h / 16-19h<br>Sáb 8-13h</span></p>
     </div>
     <div class="footer-col">
       <h4>Servicios</h4>
-      <a href="#">Verificar Habilidad</a>
-      <a href="#">Bolsa de Trabajo</a>
+      <a href="#" onclick="event.preventDefault();openModal('verificar')">Verificar Habilidad</a>
+      <a href="#" onclick="event.preventDefault();openModal('bolsa')">Bolsa de Trabajo</a>
       <a href="https://www.bn.com.pe/tramites-entidades-publicas/tupa/poder-judicial.pdf" target="_blank" rel="noopener">Aranceles Judiciales</a>
       <a href="https://diariooficial.elperuano.pe/Normas" target="_blank" rel="noopener">Normas Legales</a>
-      <a href="#">Acceso Colegiado</a>
+      <a href="#" onclick="event.preventDefault();openModal('acceso')">Acceso Colegiado</a>
     </div>
     <div class="footer-col footer-col-emails">
       <h4>Direcciones Institucionales</h4>
@@ -602,6 +789,197 @@ body{font-family:var(--font-body);font-size:16px;color:var(--ical-texto);backgro
     </span>
   </div>
 </footer>
+
+<!-- ════════════════ MODALES PERSUASIVOS ════════════════ -->
+
+<!-- Modal 1: Verificar Habilidad — practicidad institucional confiable -->
+<div class="modal-backdrop" id="modal-verificar" onclick="closeBackdrop(event)">
+  <div class="modal modal-verificar">
+    <button class="modal-close" onclick="closeModal()" aria-label="Cerrar"><svg class="icon"><use href="#i-x"/></svg></button>
+    <div class="modal-hero">
+      <div class="modal-icon-big"><svg class="icon"><use href="#i-shield-check"/></svg></div>
+      <div class="modal-eyebrow">Próximamente</div>
+      <h3 class="modal-title">Verificación de Habilidad <em>en línea</em></h3>
+    </div>
+    <div class="modal-body">
+      <p class="modal-text">Cualquier persona podrá verificar la habilidad de un abogado del ICAL en segundos, desde su celular o computadora — sin venir a la oficina, sin llamadas, sin dudas.</p>
+      <ul class="modal-list">
+        <li><svg class="icon"><use href="#i-check"/></svg> Búsqueda por DNI o número de colegiatura</li>
+        <li><svg class="icon"><use href="#i-check"/></svg> Constancia de habilidad descargable con código QR de validación</li>
+        <li><svg class="icon"><use href="#i-check"/></svg> Datos institucionales públicos: especialidad, fecha de colegiatura, estado actual</li>
+        <li><svg class="icon"><use href="#i-check"/></svg> Disponible 24 horas · sin filas, sin trámites</li>
+      </ul>
+      <div class="modal-ctas">
+        <button class="modal-cta-primary" onclick="openModal('contacto')">Solicitar implementación <svg class="icon"><use href="#i-arrow-right"/></svg></button>
+        <button class="modal-cta-secondary" onclick="closeModal()">Volver</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal 2: Bolsa de Trabajo — oportunidad económica energético -->
+<div class="modal-backdrop" id="modal-bolsa" onclick="closeBackdrop(event)">
+  <div class="modal modal-bolsa">
+    <button class="modal-close" onclick="closeModal()" aria-label="Cerrar"><svg class="icon"><use href="#i-x"/></svg></button>
+    <div class="modal-hero">
+      <div class="modal-icon-big"><svg class="icon"><use href="#i-briefcase"/></svg></div>
+      <h3 class="modal-title">Conectamos talento <em>jurídico</em> con oportunidades reales</h3>
+      <div class="modal-tagline">Una bolsa de trabajo activa, indexada y abierta al colegiado.</div>
+    </div>
+    <div class="modal-body">
+      <p class="modal-text">Estudios jurídicos, instituciones públicas y empresas publicarán ofertas. Nuestros agremiados las verán en su panel y podrán postular en un click.</p>
+      <div class="modal-stats">
+        <div class="modal-stat"><div class="modal-stat-num">24/7</div><div class="modal-stat-lbl">Acceso</div></div>
+        <div class="modal-stat"><div class="modal-stat-num">CV</div><div class="modal-stat-lbl">Online</div></div>
+        <div class="modal-stat"><div class="modal-stat-num">∞</div><div class="modal-stat-lbl">Postulaciones</div></div>
+      </div>
+      <div class="modal-ctas">
+        <button class="modal-cta-primary" onclick="openModal('contacto')">Quiero esto en mi Colegio <svg class="icon"><use href="#i-arrow-right"/></svg></button>
+        <button class="modal-cta-secondary" onclick="closeModal()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal 3: Acceso Colegiado — empoderamiento premium oscuro -->
+<div class="modal-backdrop" id="modal-acceso" onclick="closeBackdrop(event)">
+  <div class="modal modal-acceso">
+    <button class="modal-close" onclick="closeModal()" aria-label="Cerrar"><svg class="icon"><use href="#i-x"/></svg></button>
+    <div class="modal-body">
+      <div class="modal-eyebrow">Panel privado del Colegiado</div>
+      <h3 class="modal-title">Tu Colegio, en <em>un solo click.</em></h3>
+      <p class="modal-text">Cada abogado del ICAL tendrá su panel privado donde gestionar todo lo que hoy requiere visitar la oficina o esperar respuestas.</p>
+      <div class="modal-features">
+        <div class="modal-feature"><svg class="icon"><use href="#i-credit-card"/></svg><span>Estado de cuotas y pagos</span></div>
+        <div class="modal-feature"><svg class="icon"><use href="#i-file-text"/></svg><span>Constancias descargables</span></div>
+        <div class="modal-feature"><svg class="icon"><use href="#i-bell"/></svg><span>Notificaciones oficiales</span></div>
+        <div class="modal-feature"><svg class="icon"><use href="#i-zap"/></svg><span>Pagos Yape / Plin / BCP</span></div>
+        <div class="modal-feature"><svg class="icon"><use href="#i-users"/></svg><span>Directorio del Colegio</span></div>
+        <div class="modal-feature"><svg class="icon"><use href="#i-trending"/></svg><span>Capacitaciones a precio especial</span></div>
+      </div>
+      <div class="modal-ctas">
+        <button class="modal-cta-primary" onclick="openModal('contacto')">Activar para mi Colegio <svg class="icon"><use href="#i-arrow-right"/></svg></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal 4: Inscripción Congreso — eficiencia administrativa, comparativa -->
+<div class="modal-backdrop" id="modal-inscripcion" onclick="closeBackdrop(event)">
+  <div class="modal modal-inscripcion">
+    <button class="modal-close" onclick="closeModal()" aria-label="Cerrar"><svg class="icon"><use href="#i-x"/></svg></button>
+    <div class="modal-hero">
+      <div class="modal-eyebrow">Inscripciones Online · Congreso 2026</div>
+      <h3 class="modal-title">Olvídate del Excel y los vouchers por WhatsApp.</h3>
+      <div class="modal-tagline">El sistema que ahorra horas a la organización del evento.</div>
+    </div>
+    <div class="modal-body">
+      <div class="modal-comparativa">
+        <div class="modal-col modal-col-old">
+          <div class="modal-col-label">Hoy · proceso manual</div>
+          <ul>
+            <li><svg class="icon"><use href="#i-x-circle"/></svg> Voucher de pago por WhatsApp</li>
+            <li><svg class="icon"><use href="#i-x-circle"/></svg> Excel con datos a transcribir</li>
+            <li><svg class="icon"><use href="#i-x-circle"/></svg> Sin control de cupos</li>
+            <li><svg class="icon"><use href="#i-x-circle"/></svg> Boletas emitidas a mano</li>
+            <li><svg class="icon"><use href="#i-x-circle"/></svg> Confusión en el ingreso</li>
+          </ul>
+        </div>
+        <div class="modal-col modal-col-new">
+          <div class="modal-col-label">Con el sistema</div>
+          <ul>
+            <li><svg class="icon"><use href="#i-check-circle"/></svg> Pago directo Yape/Plin/Tarjeta</li>
+            <li><svg class="icon"><use href="#i-check-circle"/></svg> Datos validados automáticamente</li>
+            <li><svg class="icon"><use href="#i-check-circle"/></svg> Cupos en tiempo real</li>
+            <li><svg class="icon"><use href="#i-check-circle"/></svg> Boleta SUNAT al instante</li>
+            <li><svg class="icon"><use href="#i-check-circle"/></svg> QR de acceso al evento</li>
+          </ul>
+        </div>
+      </div>
+      <div class="modal-ctas">
+        <button class="modal-cta-primary" onclick="openModal('contacto')">Implementar para el Congreso <svg class="icon"><use href="#i-arrow-right"/></svg></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal 5: Comunicado — orden documental, sobrio editorial -->
+<div class="modal-backdrop" id="modal-comunicado" onclick="closeBackdrop(event)">
+  <div class="modal modal-comunicado">
+    <button class="modal-close" onclick="closeModal()" aria-label="Cerrar"><svg class="icon"><use href="#i-x"/></svg></button>
+    <div class="modal-body">
+      <div class="modal-eyebrow">Próximamente</div>
+      <h3 class="modal-title">Cada comunicado, <em>indexado y buscable.</em></h3>
+      <div class="modal-divider"></div>
+      <p class="modal-text">Los comunicados oficiales del ICAL dejarán de ser PDFs sueltos en grupos de WhatsApp. Cada uno tendrá su página propia, con título, contenido enriquecido, archivos adjuntos y enlace permanente.</p>
+      <div class="modal-quote">
+        "Buscar un comunicado de hace seis meses no debería ser una odisea — debería tomar segundos."
+      </div>
+      <p class="modal-text">Los colegiados podrán suscribirse para recibir notificaciones, archivar lo que les interesa, y compartir cada comunicado con un solo enlace.</p>
+      <div class="modal-ctas">
+        <button class="modal-cta-primary" onclick="openModal('contacto')">Implementar el sistema <svg class="icon"><use href="#i-arrow-right"/></svg></button>
+        <button class="modal-cta-secondary" onclick="closeModal()">Volver</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal 6: Contacto — cercanía, conversacional -->
+<div class="modal-backdrop" id="modal-contacto" onclick="closeBackdrop(event)">
+  <div class="modal modal-contacto">
+    <button class="modal-close" onclick="closeModal()" aria-label="Cerrar"><svg class="icon"><use href="#i-x"/></svg></button>
+    <div class="modal-body">
+      <div class="modal-icon-big"><svg class="icon"><use href="#i-message-circle"/></svg></div>
+      <h3 class="modal-title">Hablemos sobre el portal definitivo</h3>
+      <p class="modal-text">Esta versión es solo una muestra. Conversemos sobre lo que tu Colegio realmente necesita — sin compromiso.</p>
+      <div class="modal-options">
+        <a href="https://wa.me/51979169813?text=Hola%2C%20me%20gustar%C3%ADa%20conversar%20sobre%20el%20portal%20del%20ICAL" target="_blank" rel="noopener" class="modal-option">
+          <div class="modal-option-icon modal-option-wa"><svg class="icon"><use href="#i-message-circle"/></svg></div>
+          <div class="modal-option-text">
+            <div class="modal-option-label">WhatsApp directo</div>
+            <div class="modal-option-detail">+51 979 169 813 · Respuesta el mismo día</div>
+          </div>
+          <span class="modal-option-arrow"><svg class="icon"><use href="#i-arrow-up-right"/></svg></span>
+        </a>
+        <a href="tel:+51979169813" class="modal-option">
+          <div class="modal-option-icon modal-option-tel"><svg class="icon"><use href="#i-phone"/></svg></div>
+          <div class="modal-option-text">
+            <div class="modal-option-label">Llamada</div>
+            <div class="modal-option-detail">Coordinemos una reunión presencial</div>
+          </div>
+          <span class="modal-option-arrow"><svg class="icon"><use href="#i-arrow-up-right"/></svg></span>
+        </a>
+        <a href="mailto:duilio@perusistemas.pro?subject=Portal%20ICAL%20-%20Consulta" class="modal-option">
+          <div class="modal-option-icon modal-option-mail"><svg class="icon"><use href="#i-mail"/></svg></div>
+          <div class="modal-option-text">
+            <div class="modal-option-label">Correo electrónico</div>
+            <div class="modal-option-detail">duilio@perusistemas.pro</div>
+          </div>
+          <span class="modal-option-arrow"><svg class="icon"><use href="#i-arrow-up-right"/></svg></span>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function openModal(name){
+  document.querySelectorAll('.modal-backdrop.active').forEach(b => b.classList.remove('active'));
+  const m = document.getElementById('modal-' + name);
+  if (m){
+    m.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+}
+function closeModal(){
+  document.querySelectorAll('.modal-backdrop.active').forEach(b => b.classList.remove('active'));
+  document.body.style.overflow = '';
+}
+function closeBackdrop(e){
+  if (e.target.classList.contains('modal-backdrop')) closeModal();
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+</script>
 
 </body>
 </html>
