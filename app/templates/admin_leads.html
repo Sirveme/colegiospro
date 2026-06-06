@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leads · ColegiosPro</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --gold: #d4af37;
+            --gold-dim: rgba(212, 175, 55, 0.15);
+            --bg: #0a0e17;
+            --bg-lighter: #0f1520;
+            --surface: #151c2c;
+            --text: #f0f4f8;
+            --text-muted: #8896a6;
+            --text-dim: #5a6a7a;
+            --border: rgba(255, 255, 255, 0.06);
+            --success: #10b981;
+            --danger: #ef4444;
+            --blue: #3b82f6;
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 32px 16px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 4px; }
+        h1 .accent { color: var(--gold); }
+        .sub { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 24px; }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 24px;
+        }
+
+        /* Gate (pedir clave) */
+        #gate { max-width: 420px; margin: 8vh auto 0; text-align: center; }
+        #gate h1 { margin-bottom: 16px; }
+        .field { display: flex; gap: 10px; margin-top: 16px; }
+        input[type="password"], input[type="text"] {
+            flex: 1;
+            background: var(--bg-lighter);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 14px;
+            color: var(--text);
+            font-size: 0.95rem;
+            font-family: inherit;
+        }
+        input:focus { outline: none; border-color: var(--gold); }
+        button {
+            background: var(--gold);
+            color: #1a1205;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 18px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: opacity .15s;
+            white-space: nowrap;
+        }
+        button:hover { opacity: .88; }
+        button.ghost {
+            background: transparent;
+            color: var(--gold);
+            border: 1px solid var(--gold);
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .count { color: var(--text-muted); font-size: 0.9rem; }
+
+        .msg { font-size: 0.9rem; margin-top: 14px; min-height: 1.2em; }
+        .msg.error { color: var(--danger); }
+        .msg.ok { color: var(--success); }
+
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+        th, td {
+            text-align: left;
+            padding: 11px 12px;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+        th {
+            color: var(--text-dim);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.72rem;
+            letter-spacing: .04em;
+        }
+        tbody tr:hover { background: rgba(255,255,255,0.02); }
+        td.wrap { white-space: normal; min-width: 160px; }
+        a.wa {
+            color: var(--success);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        a.wa:hover { text-decoration: underline; }
+        .dash { color: var(--text-dim); }
+        .empty { text-align: center; color: var(--text-muted); padding: 40px 0; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Pantalla de acceso -->
+        <div id="gate" class="card">
+            <h1>Leads · <span class="accent">ColegiosPro</span></h1>
+            <p class="sub">Ingresa la clave de administración para ver los contactos.</p>
+            <form id="gateForm">
+                <div class="field">
+                    <input type="password" id="keyInput" placeholder="Clave de administración" autocomplete="off" autofocus>
+                    <button type="submit">Entrar</button>
+                </div>
+            </form>
+            <div id="gateMsg" class="msg"></div>
+        </div>
+
+        <!-- Panel de leads -->
+        <div id="panel" class="hidden">
+            <div class="toolbar">
+                <div>
+                    <h1>Leads · <span class="accent">ColegiosPro</span></h1>
+                    <div class="count" id="count"></div>
+                </div>
+                <div class="field" style="margin:0;">
+                    <button id="refreshBtn" type="button">Actualizar</button>
+                    <button id="lockBtn" class="ghost" type="button">Salir</button>
+                </div>
+            </div>
+            <div id="panelMsg" class="msg"></div>
+            <div class="card table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Colegio</th>
+                            <th>Región</th>
+                            <th>Cantidad</th>
+                            <th>WhatsApp Decano</th>
+                            <th>Admin</th>
+                            <th>Tesorería</th>
+                            <th>Secretaría</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rows"></tbody>
+                </table>
+                <div id="emptyState" class="empty hidden">Aún no hay leads registrados.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // La clave vive solo en memoria de la página (no localStorage).
+        let adminKey = "";
+
+        const gate = document.getElementById("gate");
+        const panel = document.getElementById("panel");
+        const gateForm = document.getElementById("gateForm");
+        const keyInput = document.getElementById("keyInput");
+        const gateMsg = document.getElementById("gateMsg");
+        const panelMsg = document.getElementById("panelMsg");
+        const rows = document.getElementById("rows");
+        const countEl = document.getElementById("count");
+        const emptyState = document.getElementById("emptyState");
+
+        function fmtFecha(iso) {
+            if (!iso) return "—";
+            const d = new Date(iso);
+            if (isNaN(d)) return iso;
+            return d.toLocaleString("es-PE", {
+                day: "2-digit", month: "2-digit", year: "numeric",
+                hour: "2-digit", minute: "2-digit"
+            });
+        }
+
+        // Limpia y normaliza un número para wa.me
+        function waCell(numero) {
+            if (!numero || !String(numero).trim()) {
+                return '<span class="dash">—</span>';
+            }
+            const raw = String(numero).trim();
+            let digits = raw.replace(/[^\d]/g, "");
+            if (digits.length === 9 && !digits.startsWith("51")) {
+                digits = "51" + digits;
+            }
+            if (!digits) {
+                return escapeHtml(raw);
+            }
+            return '<a class="wa" href="https://wa.me/' + digits +
+                   '" target="_blank" rel="noopener">' + escapeHtml(raw) + '</a>';
+        }
+
+        function escapeHtml(s) {
+            return String(s)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
+        }
+
+        function safe(s) {
+            return (s === null || s === undefined || String(s).trim() === "")
+                ? '<span class="dash">—</span>'
+                : escapeHtml(s);
+        }
+
+        async function cargarLeads() {
+            panelMsg.textContent = "";
+            panelMsg.className = "msg";
+            try {
+                const resp = await fetch("/api/leads", {
+                    headers: { "X-Admin-Key": adminKey }
+                });
+                if (resp.status === 401) {
+                    // Clave inválida: volver a la pantalla de acceso, sin recargar.
+                    adminKey = "";
+                    panel.classList.add("hidden");
+                    gate.classList.remove("hidden");
+                    gateMsg.textContent = "Clave incorrecta. Inténtalo de nuevo.";
+                    gateMsg.className = "msg error";
+                    keyInput.value = "";
+                    keyInput.focus();
+                    return false;
+                }
+                if (!resp.ok) {
+                    throw new Error("Error " + resp.status);
+                }
+                const data = await resp.json();
+                render(data);
+                return true;
+            } catch (e) {
+                panelMsg.textContent = "No se pudo cargar la lista: " + e.message;
+                panelMsg.className = "msg error";
+                return false;
+            }
+        }
+
+        function render(data) {
+            rows.innerHTML = "";
+            const list = Array.isArray(data) ? data : [];
+            countEl.textContent = list.length + (list.length === 1 ? " lead" : " leads");
+            if (list.length === 0) {
+                emptyState.classList.remove("hidden");
+                return;
+            }
+            emptyState.classList.add("hidden");
+            const html = list.map(function (l) {
+                return "<tr>" +
+                    "<td>" + safe(fmtFecha(l.fecha)) + "</td>" +
+                    '<td class="wrap">' + safe(l.colegio) + "</td>" +
+                    "<td>" + safe(l.region) + "</td>" +
+                    "<td>" + safe(l.cantidad) + "</td>" +
+                    "<td>" + waCell(l.decano) + "</td>" +
+                    "<td>" + waCell(l.admin) + "</td>" +
+                    "<td>" + waCell(l.tesoreria) + "</td>" +
+                    "<td>" + waCell(l.secretaria) + "</td>" +
+                    "</tr>";
+            }).join("");
+            rows.innerHTML = html;
+        }
+
+        gateForm.addEventListener("submit", async function (e) {
+            e.preventDefault();
+            const val = keyInput.value.trim();
+            if (!val) {
+                gateMsg.textContent = "Ingresa la clave.";
+                gateMsg.className = "msg error";
+                return;
+            }
+            adminKey = val;
+            gateMsg.textContent = "Verificando…";
+            gateMsg.className = "msg";
+            const ok = await cargarLeads();
+            if (ok) {
+                gate.classList.add("hidden");
+                panel.classList.remove("hidden");
+                gateMsg.textContent = "";
+            }
+        });
+
+        document.getElementById("refreshBtn").addEventListener("click", function () {
+            panelMsg.textContent = "Actualizando…";
+            panelMsg.className = "msg";
+            cargarLeads().then(function (ok) {
+                if (ok) {
+                    panelMsg.textContent = "Actualizado.";
+                    panelMsg.className = "msg ok";
+                }
+            });
+        });
+
+        document.getElementById("lockBtn").addEventListener("click", function () {
+            adminKey = "";
+            rows.innerHTML = "";
+            panel.classList.add("hidden");
+            gate.classList.remove("hidden");
+            gateMsg.textContent = "";
+            gateMsg.className = "msg";
+            keyInput.value = "";
+            keyInput.focus();
+        });
+    </script>
+</body>
+</html>
