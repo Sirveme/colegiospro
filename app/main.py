@@ -6,6 +6,7 @@
 import asyncio
 import logging
 import os
+import secrets
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 import httpx
@@ -208,8 +209,19 @@ async def recibir_contacto(form: ContactForm, request: Request):
         db.close()
 
 
+def _check_admin_key(provided: Optional[str]):
+    """Cierra /api/leads. Cerrado por defecto: si no hay ADMIN_API_KEY en el
+    entorno, ninguna clave es válida (responde 401 siempre)."""
+    expected = os.environ.get("ADMIN_API_KEY", "")
+    if not expected or not provided or not secrets.compare_digest(provided, expected):
+        raise HTTPException(401, "No autorizado")
+
+
 @app.get("/api/leads")
-async def ver_leads():
+async def ver_leads(request: Request):
+    # Acepta header X-Admin-Key o, como alternativa para la pantalla admin, ?key=
+    provided = request.headers.get("X-Admin-Key") or request.query_params.get("key")
+    _check_admin_key(provided)
     db = SessionLocal()
     try:
         leads = db.query(Lead).order_by(Lead.created_at.desc()).all()
@@ -371,16 +383,11 @@ async def health():
     return {"status": "ok", "app": "colegiospro"}
 
 
-@app.get("/debug/db")
-async def debug_db():
-    import os
-    db_url = os.environ.get("DATABASE_URL", "NO EXISTE")
-    # Mostrar solo el inicio, sin exponer password completo
-    safe = db_url[:30] + "..." if len(db_url) > 30 else db_url
-    return {
-        "db_url_prefix": safe,
-        "starts_with_postgres": db_url.startswith("postgres"),
-    }
+@app.get("/admin/leads", response_class=HTMLResponse)
+async def admin_leads_page(request: Request):
+    """Sirve solo el HTML de la pantalla de leads. Los datos viajan aparte
+    vía el fetch autenticado a /api/leads (header X-Admin-Key)."""
+    return templates.TemplateResponse(request, "admin_leads.html")
 
 
 # SECRETARIA PRO: rutas y lógica para el módulo de secretaria (documentos, plantillas, etc.)
