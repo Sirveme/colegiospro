@@ -149,8 +149,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);height:100vh
 // ═══════════════════════════════════════════
 // CONFIGURATION
 // ═══════════════════════════════════════════
-// CAMBIAR en producción:
-const ADMIN_KEY = 'duilio-admin-2026';
+// La clave llega por la URL (?key=...), la misma ADMIN_API_KEY que protege /admin/chat.
+const ADMIN_KEY = new URLSearchParams(location.search).get('key') || '';
 const WS_BASE = location.protocol === 'https:' ? 'wss://' : 'ws://';
 const WS_URL = `${WS_BASE}${location.host}/ws/admin?key=${ADMIN_KEY}`;
 
