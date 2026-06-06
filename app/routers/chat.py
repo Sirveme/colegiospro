@@ -5,6 +5,8 @@
 # ══════════════════════════════════════════════════════════
 
 import json
+import os
+import secrets
 import uuid
 from datetime import datetime, timezone
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request
@@ -220,9 +222,9 @@ async def ws_visitor(websocket: WebSocket):
 async def ws_admin(websocket: WebSocket):
     params = websocket.query_params
     admin_key = params.get("key", "")
-    # TODO: Use environment variable: os.environ.get("ADMIN_CHAT_KEY")
-    expected_key = "duilio-admin-2026"
-    if admin_key != expected_key:
+    expected_key = os.environ.get("ADMIN_API_KEY", "")
+    # Cerrado por defecto: sin ADMIN_API_KEY en el entorno, ninguna clave es válida.
+    if not expected_key or not admin_key or not secrets.compare_digest(admin_key, expected_key):
         await websocket.close(code=4001, reason="Unauthorized")
         return
 
