@@ -16,7 +16,9 @@ from datetime import datetime, timezone
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///leads.db")
 
 if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg2://", 1)
+elif DATABASE_URL.startswith("postgresql://") and "+psycopg" not in DATABASE_URL:
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 # ─── ENGINE ───
 # PostgreSQL: pool_pre_ping evita conexiones muertas (mismo fix que facturalo.pro)
